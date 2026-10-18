@@ -33,7 +33,8 @@ body {
   padding-left: max(16px, env(safe-area-inset-left, 0px));
   padding-right: max(16px, env(safe-area-inset-right, 0px));
 }
-.unit { max-width: 1820px; margin: 0 auto; display: grid; grid-template-columns: clamp(16px, 2.2vw, 36px) minmax(0, 1fr) clamp(16px, 2.2vw, 36px); box-shadow: 0 30px 80px #000c; border-radius: 4px; overflow: hidden; }
+.stage { position: relative; margin: 0 auto; }
+.unit { width: 1700px; transform-origin: 0 0; position: absolute; left: 0; top: 0; display: grid; grid-template-columns: clamp(16px, 2.2vw, 36px) minmax(0, 1fr) clamp(16px, 2.2vw, 36px); box-shadow: 0 30px 80px #000c; border-radius: 4px; overflow: hidden; }
 /* Wood cheeks: same stripe treatment as the Peak controller mockup */
 .cheek { background: repeating-linear-gradient(92deg, #5B3A22 0 3px, #6E4729 3px 7px, #4E3120 7px 9px, #77502F 9px 14px); }
 .cheek.l { box-shadow: inset -4px 0 8px rgba(0,0,0,.6); }
@@ -64,14 +65,12 @@ button:focus-visible, .knob:focus-visible, .pname:focus-visible { outline: 2px s
 .hdr-right { display: flex; align-items: center; gap: 12px; }
 .sw-line { display: flex; align-items: center; gap: 7px; font-size: 13px; color: var(--ink-dim); text-transform: uppercase; }
 
-.synth { display: grid; gap: 10px; grid-template-columns: 340px minmax(250px,1.2fr) minmax(150px,.75fr) minmax(210px,1.2fr) minmax(210px,1.2fr) 190px 150px; grid-template-areas: "mod A mix filt filt fx out" "mod B keys fenv aenv fx out" "mod lfo keys fenv aenv fx out"; }
+.synth { display: grid; gap: 10px; min-width: 0; grid-template-columns: 340px minmax(250px,1.2fr) minmax(150px,.75fr) minmax(210px,1.2fr) minmax(210px,1.2fr) 150px; grid-template-areas: "mod A mix filt filt out" "mod B keys fenv aenv out" "mod lfo keys eq verb out"; }
 .synth > section, .synth > aside { margin: 0; min-width: 0; }
 #secMod { grid-area: mod; } #secA { grid-area: A; } #secB { grid-area: B; } #secLfo { grid-area: lfo; } #secMix { grid-area: mix; } #secKeys { grid-area: keys; }
-#secFilter { grid-area: filt; } #secFenv { grid-area: fenv; } #secAenv { grid-area: aenv; } .fxcol { grid-area: fx; display: grid; gap: 10px; grid-template-rows: auto 1fr; min-width: 0; } .fxcol .disp { height: 48px; } .fxcol .knobs { gap: 6px 0; } .fxcol .knobwrap { width: 54px; }
+#secEq { grid-area: eq; } #secVerb { grid-area: verb; } #secFilter { grid-area: filt; } #secFenv { grid-area: fenv; } #secAenv { grid-area: aenv; } .fxcol { grid-area: fx; display: grid; gap: 10px; grid-template-rows: auto 1fr; min-width: 0; } .fxcol .disp { height: 48px; } .fxcol .knobs { gap: 6px 0; } .fxcol .knobwrap { width: 54px; }
 .outcol { grid-area: out; display: grid; gap: 10px; grid-template-rows: auto 1fr; }
 .outcol .meter { min-width: 0; }
-@media (min-width: 1500px) { .unit { width: 1900px; max-width: none; margin: 0 auto; transform-origin: 0 0; } body { overflow-x: hidden; } }
-@media (max-width: 1500px) { .synth { display: flex; flex-wrap: wrap; } .synth > section { flex: 1 1 240px; } .outcol, .fxcol { flex: 1 1 190px; } }
 .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: stretch; }
 .row > section.mod { flex: 1 1 200px; }
 .row > .w2 { flex: 1.5 1 280px; }
@@ -86,6 +85,9 @@ section.mod h2 { margin: 0 0 8px; font-size: 14px; font-weight: 700; letter-spac
 section.mod h2 small { color: var(--ink-dim); font-weight: 500; letter-spacing: .1em; }
 .knobs { display: flex; flex-wrap: wrap; gap: 10px 8px; }
 .knobwrap { width: 62px; display: grid; justify-items: center; gap: 2px; }
+#secFenv .knobwrap, #secAenv .knobwrap, #secEq .knobwrap, #secVerb .knobwrap { width: 56px; }
+#secFenv .knobs, #secAenv .knobs { gap: 10px 2px; flex-wrap: nowrap; }
+#secEq .disp { height: 40px; }
 .knobwrap label { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-dim); white-space: nowrap; }
 .knobwrap output { font-family: var(--f-num); font-size: 11px; color: var(--ink); min-height: 14px; }
 .knob { width: 44px; height: 44px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #3a3d47, var(--knob) 60%, #14151a); border: 1px solid #000; box-shadow: 0 2px 5px #000a, inset 0 1px 0 #ffffff1a; position: relative; cursor: ns-resize; touch-action: none; }
@@ -131,6 +133,11 @@ canvas.disp { width: 100%; height: 64px; display: block; background: #0a0a0c; bo
 .status b { color: var(--ink); font-weight: 600; }
 #enable { background: #1f3a33; border-color: #2c6a59; }
 
+.grip { position: absolute; bottom: 0; width: 26px; height: 26px; z-index: 30; touch-action: none; opacity: .75; background: linear-gradient(135deg, transparent 0 55%, #f4f5f7 55% 60%, transparent 60% 72%, #f4f5f7 72% 77%, transparent 77%); }
+.grip.br { right: 0; cursor: nwse-resize; }
+.grip.bl { left: 0; cursor: nesw-resize; transform: scaleX(-1); }
+.grip:hover { opacity: 1; }
+#zoom { min-width: 74px; }
 .tip { position: fixed; z-index: 50; max-width: 240px; background: #0a0a0c; border: 1px solid #4a4d58; border-radius: 4px; padding: 7px 10px; font-size: 13px; letter-spacing: .02em; pointer-events: none; box-shadow: 0 8px 24px #000c; }
 .tip b { display: block; font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--led-green); margin-bottom: 2px; }
 .note { font-size: 12px; color: var(--ink-dim); letter-spacing: .02em; }
@@ -143,7 +150,7 @@ canvas.disp { width: 100%; height: 64px; display: block; background: #0a0a0c; bo
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
 
-<div class="unit">
+<div class="stage" id="stage"><div class="unit" id="unit">
   <div class="cheek l" aria-hidden="true"></div>
   <main class="panel" id="panel">
     <header class="top">
@@ -161,6 +168,7 @@ canvas.disp { width: 100%; height: 64px; display: block; background: #0a0a0c; bo
       </div>
       <div class="hdr-right">
         <label class="sw-line"><input type="checkbox" id="bubbles" checked> Info bubbles</label>
+        <button id="zoom" title="Window size. Click to step, or drag a bottom corner.">100%</button>
         <button id="enable">Enable sound</button>
       </div>
     </header>
@@ -175,10 +183,8 @@ canvas.disp { width: 100%; height: 64px; display: block; background: #0a0a0c; bo
       <section class="mod" id="secFenv"><h2>Filter env</h2><canvas class="disp" id="fenvDisp" width="520" height="128" aria-label="Filter envelope shape"></canvas></section>
       <section class="mod" id="secAenv"><h2>Amp env</h2><canvas class="disp" id="aenvDisp" width="520" height="128" aria-label="Amp envelope shape"></canvas></section>
       <section class="mod" id="secLfo"><h2>LFO <small>0.1 to 30 Hz</small></h2></section>
-      <div class="fxcol">
       <section class="mod" id="secEq"><h2>EQ <small>3 band</small></h2><canvas class="disp" id="eqDisp" width="520" height="128" aria-label="EQ curve"></canvas></section>
       <section class="mod" id="secVerb"><h2>Space <small>short</small></h2></section>
-      </div>
       <div class="outcol">
         <section class="mod" id="secOut"><h2>Master</h2></section>
         <aside class="meter" aria-label="Output meter">
@@ -206,12 +212,13 @@ canvas.disp { width: 100%; height: 64px; display: block; background: #0a0a0c; bo
   </main>
   <div class="cheek r" aria-hidden="true"></div>
 </div>
+<div class="grip bl" id="gripL" title="Drag to resize, keeps proportions" aria-hidden="true"></div><div class="grip br" id="gripR" title="Drag to resize, keeps proportions" aria-hidden="true"></div>
+</div>
 <div class="tip" id="tip" hidden></div>
 
 <script>
 (function () {
   "use strict";
-  (function fit() { var u = document.querySelector(".unit"); function f() { var w = window.innerWidth; if (w >= 1500) { var z = Math.min(1, (w - 32) / 1900); u.style.zoom = z; } else { u.style.zoom = ""; } } f(); window.addEventListener("resize", f); })();
   var $ = function (s, r) { return (r || document).querySelector(s); };
   var S = {};                       // current parameter values
   var DEF = {};                     // defaults (init sound)
@@ -374,6 +381,7 @@ canvas.disp { width: 100%; height: 64px; display: block; background: #0a0a0c; bo
   var AC = window.AudioContext || window.webkitAudioContext, ctx = null, A = {};
   var held = [], octave = 3, curNote = null, gateOn = false, ready = false;
   function mtof(n) { return 440 * Math.pow(2, (n - 69) / 12); }
+  function curveDrive(b) { var c = new Float32Array(2048), t0 = Math.tanh(b); for (var i = 0; i < 2048; i++) { var x = i / 1023.5 - 1; c[i] = Math.tanh(x * 2.2 + b) - t0; } return c; }
   function curveTanh(k) { var c = new Float32Array(2048); for (var i = 0; i < 2048; i++) { var x = i / 1023.5 - 1; c[i] = Math.tanh(x * k) / Math.tanh(k); } return c; }
   function buildAudio() {
     if (ctx || !AC) return; ctx = new AC();
@@ -383,7 +391,7 @@ canvas.disp { width: 100%; height: 64px; display: block; background: #0a0a0c; bo
     var nb = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate), nd = nb.getChannelData(0); for (var i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1;
     A.noise = ctx.createBufferSource(); A.noise.buffer = nb; A.noise.loop = true;
     A.subLP = ctx.createBiquadFilter(); A.subLP.type = "lowpass"; A.subLP.frequency.value = 220;
-    A.mix = ctx.createGain(); A.pre = ctx.createGain(); A.ws = ctx.createWaveShaper(); A.ws.curve = curveTanh(1.5); A.ws.oversample = "2x";
+    A.mix = ctx.createGain(); A.pre = ctx.createGain(); A.post = ctx.createGain(); A.mobG = ctx.createGain(); A.ws = ctx.createWaveShaper(); A.ws.curve = curveTanh(1.5); A.ws.oversample = "2x";
     A.f1 = ctx.createBiquadFilter(); A.f2 = ctx.createBiquadFilter(); A.f1.type = A.f2.type = "lowpass";
     A.amp = ctx.createGain(); A.amp.gain.value = 0;
     A.lo = ctx.createBiquadFilter(); A.lo.type = "lowshelf"; A.lo.frequency.value = 100;
@@ -395,7 +403,7 @@ canvas.disp { width: 100%; height: 64px; display: block; background: #0a0a0c; bo
     A.out = ctx.createGain(); A.split = ctx.createChannelSplitter(2); A.anL = ctx.createAnalyser(); A.anR = ctx.createAnalyser(); A.anL.fftSize = A.anR.fftSize = 1024;
     A.oscA.connect(A.gA); A.oscB.connect(A.gB); A.sub.connect(A.subLP); A.subLP.connect(A.gS); A.noise.connect(A.gN);
     [A.gA, A.gB, A.gS, A.gN].forEach(function (g) { g.connect(A.mix); });
-    A.mix.connect(A.pre); A.pre.connect(A.ws); A.ws.connect(A.f1); A.f1.connect(A.f2); A.f2.connect(A.amp);
+    A.mix.connect(A.pre); A.pre.connect(A.ws); A.ws.connect(A.post); A.post.connect(A.f1); A.oscB.connect(A.mobG); A.f1.connect(A.f2); A.f2.connect(A.amp);
     A.amp.connect(A.lo); A.lo.connect(A.md); A.md.connect(A.hi);
     A.hi.connect(A.dry); A.hi.connect(A.conv); A.conv.connect(A.verbHP); A.verbHP.connect(A.wet);
     A.dry.connect(A.sum); A.wet.connect(A.sum); A.sum.connect(A.max); A.max.connect(A.maxMk); A.maxMk.connect(A.lim); A.lim.connect(A.out);
@@ -409,7 +417,7 @@ canvas.disp { width: 100%; height: 64px; display: block; background: #0a0a0c; bo
     for (var c = 0; c < 2; c++) { var d = b.getChannelData(c); for (var i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / n, 2.6) * Math.min(1, i / (ctx.sampleRate * 0.012)); }
     return b;
   }
-  var lastVerb = -1;
+  var lastVerb = -1, lastFuzz = -1, repTimer = null;
   var pulseCache = {};
   function pulseWave(pw) {
     var key = pw.toFixed(2); if (pulseCache[key]) return pulseCache[key];
@@ -427,7 +435,9 @@ canvas.disp { width: 100%; height: 64px; display: block; background: #0a0a0c; bo
     setOscShape(A.oscB, S.bSaw, S.bTri, S.bPulse && !S.bSaw && !S.bTri, S.bPW);
     A.gA.gain.setTargetAtTime(S.mixA * 0.5, t, 0.02); A.gB.gain.setTargetAtTime(S.mixB * 0.5, t, 0.02);
     A.gS.gain.setTargetAtTime(S.mixSub * 0.7, t, 0.02); A.gN.gain.setTargetAtTime(S.mixNoise * 0.3, t, 0.02);
-    A.pre.gain.setTargetAtTime(1 + S.drive * 3 + S.fuzz * 8, t, 0.02);
+    A.pre.gain.setTargetAtTime(2 + S.drive * 10 + S.fuzz * 26, t, 0.02);
+    A.post.gain.setTargetAtTime(0.9 / (1 + S.drive * 1.2 + S.fuzz * 2.2), t, 0.02);
+    if (Math.abs(S.fuzz - lastFuzz) > 0.01) { A.ws.curve = curveDrive(S.fuzz * 0.7); lastFuzz = S.fuzz; }
     var q = 0.7 + S.reso * 14; A.f1.Q.setTargetAtTime(q, t, 0.02); A.f2.Q.setTargetAtTime(Math.max(0.5, q * 0.35), t, 0.02);
     A.lo.gain.setTargetAtTime(S.eqLo, t, 0.02); A.md.gain.setTargetAtTime(S.eqMid, t, 0.02); A.hi.gain.setTargetAtTime(S.eqHi, t, 0.02);
     A.dry.gain.setTargetAtTime(1 - S.verbMix * 0.3, t, 0.02); A.wet.gain.setTargetAtTime(S.verbMix * 1.4, t, 0.02); A.verbHP.frequency.setTargetAtTime(S.verbHP, t, 0.02);
@@ -441,12 +451,25 @@ canvas.disp { width: 100%; height: 64px; display: block; background: #0a0a0c; bo
     var amt = S.mLfo, route = S.mLfoR, k = route === 1 ? 1 : route === 2 ? S.wheel : 0;
     A.lfoG.gain.setTargetAtTime(amt * k * 600, t, 0.02);
     // this preview applies the LFO path to whichever of A freq, B freq or filter are routed; width routes are shown only in the C++ engine
+    var kb = S.mOscBR === 1 ? 1 : S.mOscBR === 2 ? S.wheel : 0;
+    A.mobG.gain.setTargetAtTime(S.mOscB * kb * 1500, t, 0.02);
     updateLfoDest();
+    updateRepeat();
+  }
+  function updateRepeat() {
+    clearTimeout(repTimer); repTimer = null;
+    if (!S.repeat) return;
+    (function tick() {
+      if (S.repeat && held.length && curNote !== null) gateOnNote(curNote, false);
+      repTimer = setTimeout(tick, 1000 / Math.max(0.1, S.lfoHz));
+    })();
   }
   var lfoDestOn = [true, true, true];
   function updateLfoDest() {
     var any = [S.dest0 > 0, S.dest2 > 0, S.dest4 > 0];
     var targets = [[A.oscA.detune], [A.oscB.detune], [A.f1.detune, A.f2.detune]];
+    var tB = [[A.oscA.detune], [], [A.f1.detune, A.f2.detune]];
+    tB.forEach(function (arr, i) { arr.forEach(function (p) { try { A.mobG.disconnect(p); } catch (e) {} if (any[i]) A.mobG.connect(p); }); });
     targets.forEach(function (arr, i) { arr.forEach(function (p) { try { A.lfoG.disconnect(p); } catch (e) { /* not connected */ } if (any[i]) A.lfoG.connect(p); }); });
   }
   function filterBase(note) { return clamp(S.cutoff * Math.pow(2, S.kbd * (note - 60) / 12), 20, 20000); }
@@ -681,5 +704,35 @@ canvas.disp { width: 100%; height: 64px; display: block; background: #0a0a0c; bo
   /* init */
   Object.keys(S).forEach(refreshControl);
   octLabel(); loadPreset(4);
+
+  /* Fixed-size window with a scale control and corner resize (aspect ratio locked) */
+  (function sizing() {
+    var unit = document.getElementById("unit"), stage = document.getElementById("stage"), btn = document.getElementById("zoom");
+    var W = 1700, H = unit.offsetHeight, z = 1, steps = [0.5, 0.75, 1, 1.25, 1.5, 2];
+    unit.style.height = H + "px";
+    function apply(v, save) {
+      z = Math.max(0.2, Math.min(2.5, v));
+      unit.style.transform = "scale(" + z + ")";
+      stage.style.width = Math.round(W * z) + "px"; stage.style.height = Math.round(H * z) + "px";
+      btn.textContent = Math.round(z * 100) + "%";
+      if (save) { try { localStorage.setItem("purrone.zoom", String(z)); } catch (e) {} }
+    }
+    var start = null; try { start = parseFloat(localStorage.getItem("purrone.zoom")); } catch (e) {}
+    var avail = document.documentElement.clientWidth - 32;
+    apply(isFinite(start) && start > 0 ? Math.min(start, Math.max(0.2, avail / W)) : Math.min(1, avail / W), false);
+    btn.addEventListener("click", function () {
+      var next = steps.filter(function (x) { return x > z + 0.01; })[0] || steps[0];
+      apply(next, true);
+    });
+    [document.getElementById("gripL"), document.getElementById("gripR")].forEach(function (g) {
+      g.addEventListener("pointerdown", function (e) {
+        e.preventDefault(); g.setPointerCapture(e.pointerId);
+        var r = stage.getBoundingClientRect(), cx = r.left + r.width / 2;
+        function mv(ev) { apply(2 * Math.abs(ev.clientX - cx) / W, false); }
+        function up() { g.removeEventListener("pointermove", mv); g.removeEventListener("pointerup", up); g.removeEventListener("pointercancel", up); apply(z, true); }
+        g.addEventListener("pointermove", mv); g.addEventListener("pointerup", up); g.addEventListener("pointercancel", up);
+      });
+    });
+  })();
 })();
 </script>
