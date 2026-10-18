@@ -97,7 +97,7 @@ class Engine
 public:
     void prepare (double sampleRate)
     {
-        sr = (float) sampleRate; osr = sr * 2.0f;
+        sr = (float) sampleRate; osr = sr * 2.0f; xfC = 1.0f - std::exp (-6.2831853f * 90.0f / osr);
         for (auto* e : { &fenv, &aenv }) e->sr = osr;
         buildHalfband();
         reset();
@@ -105,7 +105,7 @@ public:
 
     void reset()
     {
-        smoothInit = false; bend = 0.0f;
+        smoothInit = false; bend = 0.0f; xfLp = 0.0f; lastDrive = lastFuzz = -1.0f;
         phA = phB = phSub = 0.0f; fenv.reset(); aenv.reset();
         for (auto& s : st) s = 0.0f;
         lfoPh = 0.0f; hbPos = 0; hbBuf.fill (0.0f); heldCount = 0; curNote = -1; glidePitch = 60.0f;
@@ -118,8 +118,9 @@ public:
         if (P.drive != lastDrive || P.fuzz != lastFuzz)
         {
             lastDrive = P.drive; lastFuzz = P.fuzz;
-            mkT = shaperMakeup (P.drive, P.fuzz);
-            if (! smoothInit) mkQ = mkT;
+            mkT = shaperMakeup (P.drive * kPreAmt, P.fuzz * kPreAmt, 0.35f);
+            mkPT = shaperMakeup (P.drive, P.fuzz, 0.3f);
+            if (! smoothInit) { mkQ = mkT; mkPQ = mkPT; }
         }
         if (! smoothInit) { Q = p; smoothInit = true; }
     }
@@ -158,13 +159,19 @@ public:
 private:
     static constexpr int kMaxHeld = 16;
     Params P, Q;                 // P = target values, Q = smoothed values used by the voice
-    float lastDrive = -1.0f, lastFuzz = -1.0f, mkT = 1.0f, mkQ = 1.0f;   // drive/fuzz loudness match
+    float lastDrive = -1.0f, lastFuzz = -1.0f, mkT = 1.0f, mkQ = 1.0f, mkPT = 1.0f, mkPQ = 1.0f;
+    float xfLp = 0.0f, xfC = 0.012f;         // transformer low-end state, xfC set in prepare
+    static constexpr float kPreAmt = 0.4f;   // pre-filter stage is a lighter version of the post-filter stage   // drive/fuzz loudness match
 
-    // Drive: soft saturation with a touch of even harmonics. Fuzz: harder and lopsided.
+    // Drive: a Neve-style transistor stage. Asymmetric soft clip (the negative half rounds off
+    // earlier), so the added harmonics are mostly even and sound warm and thick, not buzzy.
+    // Fuzz: harder and lopsided on top of that.
     static float shaper (float x, float drive, float fuzz)
     {
-        const float b = 0.12f * drive;
-        float y = std::tanh (x * (1.0f + drive * 5.0f) + b) - std::tanh (b);
+        const float nl = 1.0f - 0.3f * drive;                    // negative clip level
+        const float u = x * (1.0f + drive * 5.0f);
+        float y = u >= 0.0f ? std::tanh (u) : nl * std::tanh (u / nl);
+        y += 0.3f * drive * y * y;                                // class A style even harmonic; the DC blocker removes the offset
         if (fuzz > 0.001f)
         {
             const float fz = 1.0f + fuzz * 14.0f, bf = 0.5f * fuzz;
@@ -174,12 +181,12 @@ private:
     }
     // Gain that keeps the level about the same as the clean path for a typical mixer signal,
     // so drive and fuzz add colour and grit instead of just changing the volume.
-    static float shaperMakeup (float drive, float fuzz)
+    static float shaperMakeup (float drive, float fuzz, float ref)
     {
         double a = 0.0, b = 0.0;
         for (int i = 0; i < 64; ++i)
         {
-            const float x = 0.35f * std::sin (6.2831853f * (float) i / 64.0f);
+            const float x = ref * std::sin (6.2831853f * (float) i / 64.0f);
             const float y0 = shaper (x, 0.0f, 0.0f), y1 = shaper (x, drive, fuzz);
             a += (double) y0 * y0; b += (double) y1 * y1;
         }
@@ -375,7 +382,7 @@ private:
         float G4 = G * G * G * G;
         float S = G * G * G * (st[0] / (1.0f + g)) + G * G * (st[1] / (1.0f + g)) + G * (st[2] / (1.0f + g)) + st[3] / (1.0f + g);
         // drive and fuzz in front of the filter, level matched
-        float x = shaper (mix, Q.drive, Q.fuzz) * mkQ;
+        float x = shaper (mix, Q.drive * kPreAmt, Q.fuzz * kPreAmt) * mkQ;
         x += rnd() * 2.0e-4f;
         float u = (x - k * S) / (1.0f + k * G4);
         float v;
@@ -388,6 +395,11 @@ private:
             in = lp;
         }
         float y = in;
+        // grit after the filter, so the new harmonics are not filtered away again; level matched
+        // transformer-style weight: a little of the low end (about 90 Hz and below) is pushed harder into the stage
+        xfLp += xfC * (y - xfLp);
+        const float yd = y + 0.6f * Q.drive * xfLp;
+        y = shaper (yd * 2.0f, Q.drive, Q.fuzz) * mkPQ * 0.5f * (1.0f + 0.2f * Q.drive);
         y *= 1.0f + 0.35f * Q.reso;             // keep bass weight when resonance rises (R)
         y *= ae * Q.volume * 1.4f;
         return y;
@@ -402,7 +414,7 @@ private:
         sm (Q.aTune, P.aTune); sm (Q.bTune, P.bTune); sm (Q.aPW, P.aPW); sm (Q.bPW, P.bPW);
         sm (Q.mixA, P.mixA); sm (Q.mixB, P.mixB); sm (Q.mixNoise, P.mixNoise); sm (Q.mixSub, P.mixSub);
         sm (Q.cutoffHz, P.cutoffHz); sm (Q.reso, P.reso); sm (Q.fenvAmt, P.fenvAmt); sm (Q.kbdAmt, P.kbdAmt);
-        sm (Q.lfoHz, P.lfoHz); sm (Q.modWheel, P.modWheel); sm (Q.drive, P.drive); sm (Q.fuzz, P.fuzz); sm (mkQ, mkT); sm (Q.volume, P.volume);
+        sm (Q.lfoHz, P.lfoHz); sm (Q.modWheel, P.modWheel); sm (Q.drive, P.drive); sm (Q.fuzz, P.fuzz); sm (mkQ, mkT); sm (mkPQ, mkPT); sm (Q.volume, P.volume);
         for (int i = 0; i < 3; ++i) sm (Q.modAmt[i], P.modAmt[i]);
         // everything else switches directly
         Q.aOct = P.aOct; Q.aSaw = P.aSaw; Q.aPulse = P.aPulse; Q.aSync = P.aSync; Q.bOct = P.bOct; Q.bSaw = P.bSaw; Q.bTri = P.bTri; Q.bPulse = P.bPulse;
