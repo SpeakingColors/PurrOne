@@ -88,6 +88,7 @@ struct Params
     bool retrig = false, repeat = false, drone = false;
     // Output
     float drive = 0.0f;   // 0..1 pre-filter warmth
+    float fuzz = 0.0f;    // 0..1 asymmetric fuzz ahead of the filter
     float volume = 0.7f;
 };
 
@@ -104,13 +105,15 @@ public:
 
     void reset()
     {
+        smoothInit = false; bend = 0.0f;
         phA = phB = phSub = 0.0f; fenv.reset(); aenv.reset();
         for (auto& s : st) s = 0.0f;
         lfoPh = 0.0f; hbPos = 0; hbBuf.fill (0.0f); heldCount = 0; curNote = -1; glidePitch = 60.0f;
         prevA = 0.0f; gateOn = false; repeatPh = 0.0f; seed = 22222u; dcX = dcY = 0.0f;
     }
 
-    void setParams (const Params& p) { P = p; }
+    void setParams (const Params& p) { P = p; if (! smoothInit) { Q = p; smoothInit = true; } }
+    void setPitchBend (float semitones) { bend = semitones; }
 
     void noteOn (int note, float /*velocity*/)
     {
@@ -144,7 +147,8 @@ public:
 
 private:
     static constexpr int kMaxHeld = 16;
-    Params P;
+    Params P, Q;                 // P = target values, Q = smoothed values used by the voice
+    bool smoothInit = false; float bend = 0.0f;
     float sr = 48000.0f, osr = 96000.0f;
     float phA = 0, phB = 0, phSub = 0, lfoPh = 0, prevA = 0, repeatPh = 0;
     float st[4] = { 0, 0, 0, 0 };
@@ -215,38 +219,39 @@ private:
 
     float tick2x()
     {
+        smoothParams();
         const float dtSec = 1.0f / osr;
         // ---- glide (exponential slew in semitones) ----
-        float gt = P.glide <= 0.001f ? 0.0f : 0.005f * std::pow (800.0f, P.glide); // 5 ms .. 4 s
+        float gt = Q.glide <= 0.001f ? 0.0f : 0.005f * std::pow (800.0f, Q.glide); // 5 ms .. 4 s
         if (curNote >= 0)
         {
             if (gt <= 0.0f) glidePitch = (float) curNote;
             else glidePitch += ((float) curNote - glidePitch) * (1.0f - std::exp (-dtSec / gt));
         }
-        const float note = glidePitch;
+        const float note = glidePitch + bend;
 
         // ---- envelopes and repeat ----
-        if (P.repeat && gateOn && ! P.drone)
+        if (Q.repeat && gateOn && ! Q.drone)
         {
-            repeatPh += P.lfoHz * dtSec;
+            repeatPh += Q.lfoHz * dtSec;
             if (repeatPh >= 1.0f) { repeatPh -= 1.0f; fenv.gateOn(); aenv.gateOn(); }
             else if (repeatPh > 0.5f) { fenv.gateOff(); aenv.gateOff(); }
         }
-        if (P.drone && ! aenv.active()) { fenv.gateOn(); aenv.gateOn(); }
+        if (Q.drone && ! aenv.active()) { fenv.gateOn(); aenv.gateOn(); }
         float fe = fenv.tick(), ae = aenv.tick();
 
         // ---- LFO (mix of enabled shapes, scaled so a single shape peaks at +-1) ----
-        lfoPh += P.lfoHz * dtSec; if (lfoPh >= 1.0f) lfoPh -= 1.0f;
+        lfoPh += Q.lfoHz * dtSec; if (lfoPh >= 1.0f) lfoPh -= 1.0f;
         float lfo = 0.0f; int ln = 0;
-        if (P.lfoSaw)   { lfo += naiveSaw (lfoPh); ++ln; }
-        if (P.lfoTri)   { lfo += 4.0f * std::abs (lfoPh - 0.5f) - 1.0f; ++ln; }
-        if (P.lfoPulse) { lfo += naivePulse (lfoPh, 0.5f); ++ln; }
+        if (Q.lfoSaw)   { lfo += naiveSaw (lfoPh); ++ln; }
+        if (Q.lfoTri)   { lfo += 4.0f * std::abs (lfoPh - 0.5f) - 1.0f; ++ln; }
+        if (Q.lfoPulse) { lfo += naivePulse (lfoPh, 0.5f); ++ln; }
         if (ln > 1) lfo /= (float) ln;
 
         // ---- oscillator B ----
         float freqB;
-        if (P.bLow) freqB = (P.bKbd ? 0.25f * midiToHz (note + P.bTune) : 0.25f * 8.0f) * 0.0625f; // sub-audio
-        else        freqB = midiToHz ((P.bKbd ? note : 60.0f) + P.bTune + 12.0f * (P.bOct - 1));
+        if (Q.bLow) freqB = (Q.bKbd ? 0.25f * midiToHz (note + Q.bTune) : 0.25f * 8.0f) * 0.0625f; // sub-audio
+        else        freqB = midiToHz ((Q.bKbd ? note : 60.0f) + Q.bTune + 12.0f * (Q.bOct - 1));
         float bFreqMod = 0.0f, bPwMod = 0.0f, aFreqMod = 0.0f, aPwMod = 0.0f, filMod = 0.0f;
 
         // modulation sources use the previous B sample (one tick delay is inaudible)
@@ -254,50 +259,50 @@ private:
         float direct = 0.0f, wheel = 0.0f;
         for (int s = 0; s < 3; ++s)
         {
-            if (P.modRoute[s] == 1) direct += srcVal[s] * P.modAmt[s];
-            else if (P.modRoute[s] == 2) wheel += srcVal[s] * P.modAmt[s];
+            if (Q.modRoute[s] == 1) direct += srcVal[s] * Q.modAmt[s];
+            else if (Q.modRoute[s] == 2) wheel += srcVal[s] * Q.modAmt[s];
         }
-        wheel *= P.modWheel;
+        wheel *= Q.modWheel;
         float dest[5];
-        for (int d = 0; d < 5; ++d) dest[d] = (P.modDest[d] == 1 ? direct : (P.modDest[d] == 2 ? wheel : 0.0f));
+        for (int d = 0; d < 5; ++d) dest[d] = (Q.modDest[d] == 1 ? direct : (Q.modDest[d] == 2 ? wheel : 0.0f));
         aFreqMod = dest[0] * 12.0f; aPwMod = dest[1] * 0.4f; bFreqMod = dest[2] * 12.0f; bPwMod = dest[3] * 0.4f; filMod = dest[4] * 5.0f;
 
         freqB *= std::pow (2.0f, bFreqMod / 12.0f);
         float dtB = clampf (freqB / osr, 1.0e-6f, 0.45f);
-        float pwB = clampf (P.bPW + bPwMod, 0.06f, 0.94f);
+        float pwB = clampf (Q.bPW + bPwMod, 0.06f, 0.94f);
 
         // advance B, detect wrap for sync
         float prevPhB = phB; phB += dtB; bool bWrapped = false; float syncFrac = 0.0f;
         if (phB >= 1.0f) { phB -= 1.0f; bWrapped = true; syncFrac = phB / dtB; }
         float bv = 0.0f; int bn = 0;
-        if (P.bSaw)   { bv += naiveSaw (phB) - polyBlep (phB, dtB); ++bn; }
-        if (P.bTri)   { bv += 4.0f * std::abs (phB - 0.5f) - 1.0f; ++bn; }
-        if (P.bPulse) { bv += naivePulse (phB, pwB) + polyBlep (phB, dtB) - polyBlep (std::fmod (phB + 1.0f - pwB, 1.0f), dtB); ++bn; }
+        if (Q.bSaw)   { bv += naiveSaw (phB) - polyBlep (phB, dtB); ++bn; }
+        if (Q.bTri)   { bv += 4.0f * std::abs (phB - 0.5f) - 1.0f; ++bn; }
+        if (Q.bPulse) { bv += naivePulse (phB, pwB) + polyBlep (phB, dtB) - polyBlep (std::fmod (phB + 1.0f - pwB, 1.0f), dtB); ++bn; }
         if (bn > 1) bv *= 1.0f / std::sqrt ((float) bn);
         lastB = bv; (void) prevPhB;
 
         // ---- oscillator A (always keyboard controlled) ----
-        float freqA = midiToHz (note + P.aTune + 12.0f * (P.aOct - 1) + aFreqMod);
+        float freqA = midiToHz (note + Q.aTune + 12.0f * (Q.aOct - 1) + aFreqMod);
         float dtA = clampf (freqA / osr, 1.0e-6f, 0.45f);
-        float pwA = clampf (P.aPW + aPwMod, 0.06f, 0.94f);
+        float pwA = clampf (Q.aPW + aPwMod, 0.06f, 0.94f);
         float phAold = phA; phA += dtA; if (phA >= 1.0f) phA -= 1.0f;
         auto waveA = [&] (float t, float dt)
         {
             float v = 0.0f; int n = 0;
-            if (P.aSaw)   { v += naiveSaw (t) - polyBlep (t, dt); ++n; }
-            if (P.aPulse) { v += naivePulse (t, pwA) + polyBlep (t, dt) - polyBlep (std::fmod (t + 1.0f - pwA, 1.0f), dt); ++n; }
+            if (Q.aSaw)   { v += naiveSaw (t) - polyBlep (t, dt); ++n; }
+            if (Q.aPulse) { v += naivePulse (t, pwA) + polyBlep (t, dt) - polyBlep (std::fmod (t + 1.0f - pwA, 1.0f), dt); ++n; }
             return n > 1 ? v * 0.7071f : v;
         };
         auto naiveA = [&] (float t)
         {
             float v = 0.0f; int n = 0;
-            if (P.aSaw)   { v += naiveSaw (t); ++n; }
-            if (P.aPulse) { v += naivePulse (t, pwA); ++n; }
+            if (Q.aSaw)   { v += naiveSaw (t); ++n; }
+            if (Q.aPulse) { v += naivePulse (t, pwA); ++n; }
             return n > 1 ? v * 0.7071f : v;
         };
         float a = waveA (phA, dtA);
         float emitA = prevA + prevPending; prevPending = 0.0f;
-        if (P.aSync && bWrapped)
+        if (Q.aSync && bWrapped)
         {
             float pOld = phA; // phase A would have continued from here
             float newPh = syncFrac * dtA;
@@ -311,7 +316,7 @@ private:
         prevA = a;
 
         // ---- sub oscillator (one octave below A, square, smoothed) ----
-        float freqSub = 0.5f * midiToHz (note + P.aTune + 12.0f * (P.aOct - 1));
+        float freqSub = 0.5f * midiToHz (note + Q.aTune + 12.0f * (Q.aOct - 1));
         float dtS = clampf (freqSub / osr, 1.0e-6f, 0.45f);
         phSub += dtS; if (phSub >= 1.0f) phSub -= 1.0f;
         float sub = naivePulse (phSub, 0.5f) + polyBlep (phSub, dtS) - polyBlep (std::fmod (phSub + 0.5f, 1.0f), dtS);
@@ -319,19 +324,28 @@ private:
 
         // ---- mixer ----
         float noise = rnd() * 0.5f;
-        float mix = emitA * P.mixA * 0.6f + bv * P.mixB * 0.6f + noise * P.mixNoise * 0.5f + subLp * P.mixSub * 0.6f;
+        float mix = emitA * Q.mixA * 0.6f + bv * Q.mixB * 0.6f + noise * Q.mixNoise * 0.5f + subLp * Q.mixSub * 0.6f;
 
         // ---- filter: zero delay feedback 4 pole ladder, tanh on input and in the loop ----
-        float oct = std::log2 (std::max (P.cutoffHz, 10.0f)) + P.fenvAmt * fe * 6.0f + P.kbdAmt * (note - 60.0f) / 12.0f + filMod;
+        float oct = std::log2 (std::max (Q.cutoffHz, 10.0f)) + Q.fenvAmt * fe * 6.0f + Q.kbdAmt * (note - 60.0f) / 12.0f + filMod;
         float fc = clampf (std::exp2 (oct), 15.0f, 0.45f * osr);
         float g = std::tan (kPi * fc / osr);
         float G = g / (1.0f + g);
-        float k = P.reso * 4.4f;
+        // resonance taper: gentle at first, strong near the top (R)
+        float rz = clampf (Q.reso, 0.0f, 1.0f);
+        float k = 4.4f * rz * std::sqrt (rz);
         float G4 = G * G * G * G;
         float S = G * G * G * (st[0] / (1.0f + g)) + G * G * (st[1] / (1.0f + g)) + G * (st[2] / (1.0f + g)) + st[3] / (1.0f + g);
         // drive in front of the filter, soft and symmetric
-        float driveGain = 1.0f + P.drive * 3.0f;
-        float x = std::tanh (mix * driveGain) + rnd() * 2.0e-4f;
+        float driveGain = 1.0f + Q.drive * 3.0f;
+        float x = std::tanh (mix * driveGain);
+        if (Q.fuzz > 0.001f)
+        {
+            float fz = 1.0f + Q.fuzz * 9.0f, bias = 0.35f * Q.fuzz;
+            x = std::tanh (x * fz + bias) - std::tanh (bias);       // asymmetric, then the filter smooths it
+            x *= 1.0f / std::sqrt (fz);
+        }
+        x += rnd() * 2.0e-4f;
         float u = (x - k * S) / (1.0f + k * G4);
         float v;
         float in = std::tanh (u);               // keeps resonance from spiking
@@ -343,12 +357,30 @@ private:
             in = lp;
         }
         float y = in;
-        y *= 1.0f + 0.35f * P.reso;             // keep bass weight when resonance rises (R)
-        y *= ae * P.volume * 1.4f;
+        y *= 1.0f + 0.35f * Q.reso;             // keep bass weight when resonance rises (R)
+        y *= ae * Q.volume * 1.4f;
         return y;
     }
 
     float lastB = 0.0f, subLp = 0.0f;
+
+    void smoothParams()
+    {
+        const float c = 1.0f - std::exp (-1.0f / (0.004f * osr));       // about 4 ms
+        auto sm = [c] (float& q, float t) { q += (t - q) * c; };
+        sm (Q.aTune, P.aTune); sm (Q.bTune, P.bTune); sm (Q.aPW, P.aPW); sm (Q.bPW, P.bPW);
+        sm (Q.mixA, P.mixA); sm (Q.mixB, P.mixB); sm (Q.mixNoise, P.mixNoise); sm (Q.mixSub, P.mixSub);
+        sm (Q.cutoffHz, P.cutoffHz); sm (Q.reso, P.reso); sm (Q.fenvAmt, P.fenvAmt); sm (Q.kbdAmt, P.kbdAmt);
+        sm (Q.lfoHz, P.lfoHz); sm (Q.modWheel, P.modWheel); sm (Q.drive, P.drive); sm (Q.fuzz, P.fuzz); sm (Q.volume, P.volume);
+        for (int i = 0; i < 3; ++i) sm (Q.modAmt[i], P.modAmt[i]);
+        // everything else switches directly
+        Q.aOct = P.aOct; Q.aSaw = P.aSaw; Q.aPulse = P.aPulse; Q.aSync = P.aSync; Q.bOct = P.bOct; Q.bSaw = P.bSaw; Q.bTri = P.bTri; Q.bPulse = P.bPulse;
+        Q.bLow = P.bLow; Q.bKbd = P.bKbd; Q.fA = P.fA; Q.fD = P.fD; Q.fS = P.fS; Q.fR = P.fR; Q.aA = P.aA; Q.aD = P.aD; Q.aS = P.aS; Q.aR = P.aR;
+        Q.glide = P.glide; Q.glideAuto = P.glideAuto; Q.lfoSaw = P.lfoSaw; Q.lfoTri = P.lfoTri; Q.lfoPulse = P.lfoPulse;
+        for (int i = 0; i < 3; ++i) Q.modRoute[i] = P.modRoute[i];
+        for (int i = 0; i < 5; ++i) Q.modDest[i] = P.modDest[i];
+        Q.retrig = P.retrig; Q.repeat = P.repeat; Q.drone = P.drone;
+    }
 
     static float midiToHz (float n) { return 440.0f * std::exp2 ((n - 69.0f) / 12.0f); }
 };
