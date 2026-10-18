@@ -112,7 +112,17 @@ public:
         prevA = 0.0f; gateOn = false; repeatPh = 0.0f; seed = 22222u; dcX = dcY = 0.0f;
     }
 
-    void setParams (const Params& p) { P = p; if (! smoothInit) { Q = p; smoothInit = true; } }
+    void setParams (const Params& p)
+    {
+        P = p;
+        if (P.drive != lastDrive || P.fuzz != lastFuzz)
+        {
+            lastDrive = P.drive; lastFuzz = P.fuzz;
+            mkT = shaperMakeup (P.drive, P.fuzz);
+            if (! smoothInit) mkQ = mkT;
+        }
+        if (! smoothInit) { Q = p; smoothInit = true; }
+    }
     void setPitchBend (float semitones) { bend = semitones; }
 
     void noteOn (int note, float /*velocity*/)
@@ -148,6 +158,34 @@ public:
 private:
     static constexpr int kMaxHeld = 16;
     Params P, Q;                 // P = target values, Q = smoothed values used by the voice
+    float lastDrive = -1.0f, lastFuzz = -1.0f, mkT = 1.0f, mkQ = 1.0f;   // drive/fuzz loudness match
+
+    // Drive: soft saturation with a touch of even harmonics. Fuzz: harder and lopsided.
+    static float shaper (float x, float drive, float fuzz)
+    {
+        const float b = 0.12f * drive;
+        float y = std::tanh (x * (1.0f + drive * 5.0f) + b) - std::tanh (b);
+        if (fuzz > 0.001f)
+        {
+            const float fz = 1.0f + fuzz * 14.0f, bf = 0.5f * fuzz;
+            y = std::tanh (y * fz + bf) - std::tanh (bf);
+        }
+        return y;
+    }
+    // Gain that keeps the level about the same as the clean path for a typical mixer signal,
+    // so drive and fuzz add colour and grit instead of just changing the volume.
+    static float shaperMakeup (float drive, float fuzz)
+    {
+        double a = 0.0, b = 0.0;
+        for (int i = 0; i < 64; ++i)
+        {
+            const float x = 0.35f * std::sin (6.2831853f * (float) i / 64.0f);
+            const float y0 = shaper (x, 0.0f, 0.0f), y1 = shaper (x, drive, fuzz);
+            a += (double) y0 * y0; b += (double) y1 * y1;
+        }
+        const float m = b > 1.0e-9 ? (float) std::sqrt (a / b) : 1.0f;
+        return m < 0.25f ? 0.25f : (m > 2.0f ? 2.0f : m);
+    }
     bool smoothInit = false; float bend = 0.0f;
     float sr = 48000.0f, osr = 96000.0f;
     float phA = 0, phB = 0, phSub = 0, lfoPh = 0, prevA = 0, repeatPh = 0;
@@ -336,15 +374,8 @@ private:
         float k = 4.4f * rz * std::sqrt (rz);
         float G4 = G * G * G * G;
         float S = G * G * G * (st[0] / (1.0f + g)) + G * G * (st[1] / (1.0f + g)) + G * (st[2] / (1.0f + g)) + st[3] / (1.0f + g);
-        // drive in front of the filter, soft and symmetric
-        float driveGain = 1.0f + Q.drive * 3.0f;
-        float x = std::tanh (mix * driveGain);
-        if (Q.fuzz > 0.001f)
-        {
-            float fz = 1.0f + Q.fuzz * 9.0f, bias = 0.35f * Q.fuzz;
-            x = std::tanh (x * fz + bias) - std::tanh (bias);       // asymmetric, then the filter smooths it
-            x *= 1.0f / std::sqrt (fz);
-        }
+        // drive and fuzz in front of the filter, level matched
+        float x = shaper (mix, Q.drive, Q.fuzz) * mkQ;
         x += rnd() * 2.0e-4f;
         float u = (x - k * S) / (1.0f + k * G4);
         float v;
@@ -371,7 +402,7 @@ private:
         sm (Q.aTune, P.aTune); sm (Q.bTune, P.bTune); sm (Q.aPW, P.aPW); sm (Q.bPW, P.bPW);
         sm (Q.mixA, P.mixA); sm (Q.mixB, P.mixB); sm (Q.mixNoise, P.mixNoise); sm (Q.mixSub, P.mixSub);
         sm (Q.cutoffHz, P.cutoffHz); sm (Q.reso, P.reso); sm (Q.fenvAmt, P.fenvAmt); sm (Q.kbdAmt, P.kbdAmt);
-        sm (Q.lfoHz, P.lfoHz); sm (Q.modWheel, P.modWheel); sm (Q.drive, P.drive); sm (Q.fuzz, P.fuzz); sm (Q.volume, P.volume);
+        sm (Q.lfoHz, P.lfoHz); sm (Q.modWheel, P.modWheel); sm (Q.drive, P.drive); sm (Q.fuzz, P.fuzz); sm (mkQ, mkT); sm (Q.volume, P.volume);
         for (int i = 0; i < 3; ++i) sm (Q.modAmt[i], P.modAmt[i]);
         // everything else switches directly
         Q.aOct = P.aOct; Q.aSaw = P.aSaw; Q.aPulse = P.aPulse; Q.aSync = P.aSync; Q.bOct = P.bOct; Q.bSaw = P.bSaw; Q.bTri = P.bTri; Q.bPulse = P.bPulse;
