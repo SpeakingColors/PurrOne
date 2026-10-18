@@ -1,0 +1,36 @@
+PurrOne install, remove and use (works fully offline)
+=====================================================
+
+Windows
+  Run windows\PurrOne-Setup.exe. It installs the VST3 plugin for all users and a standalone app.
+  Windows may show a blue "unknown publisher" screen because the installer is not signed:
+  click "More info", then "Run anyway".
+  Remove: Settings > Apps > PurrOne > Uninstall. It asks if you also want your saved presets deleted
+  (default is No, so they stay).
+
+macOS
+  Open macos\PurrOne-macOS.pkg. It installs the VST3 plugin, the standalone app, the manual and "Uninstall PurrOne".
+  The installer is not notarized: if macOS blocks it, open System Settings > Privacy & Security and choose "Open Anyway".
+  Remove: open "Uninstall PurrOne" in the Applications folder. It asks if you also want your saved presets deleted
+  (default is Keep).
+
+Linux, DAW installed as a Flatpak (for example Bitwig, Reaper or Ardour from Flathub)
+  1. Your DAW should use the org.freedesktop.Platform 25.08 runtime (check with: flatpak info <DAW id>, Runtime line).
+  2. Install the file from the linux folder:
+       flatpak install --user linux/PurrOne-flatpak-25.08.flatpak
+  3. Restart the DAW and rescan plugins.
+  Remove: flatpak uninstall --user org.freedesktop.LinuxAudio.Plugins.PurrOne   (removes the plugin completely)
+
+Linux, DAW installed natively
+  Extract linux/PurrOne-linux-vst3.tar.gz into ~/.vst3  (create the folder if needed), then rescan plugins.
+  Remove: delete the PurrOne.vst3 folder from ~/.vst3.
+
+Your saved presets (kept on remove unless you choose to delete them)
+  Windows : %APPDATA%\SpeakingColors\PurrOne\presets
+  macOS   : ~/Library/Application Support/SpeakingColors/PurrOne/presets
+  Linux   : ~/.config/SpeakingColors/PurrOne/presets  (a Flatpak DAW keeps its own copy under ~/.var/app/<DAW id>/config/)
+  To delete them yourself, remove the SpeakingColors/PurrOne folder at that place.
+
+Manual: PurrOne-manual.pdf (every control plus recommendations).
+Checksums: SHA256SUMS.
+Licence: AGPL-3.0-or-later (see LICENSE). Free to use, copy and change.
