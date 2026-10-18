@@ -64,17 +64,20 @@ button:focus-visible, .knob:focus-visible, .pname:focus-visible { outline: 2px s
 .hdr-right { display: flex; align-items: center; gap: 12px; }
 .sw-line { display: flex; align-items: center; gap: 7px; font-size: 13px; color: var(--ink-dim); text-transform: uppercase; }
 
-.synth { display: grid; gap: 10px; grid-template-columns: 340px minmax(250px,1.25fr) minmax(150px,.8fr) minmax(190px,1fr) minmax(190px,1fr) 150px; grid-template-areas: "mod A mix filt filt out" "mod B keys fenv aenv out" "mod lfo keys fenv aenv out"; }
+.synth { display: grid; gap: 10px; grid-template-columns: 340px minmax(250px,1.2fr) minmax(150px,.75fr) minmax(210px,1.2fr) minmax(210px,1.2fr) 190px 150px; grid-template-areas: "mod A mix filt filt fx out" "mod B keys fenv aenv fx out" "mod lfo keys fenv aenv fx out"; }
 .synth > section, .synth > aside { margin: 0; min-width: 0; }
 #secMod { grid-area: mod; } #secA { grid-area: A; } #secB { grid-area: B; } #secLfo { grid-area: lfo; } #secMix { grid-area: mix; } #secKeys { grid-area: keys; }
-#secFilter { grid-area: filt; } #secFenv { grid-area: fenv; } #secAenv { grid-area: aenv; } .outcol { grid-area: out; display: grid; gap: 10px; grid-template-rows: auto 1fr; }
+#secFilter { grid-area: filt; } #secFenv { grid-area: fenv; } #secAenv { grid-area: aenv; } .fxcol { grid-area: fx; display: grid; gap: 10px; grid-template-rows: auto 1fr; min-width: 0; } .fxcol .disp { height: 48px; } .fxcol .knobs { gap: 6px 0; } .fxcol .knobwrap { width: 54px; }
+.outcol { grid-area: out; display: grid; gap: 10px; grid-template-rows: auto 1fr; }
 .outcol .meter { min-width: 0; }
-@media (max-width: 1180px) { .synth { display: flex; flex-wrap: wrap; } .synth > section { flex: 1 1 240px; } .outcol { flex: 1 1 150px; } }
+@media (min-width: 1500px) { .unit { width: 1900px; max-width: none; margin: 0 auto; transform-origin: 0 0; } body { overflow-x: hidden; } }
+@media (max-width: 1500px) { .synth { display: flex; flex-wrap: wrap; } .synth > section { flex: 1 1 240px; } .outcol, .fxcol { flex: 1 1 190px; } }
 .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: stretch; }
 .row > section.mod { flex: 1 1 200px; }
 .row > .w2 { flex: 1.5 1 280px; }
 .row > .meter { flex: 0 0 auto; }
-.row > #secDrive { flex: 0 1 140px; }
+.row > #secEq { flex: 0 1 340px; } .row > #secVerb { flex: 0 1 280px; }
+.row > .mod[style*="opacity"] { flex: 1 1 200px; }
 .row > #secMod { flex: 2 1 340px; }
 section.mod h2 small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 11px; margin-left: 8px; }
 section.mod h2 { white-space: nowrap; }
@@ -119,7 +122,7 @@ canvas.disp { width: 100%; height: 64px; display: block; background: #0a0a0c; bo
 .led.on { background: var(--led-pink); box-shadow: 0 0 9px var(--led-pink); }
 
 .kbd { display: grid; gap: 8px; }
-.keys { position: relative; height: 70px; background: #050506; border: 1px solid var(--line); border-radius: 3px; user-select: none; touch-action: none; overflow: hidden; }
+.keys { position: relative; height: 64px; background: #050506; border: 1px solid var(--line); border-radius: 3px; user-select: none; touch-action: none; overflow: hidden; }
 .keys .wk { position: absolute; top: 0; bottom: 0; background: linear-gradient(#e8e9ee, #c9ccd6); border-right: 1px solid #0007; border-radius: 0 0 3px 3px; }
 .keys .wk.down { background: linear-gradient(#b8f5e6, #5fd9bd); }
 .keys .bk { position: absolute; top: 0; height: 56%; background: linear-gradient(#2a2b31, #08080a); border-radius: 0 0 2px 2px; z-index: 2; border: 1px solid #000; }
@@ -166,14 +169,18 @@ canvas.disp { width: 100%; height: 64px; display: block; background: #0a0a0c; bo
       <section class="mod" id="secMod"><h2>Modulation <small>from, route, to</small></h2></section>
       <section class="mod" id="secA"><h2>Osc A <small>follows keys</small></h2></section>
       <section class="mod" id="secMix"><h2>Mixer</h2></section>
-      <section class="mod" id="secFilter"><h2>Filter <small>4 pole low-pass</small></h2><canvas class="disp" id="filtDisp" width="520" height="128" aria-label="Filter response"></canvas></section>
+      <section class="mod" id="secFilter"><h2>Filter <small>4 pole, with drive</small></h2><canvas class="disp" id="filtDisp" width="520" height="128" aria-label="Filter response"></canvas></section>
       <section class="mod" id="secB"><h2>Osc B <small>audio or LFO</small></h2></section>
       <section class="mod" id="secKeys"><h2>Glide <small>and mode</small></h2></section>
       <section class="mod" id="secFenv"><h2>Filter env</h2><canvas class="disp" id="fenvDisp" width="520" height="128" aria-label="Filter envelope shape"></canvas></section>
       <section class="mod" id="secAenv"><h2>Amp env</h2><canvas class="disp" id="aenvDisp" width="520" height="128" aria-label="Amp envelope shape"></canvas></section>
       <section class="mod" id="secLfo"><h2>LFO <small>0.1 to 30 Hz</small></h2></section>
+      <div class="fxcol">
+      <section class="mod" id="secEq"><h2>EQ <small>3 band</small></h2><canvas class="disp" id="eqDisp" width="520" height="128" aria-label="EQ curve"></canvas></section>
+      <section class="mod" id="secVerb"><h2>Space <small>short</small></h2></section>
+      </div>
       <div class="outcol">
-        <section class="mod" id="secOut"><h2>Volume</h2></section>
+        <section class="mod" id="secOut"><h2>Master</h2></section>
         <aside class="meter" aria-label="Output meter">
           <h2>Out</h2>
           <div class="mbody">
@@ -187,15 +194,7 @@ canvas.disp { width: 100%; height: 64px; display: block; background: #0a0a0c; bo
     </div>
 
     <div class="row">
-      <section class="mod" id="secDrive"><h2>Drive</h2></section>
-      <section class="mod" id="secEq"><h2>EQ <small>3 band</small></h2><canvas class="disp" id="eqDisp" width="520" height="128" aria-label="EQ curve"></canvas></section>
-      <section class="mod" id="secVerb"><h2>Space <small>short</small></h2></section>
-      <section class="mod" id="secMax"><h2>Maximizer</h2></section>
-      <section class="mod" style="opacity:.55"><h2>Seq <small>planned</small></h2><div class="note">2 x 64 step sequencer and arp (up, down, up/down) come after the engine is verified.</div></section>
-    </div>
-
-    <div class="row">
-    <section class="mod kbd" style="order:-1;flex:1 1 400px">
+    <section class="mod kbd" style="order:5;flex:1 1 100%">
       <div class="keys" id="keys" aria-label="On-screen keyboard"></div>
       <div class="status">
         <span>Play with the mouse or keys <b>A W S E D F T G Y H U J K</b>, Z and X shift the octave (now <b id="octTxt">C3</b>)</span>
@@ -212,6 +211,7 @@ canvas.disp { width: 100%; height: 64px; display: block; background: #0a0a0c; bo
 <script>
 (function () {
   "use strict";
+  (function fit() { var u = document.querySelector(".unit"); function f() { var w = window.innerWidth; if (w >= 1500) { var z = Math.min(1, (w - 32) / 1900); u.style.zoom = z; } else { u.style.zoom = ""; } } f(); window.addEventListener("resize", f); })();
   var $ = function (s, r) { return (r || document).querySelector(s); };
   var S = {};                       // current parameter values
   var DEF = {};                     // defaults (init sound)
@@ -268,16 +268,16 @@ canvas.disp { width: 100%; height: 64px; display: block; background: #0a0a0c; bo
   T("repeat", "secKeys", "Repeat", false, { c: "var(--led-yellow)", tip: "Re-gates the envelopes at the LFO rate." });
   T("drone", "secKeys", "Drone", false, { c: "var(--led-pink)", tip: "Holds the gate open so the note never stops." });
 
-  K("drive", "secDrive", "Drive", 0, 1, 0.1, { fmt: pct, tip: "Soft saturation ahead of the filter. Low is warm; high gets fuzzy but stays smooth." });
-  K("fuzz", "secDrive", "Fuzz", 0, 1, 0, { fmt: pct });
+  K("drive", "secFilter", "Drive", 0, 1, 0.1, { fmt: pct, tip: "Soft saturation ahead of the filter. Low is warm; high gets fuzzy but stays smooth." });
+  K("fuzz", "secFilter", "Fuzz", 0, 1, 0, { fmt: pct });
   K("eqLo", "secEq", "Low", -12, 12, 0, { fmt: function (v) { return sgn(v) + "dB"; }, tip: "Shelf at 100 Hz. A small cut here clears mud; a small boost adds weight to a bass." });
   K("eqMid", "secEq", "Mid", -12, 12, 0, { fmt: function (v) { return sgn(v) + "dB"; }, tip: "Bell at 1 kHz." });
   K("eqHi", "secEq", "High", -12, 12, 0, { fmt: function (v) { return sgn(v) + "dB"; }, tip: "Shelf at 6 kHz. Cut a little to keep leads smooth." });
   K("verbMix", "secVerb", "Mix", 0, 1, 0.12, { fmt: pct, tip: "Wet level. The return is high-passed so the low end never smears." });
   K("verbSize", "secVerb", "Length", 0.2, 4, 0.9, { fmt: function (v) { return v.toFixed(1) + "s"; }, tip: "Kept short by default. Long tails are for leads." });
   K("verbHP", "secVerb", "Low cut", 80, 600, 250, { log: true, fmt: function (v) { return Math.round(v) + "Hz"; } });
-  K("maxAmt", "secMax", "Amount", 0, 1, 0, { fmt: pct, tip: "Gentle upward and downward compression. Smooth, no pumping." });
-  T("safety", "secMax", "Safety limiter", true, { c: "var(--led-green)", tip: "Last stage. Keeps the output under -1 dBFS." });
+  K("maxAmt", "secOut", "Amount", 0, 1, 0, { fmt: pct, tip: "Gentle upward and downward compression. Smooth, no pumping." });
+  T("safety", "secOut", "Safety limiter", true, { c: "var(--led-green)", tip: "Last stage. Keeps the output under -1 dBFS." });
   K("vol", "secOut", "Volume", 0, 1, 0.6, { fmt: function (v) { return (v > 0 ? (20 * Math.log10(v)).toFixed(1) : "-inf") + "dB"; } });
 
   /* ---------- build controls ---------- */
