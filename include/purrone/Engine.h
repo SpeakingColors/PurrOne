@@ -87,7 +87,8 @@ struct Params
     // Keyboard
     bool retrig = false, repeat = false, drone = false;
     // Output
-    float drive = 0.0f;   // 0..1 pre-filter warmth
+    float drive = 0.0f;   // 0..1 analog clip (symmetric soft clip)
+    float xstr = 0.0f;    // 0..1 Neve-style transistor stage (asymmetric, even harmonics, low-end weight)
     float fuzz = 0.0f;    // 0..1 asymmetric fuzz ahead of the filter
     float volume = 0.7f;
 };
@@ -105,7 +106,7 @@ public:
 
     void reset()
     {
-        smoothInit = false; bend = 0.0f; xfLp = 0.0f; lastDrive = lastFuzz = -1.0f;
+        smoothInit = false; bend = 0.0f; xfLp = 0.0f; lastDrive = lastXs = lastFuzz = -1.0f;
         phA = phB = phSub = 0.0f; fenv.reset(); aenv.reset();
         for (auto& s : st) s = 0.0f;
         lfoPh = 0.0f; hbPos = 0; hbBuf.fill (0.0f); heldCount = 0; curNote = -1; glidePitch = 60.0f;
@@ -115,11 +116,11 @@ public:
     void setParams (const Params& p)
     {
         P = p;
-        if (P.drive != lastDrive || P.fuzz != lastFuzz)
+        if (P.drive != lastDrive || P.xstr != lastXs || P.fuzz != lastFuzz)
         {
-            lastDrive = P.drive; lastFuzz = P.fuzz;
-            mkT = shaperMakeup (P.drive * kPreAmt, P.fuzz * kPreAmt, 0.35f);
-            mkPT = shaperMakeup (P.drive, P.fuzz, 0.3f);
+            lastDrive = P.drive; lastXs = P.xstr; lastFuzz = P.fuzz;
+            mkT = shaperMakeup (P.drive * kPreAmt, P.xstr * kPreAmt, P.fuzz * kPreAmt, 0.35f);
+            mkPT = shaperMakeup (P.drive, P.xstr, P.fuzz, 0.9f);
             if (! smoothInit) { mkQ = mkT; mkPQ = mkPT; }
         }
         if (! smoothInit) { Q = p; smoothInit = true; }
@@ -159,19 +160,26 @@ public:
 private:
     static constexpr int kMaxHeld = 16;
     Params P, Q;                 // P = target values, Q = smoothed values used by the voice
-    float lastDrive = -1.0f, lastFuzz = -1.0f, mkT = 1.0f, mkQ = 1.0f, mkPT = 1.0f, mkPQ = 1.0f;
+    float lastDrive = -1.0f, lastXs = -1.0f, lastFuzz = -1.0f, mkT = 1.0f, mkQ = 1.0f, mkPT = 1.0f, mkPQ = 1.0f;
     float xfLp = 0.0f, xfC = 0.012f;         // transformer low-end state, xfC set in prepare
     static constexpr float kPreAmt = 0.4f;   // pre-filter stage is a lighter version of the post-filter stage   // drive/fuzz loudness match
 
-    // Drive: a Neve-style transistor stage. Asymmetric soft clip (the negative half rounds off
-    // earlier), so the added harmonics are mostly even and sound warm and thick, not buzzy.
-    // Fuzz: harder and lopsided on top of that.
-    static float shaper (float x, float drive, float fuzz)
+    // Three colour stages in series, each with its own knob:
+    //  Drive: analog clip. Symmetric tanh soft clip, odd harmonics, the classic overdriven-opamp sound.
+    //  Transistor: Neve-style stage. Asymmetric soft clip (the negative half rounds off earlier), so the
+    //              added harmonics are mostly even and sound warm and thick, not buzzy.
+    //  Fuzz: harder and lopsided on top of that.
+    static float shaper (float x, float drive, float xs, float fuzz)
     {
-        const float nl = 1.0f - 0.3f * drive;                    // negative clip level
-        const float u = x * (1.0f + drive * 5.0f);
-        float y = u >= 0.0f ? std::tanh (u) : nl * std::tanh (u / nl);
-        y += 0.3f * drive * y * y;                                // class A style even harmonic; the DC blocker removes the offset
+        float y = x;
+        if (drive > 0.001f) y = std::tanh (x * (1.0f + drive * 5.0f));
+        if (xs > 0.001f)
+        {
+            const float nl = 1.0f - 0.3f * xs;                       // negative clip level
+            const float u = y * (1.0f + xs * 5.0f);
+            y = u >= 0.0f ? std::tanh (u) : nl * std::tanh (u / nl);
+            y += 0.3f * xs * y * y;                                   // class A style even harmonic; the DC blocker removes the offset
+        }
         if (fuzz > 0.001f)
         {
             const float fz = 1.0f + fuzz * 14.0f, bf = 0.5f * fuzz;
@@ -181,13 +189,13 @@ private:
     }
     // Gain that keeps the level about the same as the clean path for a typical mixer signal,
     // so drive and fuzz add colour and grit instead of just changing the volume.
-    static float shaperMakeup (float drive, float fuzz, float ref)
+    static float shaperMakeup (float drive, float xs, float fuzz, float ref)
     {
         double a = 0.0, b = 0.0;
         for (int i = 0; i < 64; ++i)
         {
             const float x = ref * std::sin (6.2831853f * (float) i / 64.0f);
-            const float y0 = shaper (x, 0.0f, 0.0f), y1 = shaper (x, drive, fuzz);
+            const float y0 = shaper (x, 0.0f, 0.0f, 0.0f), y1 = shaper (x, drive, xs, fuzz);
             a += (double) y0 * y0; b += (double) y1 * y1;
         }
         const float m = b > 1.0e-9 ? (float) std::sqrt (a / b) : 1.0f;
@@ -382,7 +390,7 @@ private:
         float G4 = G * G * G * G;
         float S = G * G * G * (st[0] / (1.0f + g)) + G * G * (st[1] / (1.0f + g)) + G * (st[2] / (1.0f + g)) + st[3] / (1.0f + g);
         // drive and fuzz in front of the filter, level matched
-        float x = shaper (mix, Q.drive * kPreAmt, Q.fuzz * kPreAmt) * mkQ;
+        float x = shaper (mix, Q.drive * kPreAmt, Q.xstr * kPreAmt, Q.fuzz * kPreAmt) * mkQ;
         x += rnd() * 2.0e-4f;
         float u = (x - k * S) / (1.0f + k * G4);
         float v;
@@ -398,8 +406,8 @@ private:
         // grit after the filter, so the new harmonics are not filtered away again; level matched
         // transformer-style weight: a little of the low end (about 90 Hz and below) is pushed harder into the stage
         xfLp += xfC * (y - xfLp);
-        const float yd = y + 0.6f * Q.drive * xfLp;
-        y = shaper (yd * 2.0f, Q.drive, Q.fuzz) * mkPQ * 0.5f * (1.0f + 0.2f * Q.drive);
+        const float yd = y + 0.6f * Q.xstr * xfLp;
+        y = shaper (yd * 2.0f, Q.drive, Q.xstr, Q.fuzz) * mkPQ * 0.5f * (1.0f + 0.2f * Q.xstr);
         y *= 1.0f + 0.35f * Q.reso;             // keep bass weight when resonance rises (R)
         y *= ae * Q.volume * 1.4f;
         return y;
@@ -414,7 +422,7 @@ private:
         sm (Q.aTune, P.aTune); sm (Q.bTune, P.bTune); sm (Q.aPW, P.aPW); sm (Q.bPW, P.bPW);
         sm (Q.mixA, P.mixA); sm (Q.mixB, P.mixB); sm (Q.mixNoise, P.mixNoise); sm (Q.mixSub, P.mixSub);
         sm (Q.cutoffHz, P.cutoffHz); sm (Q.reso, P.reso); sm (Q.fenvAmt, P.fenvAmt); sm (Q.kbdAmt, P.kbdAmt);
-        sm (Q.lfoHz, P.lfoHz); sm (Q.modWheel, P.modWheel); sm (Q.drive, P.drive); sm (Q.fuzz, P.fuzz); sm (mkQ, mkT); sm (mkPQ, mkPT); sm (Q.volume, P.volume);
+        sm (Q.lfoHz, P.lfoHz); sm (Q.modWheel, P.modWheel); sm (Q.drive, P.drive); sm (Q.xstr, P.xstr); sm (Q.fuzz, P.fuzz); sm (mkQ, mkT); sm (mkPQ, mkPT); sm (Q.volume, P.volume);
         for (int i = 0; i < 3; ++i) sm (Q.modAmt[i], P.modAmt[i]);
         // everything else switches directly
         Q.aOct = P.aOct; Q.aSaw = P.aSaw; Q.aPulse = P.aPulse; Q.aSync = P.aSync; Q.bOct = P.bOct; Q.bSaw = P.bSaw; Q.bTri = P.bTri; Q.bPulse = P.bPulse;

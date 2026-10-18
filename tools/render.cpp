@@ -39,7 +39,7 @@ int main (int argc, char** argv)
     // 5 sub bass, 6 reso sweep stability at extremes
     p = Params(); p.mixA = 0.7f; p.mixSub = 0.9f; p.cutoffHz = 400; p.reso = 0.3f; p.aS = 1; p.kbdAmt = 0.3f;
     renderNote (path ("sub_c1.raw").c_str(), p, 36, 1.0f, 0.3f);
-    p = Params(); p.mixA = 1; p.mixB = 1; p.mixNoise = 1; p.mixSub = 1; p.cutoffHz = 20; p.reso = 1.0f; p.fenvAmt = 1.0f; p.drive = 1.0f; p.aS = 1; p.fS = 1;
+    p = Params(); p.mixA = 1; p.mixB = 1; p.mixNoise = 1; p.mixSub = 1; p.cutoffHz = 20; p.reso = 1.0f; p.fenvAmt = 1.0f; p.xstr = 1.0f; p.aS = 1; p.fS = 1;
     renderNote (path ("extreme.raw").c_str(), p, 60, 1.0f, 0.3f);
 
     // CPU: 10 s of audio, default patch with sync + mod

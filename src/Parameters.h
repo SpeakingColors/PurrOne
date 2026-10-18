@@ -24,7 +24,7 @@ namespace purrone::ids
     inline constexpr const char* wheel = "wheel"; inline constexpr const char* glide = "glide"; inline constexpr const char* glideAuto = "glideAuto";
     inline constexpr const char* retrig = "retrig"; inline constexpr const char* repeat = "repeat"; inline constexpr const char* drone = "drone";
     // fx and output
-    inline constexpr const char* drive = "drive"; inline constexpr const char* fuzz = "fuzz";
+    inline constexpr const char* drive = "drive"; inline constexpr const char* xstr = "xstr"; inline constexpr const char* fuzz = "fuzz";
     inline constexpr const char* eqLo = "eqLo"; inline constexpr const char* eqMid = "eqMid"; inline constexpr const char* eqHi = "eqHi";
     inline constexpr const char* verbMix = "verbMix"; inline constexpr const char* verbSize = "verbSize"; inline constexpr const char* verbHP = "verbHP";
     inline constexpr const char* maxAmt = "maxAmt"; inline constexpr const char* safety = "safety"; inline constexpr const char* vol = "vol";
@@ -62,7 +62,7 @@ inline juce::AudioProcessorValueTreeState::ParameterLayout createLayout()
     lin (ids::wheel, "Mod Wheel", 0, 1, 0.0f); lin (ids::glide, "Glide", 0, 1, 0.0f); b (ids::glideAuto, "Auto Glide", false);
     b (ids::retrig, "Retrigger", false); b (ids::repeat, "Repeat", false); b (ids::drone, "Drone", false);
 
-    lin (ids::drive, "Drive", 0, 1, 0.1f); lin (ids::fuzz, "Fuzz", 0, 1, 0.0f);
+    lin (ids::drive, "Drive", 0, 1, 0.0f); lin (ids::xstr, "Transistor", 0, 1, 0.1f); lin (ids::fuzz, "Fuzz", 0, 1, 0.0f);
     lin (ids::eqLo, "EQ Low", -12, 12, 0); lin (ids::eqMid, "EQ Mid", -12, 12, 0); lin (ids::eqHi, "EQ High", -12, 12, 0);
     lin (ids::verbMix, "Space Mix", 0, 1, 0.12f); lin (ids::verbSize, "Space Length", 0.2f, 4.0f, 0.9f);
     { NormalisableRange<float> r (80.0f, 600.0f); r.setSkewForCentre (220.0f); p.push_back (std::make_unique<F> (pid (ids::verbHP), "Space Low Cut", r, 250.0f)); }

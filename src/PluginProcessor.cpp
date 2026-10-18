@@ -51,7 +51,7 @@ void PurrOneProcessor::applyParams()
     p.modDest[0] = (int) raw (a, ids::dest0); p.modDest[1] = (int) raw (a, ids::dest1); p.modDest[2] = (int) raw (a, ids::dest2); p.modDest[3] = (int) raw (a, ids::dest3); p.modDest[4] = (int) raw (a, ids::dest4);
     p.modWheel = std::max (raw (a, ids::wheel), midiWheel);
     p.retrig = raw (a, ids::retrig) > 0.5f; p.repeat = raw (a, ids::repeat) > 0.5f; p.drone = raw (a, ids::drone) > 0.5f;
-    p.drive = raw (a, ids::drive); p.fuzz = raw (a, ids::fuzz); p.volume = raw (a, ids::vol);
+    p.drive = raw (a, ids::drive); p.xstr = raw (a, ids::xstr); p.fuzz = raw (a, ids::fuzz); p.volume = raw (a, ids::vol);
     engine.setParams (p);
     engine.setPitchBend (bendSemis);
     eq.setGains (raw (a, ids::eqLo), raw (a, ids::eqMid), raw (a, ids::eqHi));
