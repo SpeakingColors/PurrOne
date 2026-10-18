@@ -16,11 +16,11 @@
 - Smooth, never harsh. Check aliasing, resonance peaks, hard clipping. Slow tiny drift is allowed.
 - Clean and dirty basses both possible. FX defaults are conservative.
 
-## FX chain (planned order)
+## FX chain (implemented order)
 Drive/saturation/fuzz, 3 band EQ, short reverb (high-passed return, length capped), multiband maximizer, safety limiter.
 
-## Interface (planned)
-Dark background, white text, wood side panels, colour only on small LEDs, large stereo output meter with dB scale, preset manager, hover info bubbles with off switch.
+## Interface
+Horizontal panel in the style of classic mono synths: modulation block on the left, oscillators, mixer, filter and envelopes across, volume and meter on the right, FX and keys below (docs/mockup). Dark background, white text, thin wood side cheeks, colour only on small LEDs, large stereo output meter with dB scale, preset manager, hover info bubbles with off switch.
 
 ## Measured so far (offline, 48 kHz)
 See tools/analyze.py. Numbers are posted in the commit that changes them.

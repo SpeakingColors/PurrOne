@@ -64,11 +64,17 @@ button:focus-visible, .knob:focus-visible, .pname:focus-visible { outline: 2px s
 .hdr-right { display: flex; align-items: center; gap: 12px; }
 .sw-line { display: flex; align-items: center; gap: 7px; font-size: 13px; color: var(--ink-dim); text-transform: uppercase; }
 
+.synth { display: grid; gap: 10px; grid-template-columns: 340px minmax(250px,1.25fr) minmax(150px,.8fr) minmax(190px,1fr) minmax(190px,1fr) 150px; grid-template-areas: "mod A mix filt filt out" "mod B keys fenv aenv out" "mod lfo keys fenv aenv out"; }
+.synth > section, .synth > aside { margin: 0; min-width: 0; }
+#secMod { grid-area: mod; } #secA { grid-area: A; } #secB { grid-area: B; } #secLfo { grid-area: lfo; } #secMix { grid-area: mix; } #secKeys { grid-area: keys; }
+#secFilter { grid-area: filt; } #secFenv { grid-area: fenv; } #secAenv { grid-area: aenv; } .outcol { grid-area: out; display: grid; gap: 10px; grid-template-rows: auto 1fr; }
+.outcol .meter { min-width: 0; }
+@media (max-width: 1180px) { .synth { display: flex; flex-wrap: wrap; } .synth > section { flex: 1 1 240px; } .outcol { flex: 1 1 150px; } }
 .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: stretch; }
 .row > section.mod { flex: 1 1 200px; }
 .row > .w2 { flex: 1.5 1 280px; }
 .row > .meter { flex: 0 0 auto; }
-.row > #secOut, .row > #secDrive { flex: 0 1 120px; }
+.row > #secDrive { flex: 0 1 140px; }
 .row > #secMod { flex: 2 1 340px; }
 section.mod h2 small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 11px; margin-left: 8px; }
 section.mod h2 { white-space: nowrap; }
@@ -139,7 +145,7 @@ canvas.disp { width: 100%; height: 64px; display: block; background: #0a0a0c; bo
   <main class="panel" id="panel">
     <header class="top">
       <div class="brand">
-        <svg viewBox="0 0 64 64" aria-hidden="true"><path d="M10 8l12 12c3-1 7-2 10-2s7 1 10 2L54 8v24c0 14-9 24-22 24S10 46 10 32z" fill="#f4f5f7"/><circle cx="23" cy="33" r="3.4" fill="#02EBBA"/><circle cx="41" cy="33" r="3.4" fill="#02EBBA"/><path d="M28 42l4 3 4-3" fill="none" stroke="#15161a" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <svg viewBox="0 0 64 64" aria-hidden="true"><path d="M6 4l19 15c5-1.5 9-1.5 14 0L58 4l-3 31c-1 14-11 24-23 24S10 49 9 35z" fill="#f4f5f7"/><path d="M12 30l17 6-3 5-13-4zM52 30l-17 6 3 5 13-4z" fill="#15161a"/><path d="M29 45h6l-3 4z" fill="#15161a"/><path d="M21 49l11 3 11-3" fill="none" stroke="#15161a" stroke-width="2" stroke-linejoin="round"/><path d="M25 50l2.4 6 2.4-5zM39 50l-2.4 6-2.4-5z" fill="#15161a"/></svg>
         <b>PurrOne</b>
       </div>
       <div class="presets">
@@ -156,36 +162,39 @@ canvas.disp { width: 100%; height: 64px; display: block; background: #0a0a0c; bo
       </div>
     </header>
 
-    <div class="row">
+    <div class="synth">
+      <section class="mod" id="secMod"><h2>Modulation <small>from, route, to</small></h2></section>
       <section class="mod" id="secA"><h2>Osc A <small>follows keys</small></h2></section>
-      <section class="mod" id="secB"><h2>Osc B <small>audio or LFO</small></h2></section>
       <section class="mod" id="secMix"><h2>Mixer</h2></section>
-      <section class="mod w2" id="secFilter"><h2>Filter <small>4 pole low-pass</small></h2><canvas class="disp" id="filtDisp" width="520" height="128" aria-label="Filter response"></canvas></section>
-      <section class="mod" id="secFenv"><h2>Filter envelope</h2><canvas class="disp" id="fenvDisp" width="520" height="128" aria-label="Filter envelope shape"></canvas></section>
-      <section class="mod" id="secAenv"><h2>Amp envelope</h2><canvas class="disp" id="aenvDisp" width="520" height="128" aria-label="Amp envelope shape"></canvas></section>
+      <section class="mod" id="secFilter"><h2>Filter <small>4 pole low-pass</small></h2><canvas class="disp" id="filtDisp" width="520" height="128" aria-label="Filter response"></canvas></section>
+      <section class="mod" id="secB"><h2>Osc B <small>audio or LFO</small></h2></section>
+      <section class="mod" id="secKeys"><h2>Glide <small>and mode</small></h2></section>
+      <section class="mod" id="secFenv"><h2>Filter env</h2><canvas class="disp" id="fenvDisp" width="520" height="128" aria-label="Filter envelope shape"></canvas></section>
+      <section class="mod" id="secAenv"><h2>Amp env</h2><canvas class="disp" id="aenvDisp" width="520" height="128" aria-label="Amp envelope shape"></canvas></section>
+      <section class="mod" id="secLfo"><h2>LFO <small>0.1 to 30 Hz</small></h2></section>
+      <div class="outcol">
+        <section class="mod" id="secOut"><h2>Volume</h2></section>
+        <aside class="meter" aria-label="Output meter">
+          <h2>Out</h2>
+          <div class="mbody">
+            <div class="bar" id="barL"><div class="fill"></div><div class="hold"></div></div>
+            <div class="bar" id="barR"><div class="fill"></div><div class="hold"></div></div>
+            <div class="scale" id="scale"></div>
+          </div>
+          <div class="mfoot"><span>L R dBFS</span><span><span class="led" id="clip"></span> clip</span></div>
+        </aside>
+      </div>
     </div>
 
     <div class="row">
-      <section class="mod" id="secLfo"><h2>LFO <small>0.1 to 30 Hz</small></h2></section>
-      <section class="mod w2" id="secMod"><h2>Modulation <small>direct or wheel</small></h2></section>
-      <section class="mod" id="secKeys"><h2>Keyboard <small>modes</small></h2></section>
       <section class="mod" id="secDrive"><h2>Drive</h2></section>
       <section class="mod" id="secEq"><h2>EQ <small>3 band</small></h2><canvas class="disp" id="eqDisp" width="520" height="128" aria-label="EQ curve"></canvas></section>
       <section class="mod" id="secVerb"><h2>Space <small>short</small></h2></section>
       <section class="mod" id="secMax"><h2>Maximizer</h2></section>
+      <section class="mod" style="opacity:.55"><h2>Seq <small>planned</small></h2><div class="note">2 x 64 step sequencer and arp (up, down, up/down) come after the engine is verified.</div></section>
     </div>
 
     <div class="row">
-      <section class="mod" id="secOut"><h2>Output</h2></section>
-      <aside class="meter" aria-label="Output meter">
-        <h2>Out</h2>
-        <div class="mbody">
-          <div class="bar" id="barL"><div class="fill"></div><div class="hold"></div></div>
-          <div class="bar" id="barR"><div class="fill"></div><div class="hold"></div></div>
-          <div class="scale" id="scale"></div>
-        </div>
-        <div class="mfoot"><span>L R dBFS</span><span><span class="led" id="clip"></span> clip</span></div>
-      </aside>
     <section class="mod kbd" style="order:-1;flex:1 1 400px">
       <div class="keys" id="keys" aria-label="On-screen keyboard"></div>
       <div class="status">
