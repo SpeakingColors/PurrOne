@@ -31,6 +31,7 @@ private:
     std::unique_ptr<Content> content;
     std::unique_ptr<juce::TooltipWindow> tooltip;
     juce::ComponentBoundsConstrainer constrainer;
+    std::unique_ptr<juce::ResizableBorderComponent> border;
     std::unique_ptr<juce::ResizableCornerComponent> corner;
     juce::StringArray names;           // factory first, then user presets
     int numFactory = 0;

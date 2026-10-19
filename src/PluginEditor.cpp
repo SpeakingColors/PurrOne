@@ -218,6 +218,7 @@ PurrOneEditor::PurrOneEditor (PurrOneProcessor& p) : AudioProcessorEditor (&p), 
 
     constrainer.setFixedAspectRatio ((double) L::W / L::H); constrainer.setSizeLimits (680, (int) (680 * (double) L::H / L::W), 2400, (int) (2400 * (double) L::H / L::W));
     setConstrainer (&constrainer);
+    border = std::make_unique<juce::ResizableBorderComponent> (this, &constrainer); border->setBorderThickness (juce::BorderSize<int> (6)); addAndMakeVisible (*border);   // every side and corner
     corner = std::make_unique<juce::ResizableCornerComponent> (this, &constrainer); addAndMakeVisible (*corner);
     setResizable (true, false);
     const int w = juce::jlimit (680, 2400, proc.editorWidth);
@@ -232,6 +233,7 @@ void PurrOneEditor::resized()
     const float s = (float) getWidth() / (float) L::W;
     content->setTransform (juce::AffineTransform::scale (s));
     content->setBounds (0, 0, L::W, L::H);
+    if (border) border->setBounds (getLocalBounds());
     if (corner) corner->setBounds (getWidth() - 26, getHeight() - 26, 26, 26);
     proc.editorWidth = getWidth();
     content->zoom.text = juce::String (juce::roundToInt ((float) getWidth() / (float) kDefaultW * 100.0f)) + "%"; content->zoom.repaint();
