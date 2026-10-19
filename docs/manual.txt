@@ -1,10 +1,11 @@
 # Intro
 PurrOne is a two oscillator mono synth in the spirit of the classic Pro-One class of analog synths: two oscillators with sync, a sub oscillator, a four pole filter that can sing on its own, two envelopes, an LFO and a small modulation matrix. It adds three colour stages (Drive, Transistor, Fuzz), a 3 band EQ, a short reverb and a gentle maximizer with a safety limiter. Made for bass, leads and acid lines.
+- Filter modes: LP keeps the lows, HP keeps the highs, BP keeps a band around the cutoff (nasal, talking sounds).
 
 # Quick start
 - Pick a factory preset, hold a note and move Cutoff and Reso first.
 - Raise the Sub knob in the Mixer for weight under Osc A.
-- Colour: Drive is a clean symmetric clip, Transistor is the warm Neve-style stage (even harmonics, a little low-end weight), Fuzz is the hard one. They work in series and can be mixed.
+- Colour: Drive is a clean symmetric clip, Transistor is the warm Neve-style stage (even harmonics, a little low-end weight), Fuzz is the hard one. They work in series and can be mixed. The PRE | POST | BOTH switch in the Filter header sets where they sit: PRE puts them before the filter (the filter shapes the grit), POST after it (the grit stays bright), BOTH is a light stage before and the full stage after.
 - Watch the level: Drive, Transistor and Fuzz are level matched, so compare by ear with the knob at zero and at full.
 - Save your own sounds with Save; they stay on your computer when you uninstall unless you choose to remove them.
 

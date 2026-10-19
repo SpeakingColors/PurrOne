@@ -6,7 +6,7 @@ Status: early development (test builds). The sound engine, effects, factory pres
 
 ## What it is
 - Two oscillators with hard sync, plus a warm sub oscillator, noise and a mixer.
-- A 4 pole self-oscillating low-pass filter, two envelopes, an LFO and a mod matrix with a mod wheel path.
+- A 4 pole self-oscillating filter with low-pass, high-pass and band-pass modes, two envelopes, an LFO and a mod matrix with a mod wheel path.
 - Glide and keyboard modes (normal, retrig, repeat, drone). Arpeggiator and step sequencer (planned).
 - Built-in effects, all with sane defaults that stay clean and never harsh (built, offline tested): 3 band EQ, short reverb with high-pass, saturation and drive, multiband maximizer, safety limiter.
 - Preset manager with 11 factory presets of basses, subs and leads.

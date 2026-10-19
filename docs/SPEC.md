@@ -5,7 +5,7 @@
 - Osc B: saw, triangle, pulse, low frequency mode, keyboard tracking switch.
 - Sub: square one octave under A, rounded. Our addition for thick low end.
 - Mixer: A, B, sub, noise.
-- Filter: 4 pole low-pass, zero delay feedback, soft saturation in the loop, self-oscillation at full resonance.
+- Filter: 4 pole, zero delay feedback, soft saturation in the loop, self-oscillation at full resonance. Modes: low pass, high pass, band pass.
 - Envelopes: two ADSR, 2 ms to 6 s.
 - LFO: saw, triangle, pulse, 0.1 to 30 Hz.
 - Mod matrix: sources filter envelope, osc B, LFO; each with amount and direct/wheel/off route; destinations osc A freq, osc A PW, osc B freq, osc B PW, filter.
