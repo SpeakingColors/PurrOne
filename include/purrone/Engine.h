@@ -72,7 +72,8 @@ struct Params
     float mixA = 0.8f, mixB = 0.0f, mixNoise = 0.0f, mixSub = 0.0f;
     // Filter
     float cutoffHz = 3000.0f, reso = 0.1f, fenvAmt = 0.0f, kbdAmt = 0.5f; // fenvAmt -1..1
-    int   filterMode = 0;   // 0 low pass, 1 high pass (same 4 pole ladder, outputs combined)
+    int   filterMode = 0;   // 0 low pass, 1 high pass, 2 band pass (same 4 pole ladder, stage outputs combined)
+    int   colourPos = 2;    // where Drive/Transistor/Fuzz sit: 0 before the filter, 1 after it, 2 both (light before, full after)
     // Envelopes: knob 0..1 for times, sustain 0..1
     float fA = 0.0f, fD = 0.4f, fS = 0.3f, fR = 0.3f;
     float aA = 0.0f, aD = 0.4f, aS = 0.8f, aR = 0.3f;
@@ -117,11 +118,13 @@ public:
     void setParams (const Params& p)
     {
         P = p;
-        if (P.drive != lastDrive || P.xstr != lastXs || P.fuzz != lastFuzz)
+        if (P.drive != lastDrive || P.xstr != lastXs || P.fuzz != lastFuzz || P.colourPos != lastPos)
         {
-            lastDrive = P.drive; lastXs = P.xstr; lastFuzz = P.fuzz;
-            mkT = shaperMakeup (P.drive * kPreAmt, P.xstr * kPreAmt, P.fuzz * kPreAmt, 0.35f);
-            mkPT = shaperMakeup (P.drive, P.xstr, P.fuzz, 0.9f);
+            lastDrive = P.drive; lastXs = P.xstr; lastFuzz = P.fuzz; lastPos = P.colourPos;
+            preAmt = P.colourPos == 0 ? 1.0f : (P.colourPos == 1 ? 0.0f : kPreAmt);
+            postAmt = P.colourPos == 0 ? 0.0f : 1.0f;
+            mkT = shaperMakeup (P.drive * preAmt, P.xstr * preAmt, P.fuzz * preAmt, 0.35f);
+            mkPT = shaperMakeup (P.drive * postAmt, P.xstr * postAmt, P.fuzz * postAmt, 0.9f);
             if (! smoothInit) { mkQ = mkT; mkPQ = mkPT; }
         }
         if (! smoothInit) { Q = p; smoothInit = true; }
@@ -161,6 +164,7 @@ public:
 private:
     static constexpr int kMaxHeld = 16;
     Params P, Q;                 // P = target values, Q = smoothed values used by the voice
+    int lastPos = -1; float preAmt = kPreAmt, postAmt = 1.0f;
     float lastDrive = -1.0f, lastXs = -1.0f, lastFuzz = -1.0f, mkT = 1.0f, mkQ = 1.0f, mkPT = 1.0f, mkPQ = 1.0f;
     float nLp = 0.0f; float xfLp = 0.0f, xfC = 0.012f;         // transformer low-end state, xfC set in prepare
     static constexpr float kPreAmt = 0.4f;   // pre-filter stage is a lighter version of the post-filter stage   // drive/fuzz loudness match
@@ -440,7 +444,7 @@ private:
         float G4 = G * G * G * G;
         float S = G * G * G * (st[0] / (1.0f + g)) + G * G * (st[1] / (1.0f + g)) + G * (st[2] / (1.0f + g)) + st[3] / (1.0f + g);
         // drive and fuzz in front of the filter, level matched
-        float x = shaper (mix, Q.drive * kPreAmt, Q.xstr * kPreAmt, Q.fuzz * kPreAmt) * mkQ;
+        float x = shaper (mix, Q.drive * preAmt, Q.xstr * preAmt, Q.fuzz * preAmt) * mkQ;
         x += rnd() * 2.0e-4f * smoothstep01 ((Q.reso - 0.85f) * 6.6f);   // seed for self-oscillation only
         float u = (x - k * S) / (1.0f + k * G4);
         float v;
@@ -454,14 +458,17 @@ private:
             in = lp; tap[i] = lp;
         }
         // low pass is the last stage; high pass is the same cascade subtracted from the input: (1 - H)^4 = 1 - 4H + 6H^2 - 4H^3 + H^4
-        float y = Q.filterMode == 1 ? in0 - 4.0f * tap[0] + 6.0f * tap[1] - 4.0f * tap[2] + tap[3] : in;
+        float y = in;
+        if (Q.filterMode == 1) y = in0 - 4.0f * tap[0] + 6.0f * tap[1] - 4.0f * tap[2] + tap[3];
+        else if (Q.filterMode == 2) y = 4.0f * (tap[1] - 2.0f * tap[2] + tap[3]);   // band pass: 4 (y2 - 2 y3 + y4)
         // grit after the filter, so the new harmonics are not filtered away again; level matched
         // transformer-style weight: a little of the low end (about 90 Hz and below) is pushed harder into the stage
         xfLp += xfC * (y - xfLp);
-        const float yd = y + 0.6f * Q.xstr * xfLp;
-        y = shaper (yd * 2.0f, Q.drive, Q.xstr, Q.fuzz) * mkPQ * 0.5f * (1.0f + 0.2f * Q.xstr);
+        const float dP = Q.drive * postAmt, xP = Q.xstr * postAmt, fP = Q.fuzz * postAmt;
+        const float yd = y + 0.6f * xP * xfLp;
+        y = shaper (yd * 2.0f, dP, xP, fP) * mkPQ * 0.5f * (1.0f + 0.2f * xP);
         {   // fizz control: the nastier it gets, the more the top end above ~12 kHz down to ~5 kHz is smoothed off
-            const float nast = std::max (smoothstep01 ((Q.drive - 0.8f) * 5.0f), std::max (smoothstep01 ((Q.xstr - 0.8f) * 5.0f), smoothstep01 ((Q.fuzz - 0.8f) * 5.0f)));
+            const float nast = std::max (smoothstep01 ((dP - 0.8f) * 5.0f), std::max (smoothstep01 ((xP - 0.8f) * 5.0f), smoothstep01 ((fP - 0.8f) * 5.0f)));
             const float w = 6.2831853f * (14000.0f - 10000.0f * nast) / osr;
             nLp += (w / (1.0f + w)) * (y - nLp);
             y = nLp;
@@ -488,7 +495,7 @@ private:
         Q.glide = P.glide; Q.glideAuto = P.glideAuto; Q.lfoSaw = P.lfoSaw; Q.lfoTri = P.lfoTri; Q.lfoPulse = P.lfoPulse;
         for (int i = 0; i < 3; ++i) Q.modRoute[i] = P.modRoute[i];
         for (int i = 0; i < 5; ++i) Q.modDest[i] = P.modDest[i];
-        Q.retrig = P.retrig; Q.repeat = P.repeat; Q.drone = P.drone; Q.filterMode = P.filterMode;
+        Q.retrig = P.retrig; Q.repeat = P.repeat; Q.drone = P.drone; Q.filterMode = P.filterMode; Q.colourPos = P.colourPos;
     }
 
     static float midiToHz (float n) { return 440.0f * std::exp2 ((n - 69.0f) / 12.0f); }
