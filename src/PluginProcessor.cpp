@@ -131,7 +131,7 @@ juce::String PurrOneProcessor::sanitize (const juce::String& n)
 }
 juce::File PurrOneProcessor::userPresetDir()
 {
-    return juce::File::getSpecialLocation (juce::File::userApplicationDataDirectory).getChildFile ("SpeakingColors").getChildFile ("PurrOne").getChildFile ("presets");
+    return juce::File::getSpecialLocation (juce::File::userApplicationDataDirectory).getChildFile ("Studio 87").getChildFile ("PurrOne").getChildFile ("presets");
 }
 juce::StringArray PurrOneProcessor::listUserPresets() const
 {

@@ -2,7 +2,9 @@ PurrOne install, remove and use (works fully offline)
 =====================================================
 
 Windows
-  Run windows\PurrOne-Setup.exe. It installs the VST3 plugin for all users and a standalone app.
+  Run windows\PurrOne-Setup.exe. It installs two things: the VST3 plugin for your DAW
+  (C:\Program Files\Common Files\VST3, fixed location, all users) and the standalone app plus manual
+  (C:\Program Files\Studio 87\PurrOne, the folder the installer asks about).
   Windows may show a blue "unknown publisher" screen because the installer is not signed:
   click "More info", then "Run anyway".
   Remove: Settings > Apps > PurrOne > Uninstall. It asks if you also want your saved presets deleted
@@ -26,10 +28,10 @@ Linux, DAW installed natively
   Remove: delete the PurrOne.vst3 folder from ~/.vst3.
 
 Your saved presets (kept on remove unless you choose to delete them)
-  Windows : %APPDATA%\SpeakingColors\PurrOne\presets
-  macOS   : ~/Library/Application Support/SpeakingColors/PurrOne/presets
-  Linux   : ~/.config/SpeakingColors/PurrOne/presets  (a Flatpak DAW keeps its own copy under ~/.var/app/<DAW id>/config/)
-  To delete them yourself, remove the SpeakingColors/PurrOne folder at that place.
+  Windows : %APPDATA%\Studio 87\PurrOne\presets
+  macOS   : ~/Library/Application Support/Studio 87/PurrOne/presets
+  Linux   : ~/.config/Studio 87/PurrOne/presets  (a Flatpak DAW keeps its own copy under ~/.var/app/<DAW id>/config/)
+  To delete them yourself, remove the Studio 87/PurrOne folder at that place.
 
 Manual: PurrOne-manual.pdf (every control plus recommendations).
 Checksums: SHA256SUMS.

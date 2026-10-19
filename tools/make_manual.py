@@ -77,5 +77,5 @@ def footer(c, d):
     c.setFillColor(AMBER); c.rect(0, A4[1] - 5.8 * mm, A4[0], 0.8 * mm, stroke=0, fill=1)
     c.setFont("Helvetica", 8); c.setFillColor(DIM)
     c.drawString(20 * mm, 10 * mm, name + " manual"); c.drawRightString(190 * mm, 10 * mm, "page %d" % d.page); c.restoreState()
-SimpleDocTemplate(out, pagesize=A4, leftMargin=20 * mm, rightMargin=20 * mm, topMargin=16 * mm, bottomMargin=18 * mm, title=name + " manual", author="SpeakingColors").build(story, onFirstPage=footer, onLaterPages=footer)
+SimpleDocTemplate(out, pagesize=A4, leftMargin=20 * mm, rightMargin=20 * mm, topMargin=16 * mm, bottomMargin=18 * mm, title=name + " manual", author="Studio 87").build(story, onFirstPage=footer, onLaterPages=footer)
 print("wrote", out, "controls", sum(len(v) for v in panels.values()), "presets", len(presets))

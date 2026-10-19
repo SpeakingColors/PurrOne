@@ -21,7 +21,7 @@ if(PURRONE_BUILD_PLUGIN)
   endif()
 
   juce_add_plugin(PurrOne
-    COMPANY_NAME "SpeakingColors"
+    COMPANY_NAME "Studio 87"
     PLUGIN_MANUFACTURER_CODE Spkc
     PLUGIN_CODE PurO
     FORMATS VST3 Standalone

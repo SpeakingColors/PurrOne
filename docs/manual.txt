@@ -19,4 +19,4 @@ PurrOne is a two oscillator mono synth in the spirit of the classic Pro-One clas
 - Windows: run PurrOne-Setup.exe. To remove it use Settings, Apps, PurrOne. The uninstaller asks whether to also delete your saved presets.
 - macOS: open PurrOne-macOS.pkg. To remove it run "Uninstall PurrOne" from the Applications folder; it asks whether to also delete your saved presets.
 - Linux (Flatpak DAW): flatpak install --user the .flatpak file; remove with flatpak uninstall. Linux (native DAW): extract the tarball into ~/.vst3 and delete the PurrOne.vst3 folder to remove.
-- Your saved presets live in a folder named SpeakingColors/PurrOne/presets in your user application data folder (details in INSTALL.txt).
+- Your saved presets live in a folder named Studio 87/PurrOne/presets in your user application data folder (details in INSTALL.txt).

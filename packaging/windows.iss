@@ -1,14 +1,18 @@
 ; Windows installer + uninstaller (Inno Setup). Called as: ISCC /DName=PurrOne "/DProduct=PurrOne" /DVersion=0.1.0 packaging/windows.iss
 ; Files are staged in ..\stage by the release workflow. Works offline.
-; The uninstaller removes everything it installed. Your saved presets (%APPDATA%\SpeakingColors\PurrOne) are kept
+; The uninstaller removes everything it installed. Your saved presets (%APPDATA%\Studio 87\PurrOne) are kept
 ; unless you answer Yes when it asks. A silent uninstall (/SILENT, /VERYSILENT) always keeps them.
+[Messages]
+SelectDirLabel3=Setup will install the PurrOne standalone app and the manual into the following folder.
+SelectDirBrowseLabel=The VST3 plugin for your DAW is installed separately into C:\Program Files\Common Files\VST3 and does not use this folder. Click Next to continue, or Browse to change the folder for the standalone app.
+
 [Setup]
 AppName={#Product}
 AppVersion={#Version}
-AppPublisher=SpeakingColors
+AppPublisher=Studio 87
 AppPublisherURL=https://github.com/SpeakingColors
-DefaultDirName={autopf}\SpeakingColors\{#Product}
-DefaultGroupName=SpeakingColors
+DefaultDirName={autopf}\Studio 87\{#Product}
+DefaultGroupName=Studio 87
 OutputDir=..\Output
 OutputBaseFilename={#Name}-Setup
 LicenseFile=..\LICENSE
@@ -45,8 +49,8 @@ var
   presets, vendor: String;
 begin
   if CurUninstallStep <> usPostUninstall then exit;
-  presets := ExpandConstant('{userappdata}\SpeakingColors\{#Product}');
-  vendor := ExpandConstant('{userappdata}\SpeakingColors');
+  presets := ExpandConstant('{userappdata}\Studio 87\{#Product}');
+  vendor := ExpandConstant('{userappdata}\Studio 87');
   if DirExists(presets) and (not UninstallSilent) then
     if MsgBox('Also delete your saved {#Product} presets?' + #13#10 + #13#10 + presets + #13#10 + #13#10 +
               'Choose No to keep them (recommended if you plan to reinstall).', mbConfirmation, MB_YESNO or MB_DEFBUTTON2) = IDYES then
