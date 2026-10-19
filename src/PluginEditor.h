@@ -22,6 +22,8 @@ private:
     void saveDialog();
     void saveNamed (const juce::String& name);
     void cycleZoom();
+    void resetZoom();
+    static constexpr int kDefaultW = 1360;   // the 100% size
 
     PurrOneProcessor& proc;
     purrone::ui::Bubbles bubbles;

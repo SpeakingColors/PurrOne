@@ -117,7 +117,7 @@ struct PurrOneEditor::NameBox : public juce::Component, public juce::SettableToo
 struct PurrOneEditor::Content : public juce::Component
 {
     Content (PurrOneEditor& o) : owner (o), proc (o.proc),
-        prev ("<"), next (">"), save ("Save"), rename ("Rename"), init ("Init"), zoom ("80%"), check (o.bubbles), meter (o.proc), keys (o.proc.keyState)
+        prev ("<"), next (">"), save ("Save"), rename ("Rename"), init ("Init"), zoom ("100%"), check (o.bubbles), meter (o.proc), keys (o.proc.keyState)
     {
         setOpaque (true);
         logo = juce::Drawable::createFromSVG (*juce::XmlDocument::parse (kLogoSvg));
@@ -137,6 +137,13 @@ struct PurrOneEditor::Content : public juce::Component
         save.setTooltip ("Stores the current sound as your own. Asks before it overwrites one."); rename.setTooltip ("Rename this sound. A factory sound is saved as your own copy under the new name.");
         editor.setFont (monoFont (15.0f)); editor.setMultiLine (false); editor.setBorder ({ 0, 10, 0, 10 }); editor.setJustification (juce::Justification::centredLeft);
         editor.setBounds (rc (m.pname)); editor.setVisible (false); editor.setInputRestrictions (60); addChildComponent (editor);
+    }
+
+    // double click on either wood cheek: back to the default window size (100%)
+    void mouseDoubleClick (const juce::MouseEvent& e) override
+    {
+        const auto& m = L::misc;
+        if (rc (m.cheekL).contains (e.getPosition()) || rc (m.cheekR).contains (e.getPosition())) owner.resetZoom();
     }
 
     void paint (juce::Graphics& g) override
@@ -227,15 +234,17 @@ void PurrOneEditor::resized()
     content->setBounds (0, 0, L::W, L::H);
     if (corner) corner->setBounds (getWidth() - 26, getHeight() - 26, 26, 26);
     proc.editorWidth = getWidth();
-    content->zoom.text = juce::String (juce::roundToInt (s * 100.0f)) + "%"; content->zoom.repaint();
+    content->zoom.text = juce::String (juce::roundToInt ((float) getWidth() / (float) kDefaultW * 100.0f)) + "%"; content->zoom.repaint();
 }
 
 void PurrOneEditor::cycleZoom()
 {
-    const int steps[] = { 70, 85, 100, 115, 130 }; const int cur = juce::roundToInt ((float) getWidth() / L::W * 100.0f);
+    const int steps[] = { 70, 85, 100, 115, 130 }; const int cur = juce::roundToInt ((float) getWidth() / kDefaultW * 100.0f);
     int next = steps[0]; for (int v : steps) if (v > cur + 1) { next = v; break; }
-    const int w = L::W * next / 100; setSize (w, (int) std::lround (w * (double) L::H / L::W));
+    const int w = kDefaultW * next / 100; setSize (w, (int) std::lround (w * (double) L::H / L::W));
 }
+
+void PurrOneEditor::resetZoom() { setSize (kDefaultW, (int) std::lround (kDefaultW * (double) L::H / L::W)); }
 
 void PurrOneEditor::timerCallback()
 {
