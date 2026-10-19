@@ -16,7 +16,7 @@ if(PURRONE_BUILD_PLUGIN)
     add_subdirectory(${PURRONE_JUCE_DIR} juce)
   else()
     include(FetchContent)
-    FetchContent_Declare(juce GIT_REPOSITORY https://github.com/juce-framework/JUCE.git GIT_TAG 8.0.12 GIT_SHALLOW ON)
+    FetchContent_Declare(juce GIT_REPOSITORY https://github.com/juce-framework/JUCE.git GIT_TAG 8.0.16-security GIT_SHALLOW ON)
     FetchContent_MakeAvailable(juce)
   endif()
 
