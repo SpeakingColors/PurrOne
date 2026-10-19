@@ -107,7 +107,7 @@ public:
     void reset()
     {
         smoothInit = false; bend = 0.0f; xfLp = 0.0f; nLp = 0.0f; lastDrive = lastXs = lastFuzz = -1.0f;
-        phA = phB = phSub = 0.0f; fenv.reset(); aenv.reset();
+        phA = phB = phSub = 0.0f; subFlip = 0.0f; fenv.reset(); aenv.reset();
         for (auto& s : st) s = 0.0f;
         lfoPh = 0.0f; hbPos = 0; hbBuf.fill (0.0f); hb1Pos = 0; hb1Buf.fill (0.0f); heldCount = 0; curNote = -1; glidePitch = 60.0f;
         prevA = 0.0f; gateOn = false; repeatPh = 0.0f; seed = 22222u; dcX = dcY = 0.0f;
@@ -179,20 +179,20 @@ private:
         float y = x;
         if (drive > 0.001f)
         {
-            y = std::tanh (x * (1.0f + drive * 5.0f + dn * 9.0f));
-            if (dn > 0.0f) y += dn * (std::tanh (y * (2.0f + 4.0f * dn)) - y);          // second stage, driven by the first
+            y = std::tanh (x * (1.0f + drive * 5.0f + dn * 30.0f));
+            if (dn > 0.0f) y += dn * (std::tanh (y * (2.0f + 10.0f * dn)) - y);          // second stage, driven by the first
         }
         if (xs > 0.001f)
         {
             const float nl = 1.0f - 0.3f * xs - 0.25f * xn;           // negative clip level
-            const float u = y * (1.0f + xs * 5.0f + xn * 9.0f);
+            const float u = y * (1.0f + xs * 5.0f + xn * 30.0f);
             y = asymTanh (u, nl);
             y += (0.3f * xs + 0.25f * xn) * y * y;                    // class A style even harmonic; the DC blocker removes the offset
-            if (xn > 0.0f) { const float y2 = asymTanh (y * (2.0f + 4.0f * xn) + 0.15f * xn, nl); y += xn * (y2 - y); }
+            if (xn > 0.0f) { const float y2 = asymTanh (y * (2.0f + 10.0f * xn) + 0.15f * xn, nl); y += xn * (y2 - y); }
         }
         if (fuzz > 0.001f)
         {
-            const float fz = 1.0f + fuzz * 14.0f + fn * 26.0f, bf = 0.5f * fuzz;
+            const float fz = 1.0f + fuzz * 14.0f + fn * 70.0f, bf = 0.5f * fuzz;
             y = std::tanh (y * fz + bf) - std::tanh (bf);
             if (fn > 0.0f)                                            // octave-up growl: smooth rectifier, no corner at zero
             {
@@ -219,7 +219,7 @@ private:
     }
     bool smoothInit = false; float bend = 0.0f;
     float sr = 48000.0f, osr = 192000.0f;   // voice runs at 4x; two halfband stages bring it back down
-    float phA = 0, phB = 0, phSub = 0, lfoPh = 0, prevA = 0, repeatPh = 0;
+    float subFlip = 0.0f, phA = 0, phB = 0, phSub = 0, lfoPh = 0, prevA = 0, repeatPh = 0;
     float st[4] = { 0, 0, 0, 0 };
     Adsr fenv, aenv;
     int held[kMaxHeld] {}; int heldCount = 0, curNote = -1; bool gateOn = false;
@@ -287,7 +287,7 @@ private:
     void applyEnvParams()
     {
         fenv.a = Adsr::timeFromKnob (P.fA); fenv.d = Adsr::timeFromKnob (P.fD); fenv.s = P.fS; fenv.r = Adsr::timeFromKnob (P.fR);
-        aenv.a = Adsr::timeFromKnob (P.aA); aenv.d = Adsr::timeFromKnob (P.aD); aenv.s = P.aS; aenv.r = Adsr::timeFromKnob (P.aR);
+        aenv.a = Adsr::timeFromKnob (P.aA); aenv.d = Adsr::timeFromKnob (P.aD); aenv.s = std::sqrt (std::max (P.aS, 0.0f));   // sustain taper: the middle of the knob is clearly between pluck and full aenv.r = Adsr::timeFromKnob (P.aR);
     }
 
     void retargetNote (bool legatoPlay, bool triggerAllowed = true)
@@ -377,7 +377,7 @@ private:
         float freqA = midiToHz (note + Q.aTune + 12.0f * (Q.aOct - 1) + aFreqMod);
         float dtA = clampf (freqA / osr, 1.0e-6f, 0.45f);
         float pwA = clampf (Q.aPW + aPwMod, 0.06f, 0.94f);
-        float phAold = phA; phA += dtA; if (phA >= 1.0f) phA -= 1.0f;
+        float phAold = phA; phA += dtA; if (phA >= 1.0f) { phA -= 1.0f; subFlip = 1.0f - subFlip; }
         auto waveA = [&] (float t, float dt)
         {
             float v = 0.0f; int n = 0;
@@ -408,10 +408,20 @@ private:
         prevA = a;
 
         // ---- sub oscillator (one octave below A, square, smoothed) ----
-        float freqSub = 0.5f * midiToHz (note + Q.aTune + 12.0f * (Q.aOct - 1));
-        float dtS = clampf (freqSub / osr, 1.0e-6f, 0.45f);
-        phSub += dtS; if (phSub >= 1.0f) phSub -= 1.0f;
-        float sub = naivePulse (phSub, 0.5f) + polyBlep (phSub, dtS) - polyBlep (std::fmod (phSub + 0.5f, 1.0f), dtS);
+        // Locked to A's phase (A wraps twice per sub cycle) so the two never drift against each other and the
+        // blend sounds the same on every note; follows A's pitch modulation. With hard sync it free-runs instead.
+        float dtS, sub;
+        if (! Q.aSync)
+        {
+            dtS = 0.5f * dtA; phSub = 0.5f * (phA + subFlip);
+        }
+        else
+        {
+            const float freqSub = 0.5f * midiToHz (note + Q.aTune + 12.0f * (Q.aOct - 1) + aFreqMod);
+            dtS = clampf (freqSub / osr, 1.0e-6f, 0.45f);
+            phSub += dtS; if (phSub >= 1.0f) phSub -= 1.0f;
+        }
+        sub = naivePulse (phSub, 0.5f) + polyBlep (phSub, dtS) - polyBlep (std::fmod (phSub + 0.5f, 1.0f), dtS);
         subLp += 0.12f * (sub - subLp); // rounds the sub so it stays warm, not buzzy
 
         // ---- mixer ----
@@ -449,7 +459,7 @@ private:
         y = shaper (yd * 2.0f, Q.drive, Q.xstr, Q.fuzz) * mkPQ * 0.5f * (1.0f + 0.2f * Q.xstr);
         {   // fizz control: the nastier it gets, the more the top end above ~12 kHz down to ~5 kHz is smoothed off
             const float nast = std::max (smoothstep01 ((Q.drive - 0.8f) * 5.0f), std::max (smoothstep01 ((Q.xstr - 0.8f) * 5.0f), smoothstep01 ((Q.fuzz - 0.8f) * 5.0f)));
-            const float w = 6.2831853f * (14000.0f - 9000.0f * nast) / osr;
+            const float w = 6.2831853f * (14000.0f - 10000.0f * nast) / osr;
             nLp += (w / (1.0f + w)) * (y - nLp);
             y = nLp;
         }
