@@ -226,4 +226,36 @@ private:
     std::vector<float> dl[2], gRing, mRing, hist;
 };
 
+
+// LA-2A style optical leveller: soft knee, two-stage program-dependent release, gentle makeup. Linked stereo.
+struct Opto
+{
+    void prepare (double sampleRate) { fs = (float) sampleRate; reset(); }
+    void reset() { gr1 = gr2 = mem = env = 0.0f; }
+    void setAmount (float a) { amount = std::min (1.0f, std::max (0.0f, a)); }
+    void process (float& l, float& r)
+    {
+        if (amount < 0.0005f) { gr1 = gr2 = mem = env = 0.0f; return; }
+        const float p = amount;
+        const float peak = std::max (std::fabs (l), std::fabs (r));
+        const float k = 1.0f - std::exp (-1.0f / (0.0015f * fs));
+        env += k * (peak - env);
+        const float db = 20.0f * std::log10 (std::max (env, 1.0e-5f));
+        const float thr = -6.0f - 30.0f * p, knee = 12.0f, over = db - thr;
+        float target = 0.0f;
+        if (over > knee * 0.5f) target = over * (2.0f / 3.0f);
+        else if (over > -knee * 0.5f) { const float t = over + knee * 0.5f; target = (2.0f / 3.0f) * t * t / (2.0f * knee); }
+        const float att = 1.0f - std::exp (-1.0f / (0.010f * fs));
+        const float rel1 = 1.0f - std::exp (-1.0f / (0.0866f * fs));
+        const float rel2 = 1.0f - std::exp (-1.0f / ((1.0f + 4.0f * mem) * fs));
+        gr1 += (target > gr1 ? att : rel1) * (target - gr1);
+        gr2 += (target > gr2 ? att : rel2) * (target - gr2);
+        mem += (1.0f - std::exp (-1.0f / (2.0f * fs))) * (std::min (1.0f, std::max (0.0f, 0.5f * (gr1 + gr2) / 15.0f)) - mem);
+        const float g = std::pow (10.0f, (-0.5f * (gr1 + gr2) + 6.0f * p) / 20.0f);
+        l *= g; r *= g;
+    }
+private:
+    float fs = 48000.0f, amount = 0.0f, gr1 = 0.0f, gr2 = 0.0f, mem = 0.0f, env = 0.0f;
+};
+
 } // namespace purrone

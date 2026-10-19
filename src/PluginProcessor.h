@@ -53,6 +53,7 @@ private:
     purrone::Engine engine;
     purrone::Eq3 eq;
     purrone::Reverb reverb;
+    purrone::Opto opto;
     purrone::Maximizer maximizer;
     purrone::SafetyLimiter limiter;
     std::vector<float> mono;

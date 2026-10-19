@@ -98,7 +98,7 @@ class Engine
 public:
     void prepare (double sampleRate)
     {
-        sr = (float) sampleRate; osr = sr * 2.0f; xfC = 1.0f - std::exp (-6.2831853f * 90.0f / osr);
+        sr = (float) sampleRate; osr = sr * 4.0f; xfC = 1.0f - std::exp (-6.2831853f * 90.0f / osr);
         for (auto* e : { &fenv, &aenv }) e->sr = osr;
         buildHalfband();
         reset();
@@ -106,10 +106,10 @@ public:
 
     void reset()
     {
-        smoothInit = false; bend = 0.0f; xfLp = 0.0f; lastDrive = lastXs = lastFuzz = -1.0f;
+        smoothInit = false; bend = 0.0f; xfLp = 0.0f; nLp = 0.0f; lastDrive = lastXs = lastFuzz = -1.0f;
         phA = phB = phSub = 0.0f; fenv.reset(); aenv.reset();
         for (auto& s : st) s = 0.0f;
-        lfoPh = 0.0f; hbPos = 0; hbBuf.fill (0.0f); heldCount = 0; curNote = -1; glidePitch = 60.0f;
+        lfoPh = 0.0f; hbPos = 0; hbBuf.fill (0.0f); hb1Pos = 0; hb1Buf.fill (0.0f); heldCount = 0; curNote = -1; glidePitch = 60.0f;
         prevA = 0.0f; gateOn = false; repeatPh = 0.0f; seed = 22222u; dcX = dcY = 0.0f;
     }
 
@@ -152,8 +152,8 @@ public:
         applyEnvParams();
         for (int i = 0; i < n; ++i)
         {
-            float y0 = tick2x(), y1 = tick2x();
-            out[i] = decimate (y0, y1);
+            const float z0 = tick2x(), z1 = tick2x(), z2 = tick2x(), z3 = tick2x();
+            out[i] = decimate (half1 (z0, z1), half1 (z2, z3));
         }
     }
 
@@ -161,7 +161,7 @@ private:
     static constexpr int kMaxHeld = 16;
     Params P, Q;                 // P = target values, Q = smoothed values used by the voice
     float lastDrive = -1.0f, lastXs = -1.0f, lastFuzz = -1.0f, mkT = 1.0f, mkQ = 1.0f, mkPT = 1.0f, mkPQ = 1.0f;
-    float xfLp = 0.0f, xfC = 0.012f;         // transformer low-end state, xfC set in prepare
+    float nLp = 0.0f; float xfLp = 0.0f, xfC = 0.012f;         // transformer low-end state, xfC set in prepare
     static constexpr float kPreAmt = 0.4f;   // pre-filter stage is a lighter version of the post-filter stage   // drive/fuzz loudness match
 
     // Three colour stages in series, each with its own knob:
@@ -169,21 +169,37 @@ private:
     //  Transistor: Neve-style stage. Asymmetric soft clip (the negative half rounds off earlier), so the
     //              added harmonics are mostly even and sound warm and thick, not buzzy.
     //  Fuzz: harder and lopsided on top of that.
+    // Above about 80 percent each knob gets nastier (stacked stages, octave-up fuzz) using only smooth
+    // curves, so it growls without turning into digital fizz.
+    static float smoothstep01 (float t) { t = t < 0.0f ? 0.0f : (t > 1.0f ? 1.0f : t); return t * t * (3.0f - 2.0f * t); }
+    static float asymTanh (float u, float nl) { return u >= 0.0f ? std::tanh (u) : nl * std::tanh (u / nl); }
     static float shaper (float x, float drive, float xs, float fuzz)
     {
+        const float dn = smoothstep01 ((drive - 0.8f) * 5.0f), xn = smoothstep01 ((xs - 0.8f) * 5.0f), fn = smoothstep01 ((fuzz - 0.8f) * 5.0f);
         float y = x;
-        if (drive > 0.001f) y = std::tanh (x * (1.0f + drive * 5.0f));
+        if (drive > 0.001f)
+        {
+            y = std::tanh (x * (1.0f + drive * 5.0f + dn * 9.0f));
+            if (dn > 0.0f) y += dn * (std::tanh (y * (2.0f + 4.0f * dn)) - y);          // second stage, driven by the first
+        }
         if (xs > 0.001f)
         {
-            const float nl = 1.0f - 0.3f * xs;                       // negative clip level
-            const float u = y * (1.0f + xs * 5.0f);
-            y = u >= 0.0f ? std::tanh (u) : nl * std::tanh (u / nl);
-            y += 0.3f * xs * y * y;                                   // class A style even harmonic; the DC blocker removes the offset
+            const float nl = 1.0f - 0.3f * xs - 0.25f * xn;           // negative clip level
+            const float u = y * (1.0f + xs * 5.0f + xn * 9.0f);
+            y = asymTanh (u, nl);
+            y += (0.3f * xs + 0.25f * xn) * y * y;                    // class A style even harmonic; the DC blocker removes the offset
+            if (xn > 0.0f) { const float y2 = asymTanh (y * (2.0f + 4.0f * xn) + 0.15f * xn, nl); y += xn * (y2 - y); }
         }
         if (fuzz > 0.001f)
         {
-            const float fz = 1.0f + fuzz * 14.0f, bf = 0.5f * fuzz;
+            const float fz = 1.0f + fuzz * 14.0f + fn * 26.0f, bf = 0.5f * fuzz;
             y = std::tanh (y * fz + bf) - std::tanh (bf);
+            if (fn > 0.0f)                                            // octave-up growl: smooth rectifier, no corner at zero
+            {
+                const float r = std::sqrt (y * y + 0.02f) - 0.1414f;
+                y += fn * 0.7f * (r - 0.3f);
+                y = std::tanh (y * (1.0f + 0.8f * fn));               // stage 3 tames what the rectifier added
+            }
         }
         return y;
     }
@@ -199,10 +215,10 @@ private:
             a += (double) y0 * y0; b += (double) y1 * y1;
         }
         const float m = b > 1.0e-9 ? (float) std::sqrt (a / b) : 1.0f;
-        return m < 0.25f ? 0.25f : (m > 2.0f ? 2.0f : m);
+        return m < 0.25f ? 0.25f : (m > 4.0f ? 4.0f : m);
     }
     bool smoothInit = false; float bend = 0.0f;
-    float sr = 48000.0f, osr = 96000.0f;
+    float sr = 48000.0f, osr = 192000.0f;   // voice runs at 4x; two halfband stages bring it back down
     float phA = 0, phB = 0, phSub = 0, lfoPh = 0, prevA = 0, repeatPh = 0;
     float st[4] = { 0, 0, 0, 0 };
     Adsr fenv, aenv;
@@ -219,8 +235,31 @@ private:
     std::array<float, kTaps> hbBuf {};
     int hbPos = 0;
 
+    // first decimation stage: 4x to 2x, short windowed sinc (cutoff 0.2 of the 4x rate)
+    static constexpr int kTaps1 = 31;
+    std::array<float, kTaps1> hb1 {}, hb1Buf {};
+    int hb1Pos = 0;
+    float half1 (float a, float b)
+    {
+        hb1Buf[(size_t) hb1Pos] = a; hb1Pos = (hb1Pos + 1) % kTaps1;
+        hb1Buf[(size_t) hb1Pos] = b; hb1Pos = (hb1Pos + 1) % kTaps1;
+        float acc = 0.0f; int idx = hb1Pos;
+        for (int k = 0; k < kTaps1; ++k) { idx = (idx + kTaps1 - 1) % kTaps1; acc += hb1[(size_t) k] * hb1Buf[(size_t) idx]; }
+        return acc;
+    }
     void buildHalfband()
     {
+        {
+            double sum1 = 0.0; const int M1 = kTaps1 - 1;
+            for (int i = 0; i < kTaps1; ++i)
+            {
+                const double x = i - M1 * 0.5, fcn = 0.2;
+                const double s = (x == 0.0) ? 2.0 * fcn : std::sin (2.0 * kPi * fcn * x) / (kPi * x);
+                const double w = 0.35875 - 0.48829 * std::cos (2 * kPi * i / M1) + 0.14128 * std::cos (4 * kPi * i / M1) - 0.01168 * std::cos (6 * kPi * i / M1);
+                hb1[(size_t) i] = (float) (s * w); sum1 += s * w;
+            }
+            for (auto& c : hb1) c = (float) (c / sum1);
+        }
         // windowed sinc lowpass at fs_out/2 (= osr/4), Blackman-Harris window, unity DC gain
         double sum = 0.0; const int M = kTaps - 1;
         for (int i = 0; i < kTaps; ++i)
@@ -391,7 +430,7 @@ private:
         float S = G * G * G * (st[0] / (1.0f + g)) + G * G * (st[1] / (1.0f + g)) + G * (st[2] / (1.0f + g)) + st[3] / (1.0f + g);
         // drive and fuzz in front of the filter, level matched
         float x = shaper (mix, Q.drive * kPreAmt, Q.xstr * kPreAmt, Q.fuzz * kPreAmt) * mkQ;
-        x += rnd() * 2.0e-4f;
+        x += rnd() * 2.0e-4f * smoothstep01 ((Q.reso - 0.85f) * 6.6f);   // seed for self-oscillation only
         float u = (x - k * S) / (1.0f + k * G4);
         float v;
         float in = std::tanh (u);               // keeps resonance from spiking
@@ -408,6 +447,12 @@ private:
         xfLp += xfC * (y - xfLp);
         const float yd = y + 0.6f * Q.xstr * xfLp;
         y = shaper (yd * 2.0f, Q.drive, Q.xstr, Q.fuzz) * mkPQ * 0.5f * (1.0f + 0.2f * Q.xstr);
+        {   // fizz control: the nastier it gets, the more the top end above ~12 kHz down to ~5 kHz is smoothed off
+            const float nast = std::max (smoothstep01 ((Q.drive - 0.8f) * 5.0f), std::max (smoothstep01 ((Q.xstr - 0.8f) * 5.0f), smoothstep01 ((Q.fuzz - 0.8f) * 5.0f)));
+            const float w = 6.2831853f * (14000.0f - 9000.0f * nast) / osr;
+            nLp += (w / (1.0f + w)) * (y - nLp);
+            y = nLp;
+        }
         y *= 1.0f + 0.35f * Q.reso;             // keep bass weight when resonance rises (R)
         y *= ae * Q.volume * 1.4f;
         return y;

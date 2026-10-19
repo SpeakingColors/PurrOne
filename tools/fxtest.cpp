@@ -46,6 +46,14 @@ int main()
         }
         std::snprintf (d, sizeof d, "worst deviation %.2f dB over 30 Hz to 12 kHz", worst); check ("crossover sum is flat", worst < 0.5, d);
     }
+    { // opto: loud tone gets reduced more than a quiet one, off is transparent, no NaN
+        Opto o; o.prepare (sr); o.setAmount (0.6f);
+        auto run = [&] (double amp) { std::vector<float> y; for (int n = 0; n < 96000; ++n) { float l = sine (n, 110, amp), r = l; o.process (l, r); y.push_back (l); } return rmsDb (y, 48000); };
+        double lo = run (0.02); o = Opto(); o.prepare (sr); o.setAmount (0.6f); double hi = run (0.7);
+        double inSpread = 20 * std::log10 (0.7 / 0.02);
+        std::snprintf (d, sizeof d, "level spread in %.1f dB, out %.1f dB", inSpread, hi - lo); check ("opto narrows level spread", (hi - lo) < inSpread - 6.0 && std::isfinite (hi), d);
+        Opto off; off.prepare (sr); float l = 0.3f, r = 0.3f; off.process (l, r); check ("opto off is transparent", l == 0.3f && r == 0.3f, "exact");
+    }
     { // maximizer at full: steady loud and quiet tones both end up closer in level; no NaN
         Maximizer m; m.prepare (sr); m.setAmount (1.0f); double lo, hi;
         auto run = [&] (double amp) { std::vector<float> y; for (int n = 0; n < 96000; ++n) { float l = sine (n, 220, amp), r = l; m.process (l, r); y.push_back (l); } return rmsDb (y, 48000); };

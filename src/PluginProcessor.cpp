@@ -21,6 +21,7 @@ void PurrOneProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
     engine.prepare (sampleRate);
     eq.prepare (sampleRate);
     reverb.prepare (sampleRate);
+    opto.prepare (sampleRate);
     maximizer.prepare (sampleRate);
     limiter.prepare (sampleRate, -1.0f);
     mono.assign ((size_t) std::max (samplesPerBlock, 1) + 64, 0.0f);
@@ -57,6 +58,7 @@ void PurrOneProcessor::applyParams()
     eq.setGains (raw (a, ids::eqLo), raw (a, ids::eqMid), raw (a, ids::eqHi));
     reverb.setParams (raw (a, ids::verbSize), raw (a, ids::verbHP));
     verbMixSm.setTargetValue (raw (a, ids::verbMix));
+    opto.setAmount (raw (a, ids::opto));
     maximizer.setAmount (raw (a, ids::maxAmt));
     limiter.setEnabled (raw (a, ids::safety) > 0.5f);
 }
@@ -94,6 +96,7 @@ void PurrOneProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mid
         float wl, wr; reverb.process (x, wl, wr);
         float mixv = verbMixSm.getNextValue();
         float l = x * (1.0f - mixv * 0.3f) + wl * mixv * 1.4f, r = x * (1.0f - mixv * 0.3f) + wr * mixv * 1.4f;
+        opto.process (l, r);
         maximizer.process (l, r);
         limiter.process (l, r);
         if (! std::isfinite (l) || ! std::isfinite (r)) { l = r = 0.0f; engine.reset(); }
