@@ -42,9 +42,11 @@ public:
     bool loadUserPreset (const juce::String& name);
 
     juce::AudioProcessorValueTreeState apvts;
+    juce::MidiKeyboardState keyState;                      // on-screen keyboard, mixed into the MIDI input
     std::atomic<float> meterL { 0.0f }, meterR { 0.0f };
     std::atomic<bool> clipped { false };
     juce::String currentPresetName { "Init" };
+    int editorWidth = 1360;                                // window width, remembered while the host session runs
 
 private:
     void applyParams();

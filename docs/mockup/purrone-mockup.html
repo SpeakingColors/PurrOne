@@ -295,7 +295,7 @@ canvas.disp { width: 100%; height: 64px; display: block; background: #0a0a0c; bo
   function mkKnob(d) {
     var wrap = document.createElement("div"); wrap.className = "knobwrap";
     var lab = document.createElement("label"); lab.textContent = d.label; lab.id = "l_" + d.id;
-    var k = document.createElement("div"); k.className = "knob"; k.tabIndex = 0; k.setAttribute("role", "slider"); k.setAttribute("aria-labelledby", lab.id);
+    var k = document.createElement("div"); k.className = "knob"; k.tabIndex = 0; k.setAttribute("role", "slider"); k.setAttribute("aria-labelledby", lab.id); k.dataset.id = d.id;
     k.innerHTML = '<svg viewBox="0 0 54 54"><path class="trk" d="" fill="none" stroke="#33353d" stroke-width="3" stroke-linecap="round"/><path class="val" d="" fill="none" stroke="var(--led-green)" stroke-width="3" stroke-linecap="round"/></svg><div class="tick"></div>';
     var out = document.createElement("output");
     wrap.appendChild(lab); wrap.appendChild(k); wrap.appendChild(out);
@@ -319,12 +319,12 @@ canvas.disp { width: 100%; height: 64px; display: block; background: #0a0a0c; bo
     var b = document.createElement("button"); b.className = "led-sw"; b.style.setProperty("--c", d.c || "var(--led-green)");
     b.innerHTML = "<i></i>" + d.label; b.setAttribute("aria-pressed", "false");
     b.addEventListener("click", function () { setParam(d.id, !S[d.id]); });
-    ctlWraps[d.id] = b; attachTip(b, d); return b;
+    b.dataset.id = d.id; ctlWraps[d.id] = b; attachTip(b, d); return b;
   }
   function mkGroup(d) {
     var w = document.createElement("div"); w.className = "seg"; w.setAttribute("role", "group"); w.setAttribute("aria-label", d.label);
     d.opts.forEach(function (o, i) { var b = document.createElement("button"); b.textContent = o; b.setAttribute("aria-pressed", "false"); b.addEventListener("click", function () { setParam(d.id, i); }); w.appendChild(b); });
-    ctlWraps[d.id] = w; attachTip(w, d); return w;
+    w.dataset.id = d.id; ctlWraps[d.id] = w; attachTip(w, d); return w;
   }
   function clamp(x, a, b) { return x < a ? a : x > b ? b : x; }
   function norm(d, v) { return d.log ? Math.log(v / d.min) / Math.log(d.max / d.min) : (v - d.min) / (d.max - d.min); }
@@ -355,7 +355,7 @@ canvas.disp { width: 100%; height: 64px; display: block; background: #0a0a0c; bo
     mx.appendChild(mkKnob(d));
     var seg = document.createElement("div"); seg.className = "seg"; seg.setAttribute("role", "group"); seg.setAttribute("aria-label", s[0] + " route");
     ["Off", "Direct", "Wheel"].forEach(function (o, i) { var b = document.createElement("button"); b.textContent = o; b.addEventListener("click", function () { setParam(s[1] + "R", i); }); seg.appendChild(b); });
-    DEF[s[1] + "R"] = 0; ctlWraps[s[1] + "R"] = seg; mx.appendChild(seg);
+    DEF[s[1] + "R"] = 0; seg.dataset.id = s[1] + "R"; ctlWraps[s[1] + "R"] = seg; mx.appendChild(seg);
   });
   modHost.appendChild(mx);
   var dl = document.createElement("div"); dl.className = "ctl-row"; dl.innerHTML = '<span class="lab">Destinations</span>'; modHost.appendChild(dl);
@@ -363,7 +363,7 @@ canvas.disp { width: 100%; height: 64px; display: block; background: #0a0a0c; bo
     var seg = document.createElement("div"); seg.className = "seg"; seg.title = d[0]; seg.setAttribute("role", "group"); seg.setAttribute("aria-label", d[0] + " destination");
     var lab = document.createElement("button"); lab.textContent = d[0]; lab.title = "Click to cycle Off, Direct, Wheel"; lab.addEventListener("click", function () { setParam("dest" + d[1], (S["dest" + d[1]] + 1) % 3); }); seg.appendChild(lab);
     ["Off", "Dir", "Whl"].forEach(function (o, i) { var b = document.createElement("button"); b.textContent = o; b.addEventListener("click", function () { setParam("dest" + d[1], i); }); seg.appendChild(b); });
-    DEF["dest" + d[1]] = d[1] === 4 ? 0 : 0; ctlWraps["dest" + d[1]] = seg; dl.appendChild(seg);
+    DEF["dest" + d[1]] = d[1] === 4 ? 0 : 0; seg.dataset.id = "dest" + d[1]; ctlWraps["dest" + d[1]] = seg; dl.appendChild(seg);
   });
   Object.keys(DEF).forEach(function (k) { S[k] = DEF[k]; });
 

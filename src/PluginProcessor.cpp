@@ -69,6 +69,7 @@ void PurrOneProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mid
     const int n = buffer.getNumSamples();
     if ((int) mono.size() < n) return;                       // prepareToPlay not called with a big enough block; stay silent instead of allocating
     buffer.clear();
+    keyState.processNextMidiBuffer (midi, 0, n, true);       // notes played on the editor keyboard
 
     int pos = 0;
     auto renderTo = [&] (int end)

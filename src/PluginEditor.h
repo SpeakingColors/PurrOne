@@ -1,26 +1,37 @@
 #pragma once
 #include "PluginProcessor.h"
+#include "ui/Widgets.h"
 
-// Working editor: preset manager, parameter list, output meter, wood cheeks. The final interface follows docs/mockup.
+// The PurrOne window. Layout, colours and wording follow docs/mockup/purrone-mockup.html; it is drawn in a fixed
+// 1700 x 828 space and scaled to the window size (aspect ratio locked).
 class PurrOneEditor : public juce::AudioProcessorEditor, private juce::Timer
 {
 public:
     explicit PurrOneEditor (PurrOneProcessor&);
     ~PurrOneEditor() override;
-    void paint (juce::Graphics&) override;
     void resized() override;
+    void paint (juce::Graphics& g) override { g.fillAll (purrone::ui::col::ground); }
 private:
+    struct Look; struct Content; struct Button; struct NameBox; struct Check;
     void timerCallback() override;
-    void refreshPresetBox();
+    void refreshNames();
     void step (int dir);
+    void openList();
+    void beginRename();
+    void commitRename();
+    void saveDialog();
+    void saveNamed (const juce::String& name);
+    void cycleZoom();
 
     PurrOneProcessor& proc;
-    void mouseDoubleClick (const juce::MouseEvent& e) override { if (e.eventComponent == &presetBox || presetBox.isParentOf (e.eventComponent)) renameBtn.onClick(); }
-    juce::ComboBox presetBox; juce::TextButton prevBtn { "<" }, nextBtn { ">" }, saveBtn { "Save" }, renameBtn { "Rename" };
-    juce::GenericAudioProcessorEditor generic;
-    float dispL = 0, dispR = 0, holdL = 0, holdR = 0; int clipFrames = 0;
-    juce::Rectangle<int> meterArea;
-    juce::StringArray userNames;
-    std::unique_ptr<juce::AlertWindow> saveDialog;
+    purrone::ui::Bubbles bubbles;
+    std::unique_ptr<Look> look;
+    std::unique_ptr<Content> content;
+    std::unique_ptr<juce::TooltipWindow> tooltip;
+    juce::ComponentBoundsConstrainer constrainer;
+    std::unique_ptr<juce::ResizableCornerComponent> corner;
+    juce::StringArray names;           // factory first, then user presets
+    int numFactory = 0;
+    std::unique_ptr<juce::AlertWindow> dialog;
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (PurrOneEditor)
 };
