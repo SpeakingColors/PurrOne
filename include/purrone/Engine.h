@@ -72,6 +72,7 @@ struct Params
     float mixA = 0.8f, mixB = 0.0f, mixNoise = 0.0f, mixSub = 0.0f;
     // Filter
     float cutoffHz = 3000.0f, reso = 0.1f, fenvAmt = 0.0f, kbdAmt = 0.5f; // fenvAmt -1..1
+    int   filterMode = 0;   // 0 low pass, 1 high pass (same 4 pole ladder, outputs combined)
     // Envelopes: knob 0..1 for times, sustain 0..1
     float fA = 0.0f, fD = 0.4f, fS = 0.3f, fR = 0.3f;
     float aA = 0.0f, aD = 0.4f, aS = 0.8f, aR = 0.3f;
@@ -444,14 +445,16 @@ private:
         float u = (x - k * S) / (1.0f + k * G4);
         float v;
         float in = std::tanh (u);               // keeps resonance from spiking
+        const float in0 = in; float tap[4];
         for (int i = 0; i < 4; ++i)
         {
             v = (in - st[i]) * G;
             float lp = v + st[i];
             st[i] = lp + v;
-            in = lp;
+            in = lp; tap[i] = lp;
         }
-        float y = in;
+        // low pass is the last stage; high pass is the same cascade subtracted from the input: (1 - H)^4 = 1 - 4H + 6H^2 - 4H^3 + H^4
+        float y = Q.filterMode == 1 ? in0 - 4.0f * tap[0] + 6.0f * tap[1] - 4.0f * tap[2] + tap[3] : in;
         // grit after the filter, so the new harmonics are not filtered away again; level matched
         // transformer-style weight: a little of the low end (about 90 Hz and below) is pushed harder into the stage
         xfLp += xfC * (y - xfLp);
@@ -485,7 +488,7 @@ private:
         Q.glide = P.glide; Q.glideAuto = P.glideAuto; Q.lfoSaw = P.lfoSaw; Q.lfoTri = P.lfoTri; Q.lfoPulse = P.lfoPulse;
         for (int i = 0; i < 3; ++i) Q.modRoute[i] = P.modRoute[i];
         for (int i = 0; i < 5; ++i) Q.modDest[i] = P.modDest[i];
-        Q.retrig = P.retrig; Q.repeat = P.repeat; Q.drone = P.drone;
+        Q.retrig = P.retrig; Q.repeat = P.repeat; Q.drone = P.drone; Q.filterMode = P.filterMode;
     }
 
     static float midiToHz (float n) { return 440.0f * std::exp2 ((n - 69.0f) / 12.0f); }

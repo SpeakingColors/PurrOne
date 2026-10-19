@@ -31,13 +31,13 @@ inline constexpr Knob knobs[] = {
   { "mixB", "OSC B", { 783,104,62,74 }, { 792,118,44,44 }, 'P', "" },
   { "mixSub", "SUB", { 713,188,62,74 }, { 722,202,44,44 }, 'P', "Soft square one octave under A. Rounded on purpose so it stays warm, not buzzy." },
   { "mixNoise", "NOISE", { 783,188,62,74 }, { 792,202,44,44 }, 'P', "" },
-  { "cutoff", "CUTOFF", { 906,176,62,74 }, { 915,190,44,44 }, 'C', "Where the sound gets darker. A lead starts around 12 kHz open; basses live far lower." },
-  { "reso", "RESO", { 976,176,62,74 }, { 985,190,44,44 }, 'P', "Emphasis at the cutoff. Full turn makes the filter sing on its own." },
-  { "fenvAmt", "ENV AMT", { 1046,176,62,74 }, { 1055,190,44,44 }, 'E', "How far the filter envelope opens the cutoff." },
-  { "kbd", "KEY TRACK", { 1116,176,62,74 }, { 1128,190,44,44 }, 'P', "Higher notes open the filter more. About 50% keeps the tone even." },
-  { "drive", "DRIVE", { 1186,176,62,74 }, { 1195,190,44,44 }, 'P', "Analog clip: a symmetric soft clip, the classic overdriven-opamp sound. Mostly odd harmonics. Past 80% it gets nasty, still smooth." },
-  { "xstr", "TRANSISTOR", { 1256,176,62,74 }, { 1273,190,44,44 }, 'P', "Neve-style transistor stage: asymmetric soft clip, warm even harmonics and some extra low-end weight. Low is warm; high gets thick. Past 80% it gets nasty, still smooth." },
-  { "fuzz", "FUZZ", { 1326,176,62,74 }, { 1335,190,44,44 }, 'P', "Harder, lopsided fuzz. Past 80% it adds an octave-up growl, still smooth." },
+  { "cutoff", "CUTOFF", { 906,186,62,74 }, { 915,200,44,44 }, 'C', "Where the sound gets darker. A lead starts around 12 kHz open; basses live far lower." },
+  { "reso", "RESO", { 976,186,62,74 }, { 985,200,44,44 }, 'P', "Emphasis at the cutoff. Full turn makes the filter sing on its own." },
+  { "fenvAmt", "ENV AMT", { 1046,186,62,74 }, { 1055,200,44,44 }, 'E', "How far the filter envelope opens the cutoff." },
+  { "kbd", "KEY TRACK", { 1116,186,62,74 }, { 1128,200,44,44 }, 'P', "Higher notes open the filter more. About 50% keeps the tone even." },
+  { "drive", "DRIVE", { 1186,186,62,74 }, { 1195,200,44,44 }, 'P', "Analog clip: a symmetric soft clip, the classic overdriven-opamp sound. Mostly odd harmonics. Past 80% it gets nasty, still smooth." },
+  { "xstr", "TRANSISTOR", { 1256,186,62,74 }, { 1273,200,44,44 }, 'P', "Neve-style transistor stage: asymmetric soft clip, warm even harmonics and some extra low-end weight. Low is warm; high gets thick. Past 80% it gets nasty, still smooth." },
+  { "fuzz", "FUZZ", { 1326,186,62,74 }, { 1335,200,44,44 }, 'P', "Harder, lopsided fuzz. Past 80% it adds an octave-up growl, still smooth." },
   { "bTune", "TUNE", { 411,414,62,74 }, { 420,428,44,44 }, 'S', "Fine pitch of B in semitones." },
   { "bPW", "WIDTH", { 481,414,62,74 }, { 490,428,44,44 }, 'P', "" },
   { "glide", "GLIDE", { 713,446,62,74 }, { 722,460,44,44 }, 'G', "Slides between notes." },
@@ -116,6 +116,8 @@ inline constexpr Btn segBtns[] = {
   { "8'", { 449,105,29,24 } },
   { "4'", { 479,105,29,24 } },
   { "2'", { 508,105,29,24 } },
+  { "LP", { 1042,81,35,24 } },
+  { "HP", { 1077,81,37,24 } },
   { "16'", { 412,317,37,24 } },
   { "8'", { 449,317,29,24 } },
   { "4'", { 479,317,29,24 } },
@@ -131,8 +133,9 @@ inline constexpr Seg segs[] = {
   { "dest3", { 61,434,213,26 }, 21, 4, true, "" },
   { "dest4", { 61,466,202,26 }, 25, 4, true, "" },
   { "aOct", { 411,104,127,26 }, 29, 4, false, "Octave range of oscillator A." },
-  { "bOct", { 411,316,127,26 }, 33, 4, false, "Octave range of oscillator B." },
+  { "fMode", { 1041,80,74,26 }, 33, 2, false, "Low pass keeps the lows (the classic bass filter). High pass keeps the highs and removes the lows, for thin plucks and risers." },
+  { "bOct", { 411,316,127,26 }, 35, 4, false, "Octave range of oscillator B." },
 };
 struct Misc { R header, brand, prev, pname, next, save, rename, init, bubbles, zoom, meter, barL, barR, scale, keys, status, cheekL, cheekR, filt, fenv, aenv, eq, panel; };
-inline constexpr Misc misc = { { 50,10,1600,51 }, { 50,10,193,38 }, { 259,14,33,31 }, { 298,13,710,32 }, { 1014,14,33,31 }, { 1053,14,63,31 }, { 1121,14,87,31 }, { 1214,14,53,31 }, { 1283,20,129,19 }, { 1424,14,74,31 }, { 1500,415,150,260 }, { 1536,450,18,193 }, { 1558,450,18,193 }, { 1580,450,34,193 }, { 61,694,1578,64 }, { 61,766,1578,15 }, { 0,0,36,828 }, { 1664,0,36,828 }, { 906,104,573,64 }, { 906,316,270,64 }, { 1209,316,270,64 }, { 906,542,270,40 }, { 36,0,1628,828 } };
+inline constexpr Misc misc = { { 50,10,1600,51 }, { 50,10,193,38 }, { 259,14,33,31 }, { 298,13,710,32 }, { 1014,14,33,31 }, { 1053,14,63,31 }, { 1121,14,87,31 }, { 1214,14,53,31 }, { 1283,20,129,19 }, { 1424,14,74,31 }, { 1500,415,150,260 }, { 1536,450,18,193 }, { 1558,450,18,193 }, { 1580,450,34,193 }, { 61,694,1578,64 }, { 61,766,1578,15 }, { 0,0,36,828 }, { 1664,0,36,828 }, { 906,114,573,64 }, { 906,316,270,64 }, { 1209,316,270,64 }, { 906,542,270,40 }, { 36,0,1628,828 } };
 }

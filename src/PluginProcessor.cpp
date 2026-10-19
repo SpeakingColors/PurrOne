@@ -41,7 +41,7 @@ void PurrOneProcessor::applyParams()
     p.bOct = (int) raw (a, ids::bOct); p.bTune = raw (a, ids::bTune); p.bSaw = raw (a, ids::bSaw) > 0.5f; p.bTri = raw (a, ids::bTri) > 0.5f; p.bPulse = raw (a, ids::bPulse) > 0.5f; p.bPW = raw (a, ids::bPW);
     p.bLow = raw (a, ids::bLow) > 0.5f; p.bKbd = raw (a, ids::bKbd) > 0.5f;
     p.mixA = raw (a, ids::mixA); p.mixB = raw (a, ids::mixB); p.mixSub = raw (a, ids::mixSub); p.mixNoise = raw (a, ids::mixNoise);
-    p.cutoffHz = raw (a, ids::cutoff); p.reso = raw (a, ids::reso); p.fenvAmt = raw (a, ids::fenvAmt); p.kbdAmt = raw (a, ids::kbd);
+    p.filterMode = (int) std::lround (raw (a, ids::fMode)); p.cutoffHz = raw (a, ids::cutoff); p.reso = raw (a, ids::reso); p.fenvAmt = raw (a, ids::fenvAmt); p.kbdAmt = raw (a, ids::kbd);
     p.fA = raw (a, ids::fA); p.fD = raw (a, ids::fD); p.fS = raw (a, ids::fS); p.fR = raw (a, ids::fR);
     p.aA = raw (a, ids::aA); p.aD = raw (a, ids::aD); p.aS = raw (a, ids::aS); p.aR = raw (a, ids::aR);
     p.glide = raw (a, ids::glide); p.glideAuto = raw (a, ids::glideAuto) > 0.5f;

@@ -13,7 +13,7 @@ namespace purrone::ids
     inline constexpr const char* bLow = "bLow"; inline constexpr const char* bKbd = "bKbd";
     inline constexpr const char* mixA = "mixA"; inline constexpr const char* mixB = "mixB"; inline constexpr const char* mixSub = "mixSub"; inline constexpr const char* mixNoise = "mixNoise";
     // filter and envelopes
-    inline constexpr const char* cutoff = "cutoff"; inline constexpr const char* reso = "reso"; inline constexpr const char* fenvAmt = "fenvAmt"; inline constexpr const char* kbd = "kbd";
+    inline constexpr const char* fMode = "fMode"; inline constexpr const char* cutoff = "cutoff"; inline constexpr const char* reso = "reso"; inline constexpr const char* fenvAmt = "fenvAmt"; inline constexpr const char* kbd = "kbd";
     inline constexpr const char* fA = "fA"; inline constexpr const char* fD = "fD"; inline constexpr const char* fS = "fS"; inline constexpr const char* fR = "fR";
     inline constexpr const char* aA = "aA"; inline constexpr const char* aD = "aD"; inline constexpr const char* aS = "aS"; inline constexpr const char* aR = "aR";
     // lfo, matrix, keyboard
@@ -48,6 +48,7 @@ inline juce::AudioProcessorValueTreeState::ParameterLayout createLayout()
     b (ids::bLow, "B Low Freq", false); b (ids::bKbd, "B Keys", true);
     lin (ids::mixA, "Mix A", 0, 1, 0.7f); lin (ids::mixB, "Mix B", 0, 1, 0.7f); lin (ids::mixSub, "Mix Sub", 0, 1, 0.4f); lin (ids::mixNoise, "Mix Noise", 0, 1, 0.0f);
 
+    p.push_back (std::make_unique<C> (pid (ids::fMode), "Filter Mode", StringArray { "LP", "HP" }, 0));
     { NormalisableRange<float> r (20.0f, 20000.0f); r.setSkewForCentre (1000.0f); p.push_back (std::make_unique<F> (pid (ids::cutoff), "Cutoff", r, 585.0f)); }
     lin (ids::reso, "Resonance", 0, 1, 0.3f); lin (ids::fenvAmt, "Filter Env Amount", -1, 1, 0.2f); lin (ids::kbd, "Key Track", 0, 1, 0.5f);
     lin (ids::fA, "F Attack", 0, 1, 0.0f); lin (ids::fD, "F Decay", 0, 1, 0.45f); lin (ids::fS, "F Sustain", 0, 1, 0.5f); lin (ids::fR, "F Release", 0, 1, 0.3f);

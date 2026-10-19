@@ -196,7 +196,7 @@ public:
     {
         switch (kind)
         {
-            case filter: return v (ids::cutoff) * 1.0f + v (ids::reso) * 7919.0f;
+            case filter: return v (ids::cutoff) * 1.0f + v (ids::reso) * 7919.0f + v (ids::fMode) * 104729.0f;
             case fenv:   return v (ids::fA) + v (ids::fD) * 3.0f + v (ids::fS) * 5.0f + v (ids::fR) * 7.0f;
             case aenv:   return v (ids::aA) + v (ids::aD) * 3.0f + v (ids::aS) * 5.0f + v (ids::aR) * 7.0f;
             default:     return v (ids::eqLo) + v (ids::eqMid) * 31.0f + v (ids::eqHi) * 977.0f;
@@ -233,7 +233,7 @@ private:
         Path p; const int n = 160;
         for (int i = 0; i < n; ++i)
         {
-            const float fr = 20.0f * std::pow (1000.0f, (float) i / (n - 1)), m = st (fr / f0, q1) * st (fr / f0, q2);
+            const float fr = 20.0f * std::pow (1000.0f, (float) i / (n - 1)), ww = v (ids::fMode) > 0.5f ? f0 / fr : fr / f0, m = st (ww, q1) * st (ww, q2);
             const float y = h - jlimit (0.0f, 1.0f, (20.0f * std::log10 (m + 1.0e-6f) + 40.0f) / 64.0f) * h, x = (float) i / (n - 1) * w;
             if (i) p.lineTo (x, y); else p.startNewSubPath (x, y);
         }
