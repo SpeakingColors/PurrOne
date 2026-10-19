@@ -2,10 +2,6 @@
 ; Files are staged in ..\stage by the release workflow. Works offline.
 ; The uninstaller removes everything it installed. Your saved presets (%APPDATA%\Studio 87\PurrOne) are kept
 ; unless you answer Yes when it asks. A silent uninstall (/SILENT, /VERYSILENT) always keeps them.
-[Messages]
-SelectDirLabel3=Setup will install the PurrOne standalone app and the manual into the following folder.
-SelectDirBrowseLabel=The VST3 plugin for your DAW is installed separately into C:\Program Files\Common Files\VST3 and does not use this folder. Click Next to continue, or Browse to change the folder for the standalone app.
-
 [Setup]
 AppName={#Product}
 AppVersion={#Version}
@@ -46,14 +42,20 @@ Type: files; Name: "{userappdata}\{#Product}.settings"
 [Code]
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 var
-  presets, vendor: String;
+  presets, vendor, oldPresets, oldVendor: String;
 begin
   if CurUninstallStep <> usPostUninstall then exit;
   presets := ExpandConstant('{userappdata}\Studio 87\{#Product}');
   vendor := ExpandConstant('{userappdata}\Studio 87');
-  if DirExists(presets) and (not UninstallSilent) then
+  oldPresets := ExpandConstant('{userappdata}\SpeakingColors\{#Product}');   { pre-rebrand folder }
+  oldVendor := ExpandConstant('{userappdata}\SpeakingColors');
+  if (DirExists(presets) or DirExists(oldPresets)) and (not UninstallSilent) then
     if MsgBox('Also delete your saved {#Product} presets?' + #13#10 + #13#10 + presets + #13#10 + #13#10 +
               'Choose No to keep them (recommended if you plan to reinstall).', mbConfirmation, MB_YESNO or MB_DEFBUTTON2) = IDYES then
-      DelTree(presets, True, True, True);
+      begin
+        DelTree(presets, True, True, True);
+        DelTree(oldPresets, True, True, True);
+      end;
   RemoveDir(vendor);   { only succeeds when empty }
+  RemoveDir(oldVendor);
 end;

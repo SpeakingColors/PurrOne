@@ -131,7 +131,15 @@ juce::String PurrOneProcessor::sanitize (const juce::String& n)
 }
 juce::File PurrOneProcessor::userPresetDir()
 {
-    return juce::File::getSpecialLocation (juce::File::userApplicationDataDirectory).getChildFile ("Studio 87").getChildFile ("PurrOne").getChildFile ("presets");
+    const auto base = juce::File::getSpecialLocation (juce::File::userApplicationDataDirectory);
+    const auto dir = base.getChildFile ("Studio 87").getChildFile ("PurrOne").getChildFile ("presets");
+    const auto old = base.getChildFile ("SpeakingColors").getChildFile ("PurrOne").getChildFile ("presets");   // pre-rebrand location
+    if (! dir.isDirectory() && old.isDirectory())   // first run after the rebrand: copy (never move or delete) the user's old presets
+    {
+        dir.createDirectory();
+        for (auto& f : old.findChildFiles (juce::File::findFiles, false, "*.purrone")) f.copyFileTo (dir.getChildFile (f.getFileName()));
+    }
+    return dir;
 }
 juce::StringArray PurrOneProcessor::listUserPresets() const
 {
