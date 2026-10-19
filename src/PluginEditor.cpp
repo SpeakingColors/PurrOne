@@ -21,7 +21,17 @@ PurrOneEditor::PurrOneEditor (PurrOneProcessor& p) : AudioProcessorEditor (&p), 
         saveDialog->addButton ("Save", 1, juce::KeyPress (juce::KeyPress::returnKey)); saveDialog->addButton ("Cancel", 0, juce::KeyPress (juce::KeyPress::escapeKey));
         saveDialog->enterModalState (true, juce::ModalCallbackFunction::create ([this] (int r)
         {
-            if (r == 1 && saveDialog != nullptr) { proc.saveUserPreset (saveDialog->getTextEditorContents ("name")); refreshPresetBox(); }
+            if (r == 1 && saveDialog != nullptr)
+            {
+                const auto nm = saveDialog->getTextEditorContents ("name");
+                if (proc.listUserPresets().contains (juce::File::createLegalFileName (nm.trim()).substring (0, 60)))   // never overwrite silently
+                {
+                    juce::AlertWindow::showAsync (juce::MessageBoxOptions().withIconType (juce::MessageBoxIconType::QuestionIcon).withTitle ("Overwrite sound?")
+                        .withMessage ("A sound called \"" + nm + "\" already exists. Overwrite it with the current settings?").withButton ("Overwrite").withButton ("Cancel"),
+                        [this, nm] (int pick) { if (pick == 1) { proc.saveUserPreset (nm); refreshPresetBox(); } });
+                }
+                else { proc.saveUserPreset (nm); refreshPresetBox(); }
+            }
             saveDialog.reset();
         }), false);
     };
@@ -38,6 +48,7 @@ PurrOneEditor::PurrOneEditor (PurrOneProcessor& p) : AudioProcessorEditor (&p), 
             saveDialog.reset();
         }), false);
     };
+    presetBox.addMouseListener (this, true);   // double click the name to rename
     setResizable (true, true); setResizeLimits (720, 480, 1600, 1200); setSize (980, 760);
     startTimerHz (30);
 }

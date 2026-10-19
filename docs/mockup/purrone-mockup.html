@@ -350,12 +350,12 @@ canvas.disp { width: 100%; height: 64px; display: block; background: #0a0a0c; bo
   var dsts = [["A freq", 0], ["A width", 1], ["B freq", 2], ["B width", 3], ["Filter", 4]];
   var modHost = $("#secMod"); var mx = document.createElement("div"); mx.className = "matrix";
   srcs.forEach(function (s) {
-    DEFS.push({ t: "k", id: s[1], sec: "", label: s[0], min: 0, max: 1, def: s[1] === "mLfo" ? 0.25 : 0, fmt: pct, tip: "How much of this source goes into the modulation paths." }); DEF[s[1]] = s[1] === "mLfo" ? 0.25 : 0;
+    DEFS.push({ t: "k", id: s[1], sec: "", label: s[0], min: 0, max: 1, def: 0, fmt: pct, tip: "How much of this source goes into the modulation paths." }); DEF[s[1]] = 0;
     var d = DEFS[DEFS.length - 1];
     mx.appendChild(mkKnob(d));
     var seg = document.createElement("div"); seg.className = "seg"; seg.setAttribute("role", "group"); seg.setAttribute("aria-label", s[0] + " route");
     ["Off", "Direct", "Wheel"].forEach(function (o, i) { var b = document.createElement("button"); b.textContent = o; b.addEventListener("click", function () { setParam(s[1] + "R", i); }); seg.appendChild(b); });
-    DEF[s[1] + "R"] = s[1] === "mLfo" ? 1 : 0; ctlWraps[s[1] + "R"] = seg; mx.appendChild(seg);
+    DEF[s[1] + "R"] = 0; ctlWraps[s[1] + "R"] = seg; mx.appendChild(seg);
   });
   modHost.appendChild(mx);
   var dl = document.createElement("div"); dl.className = "ctl-row"; dl.innerHTML = '<span class="lab">Destinations</span>'; modHost.appendChild(dl);
@@ -689,7 +689,7 @@ canvas.disp { width: 100%; height: 64px; display: block; background: #0a0a0c; bo
     P("Deep Sub", "Sub", { aSaw: false, aPulse: false, bSaw: false, mixA: 0, mixB: 0, mixSub: 0.95, aOct: 0, cutoff: 500, reso: 0.05, fenvAmt: 0.1, aS: 1, aD: 0.5, xstr: 0.05, eqLo: 2, bOct: 1, bTune: 0, fS: 0.25, lfoHz: 5, mLfo: 0.3, mLfoR: 2, fuzz: 0, eqMid: 0, eqHi: 0, opto: 0 }),
     P("Clean Sub Thump", "Sub", { aSaw: false, aPulse: true, aPW: 0.5, bSaw: false, mixA: 0.55, mixB: 0, mixSub: 0.8, aOct: 0, cutoff: 380, reso: 0.1, fenvAmt: 0.5, fD: 0.28, fS: 0, aD: 0.4, aS: 0.7, xstr: 0.1, bOct: 1, bTune: 0, lfoHz: 5, mLfo: 0.3, mLfoR: 2, fuzz: 0, eqMid: 0, eqHi: 0, opto: 0 }),
     P("Round Bass", "Bass", { aSaw: true, bSaw: false, bTri: true, bOct: 0, mixA: 0.7, mixB: 0.5, mixSub: 0.35, cutoff: 700, reso: 0.25, fenvAmt: 0.55, fD: 0.35, fS: 0.1, aS: 0.85, xstr: 0.15, kbd: 0.4, aOct: 1, bTune: 0, lfoHz: 5, mLfo: 0.3, mLfoR: 2, fuzz: 0, eqMid: 0, eqHi: 0, opto: 0 }),
-    P("Dirty Reese", "Bass", { aOct: 0, bOct: 0, bTune: 0.4, mixA: 0.7, mixB: 0.7, mixSub: 0.4, cutoff: 585, reso: 0.3, fenvAmt: 0.2, fS: 0.5, aS: 1, lfoHz: 0.4, mLfo: 0.25, mLfoR: 1, xstr: 0.49, fuzz: 0.37, eqMid: 2.3, eqHi: -3, opto: 0.5, aSaw: true, bSaw: true, aPulse: false, bTri: false, lfoTri: true, mixNoise: 0, kbd: 0.5, aTune: 0, fD: 0.45, aD: 0.45, verbMix: 0.12, verbSize: 0.9, verbHP: 250, drive: 0, maxAmt: 0, vol: 0.6 }),
+    P("Dirty Reese", "Bass", { aOct: 0, bOct: 0, bTune: 0.4, mixA: 0.7, mixB: 0.7, mixSub: 0.4, cutoff: 585, reso: 0.3, fenvAmt: 0.2, fS: 0.5, aS: 1, lfoHz: 0.4, mLfo: 0, mLfoR: 0, xstr: 0.49, fuzz: 0.37, eqMid: 2.3, eqHi: -3, opto: 0.5, aSaw: true, bSaw: true, aPulse: false, bTri: false, lfoTri: true, mixNoise: 0, kbd: 0.5, aTune: 0, fD: 0.45, aD: 0.45, verbMix: 0.12, verbSize: 0.9, verbHP: 250, drive: 0, maxAmt: 0, vol: 0.6 }),
     P("Nasty 808 Dub", "Bass", { cutoff: 25, fD: 0.72, fS: 0.21, aD: 0.38, aS: 0.56, bTune: 0.4 }),
     P("Pluck Bass", "Bass", { aSaw: true, bSaw: false, mixA: 0.8, mixB: 0, mixSub: 0.4, cutoff: 420, reso: 0.35, fenvAmt: 0.85, fD: 0.3, fS: 0, aD: 0.35, aS: 0.2, aR: 0.2, xstr: 0.2, aOct: 1, bOct: 1, bTune: 0, lfoHz: 5, mLfo: 0.3, mLfoR: 2, fuzz: 0, eqMid: 0, eqHi: 0, opto: 0 }),
     P("Acid Squelch", "Bass", { aSaw: true, mixA: 0.9, mixB: 0, cutoff: 350, reso: 0.82, fenvAmt: 0.75, fD: 0.33, fS: 0, aD: 0.4, aS: 0.7, glide: 0.25, glideAuto: true, xstr: 0.25, kbd: 0.2, aOct: 1, bOct: 1, bTune: 0, mixSub: 0, lfoHz: 5, mLfo: 0.3, mLfoR: 2, fuzz: 0, eqMid: 0, eqHi: 0, opto: 0 }),
@@ -733,11 +733,40 @@ canvas.disp { width: 100%; height: 64px; display: block; background: #0a0a0c; bo
     inp.addEventListener("keydown", function (e) { if (e.key === "Enter") finish(true); else if (e.key === "Escape") finish(false); e.stopPropagation(); });
     inp.addEventListener("blur", function () { finish(true); });
   });
+  /* small in-page dialog (the viewer blocks confirm() and prompt()) */
+  function ask(msg, val, buttons, cb) {
+    var ov = document.createElement("div"); ov.style.cssText = "position:absolute;inset:0;z-index:50;display:grid;place-items:center;background:rgba(0,0,0,.55)";
+    var bx = document.createElement("div"); bx.setAttribute("role", "dialog"); bx.setAttribute("aria-label", msg); bx.style.cssText = "background:#16181d;border:1px solid var(--line);border-radius:4px;padding:16px;display:grid;gap:12px;min-width:320px;max-width:90%";
+    var t = document.createElement("div"); t.textContent = msg; bx.appendChild(t); var inp = null;
+    if (val !== null) { inp = document.createElement("input"); inp.type = "text"; inp.maxLength = 40; inp.value = val; inp.style.cssText = "padding:6px 8px;background:#0a0b0e;color:var(--ink);border:1px solid var(--line);border-radius:3px;font:inherit"; bx.appendChild(inp); }
+    var row = document.createElement("div"); row.style.cssText = "display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap"; bx.appendChild(row);
+    function close(k) { ov.remove(); cb(k, inp ? inp.value.replace(/\s+/g, " ").trim() : ""); }
+    buttons.forEach(function (b) { var e = document.createElement("button"); e.textContent = b[0]; e.addEventListener("click", function () { close(b[1]); }); row.appendChild(e); });
+    ov.appendChild(bx); document.getElementById("unit").appendChild(ov);
+    var f = inp || row.lastChild; f.focus(); if (inp) inp.select();
+    bx.addEventListener("keydown", function (e) { if (e.key === "Escape") close("cancel"); else if (e.key === "Enter" && inp) close(buttons[0][1]); e.stopPropagation(); });
+  }
+  function userState() { var o = {}; Object.keys(S).forEach(function (k) { if (S[k] !== DEF[k]) o[k] = S[k]; }); return o; }
+  function persist() { try { localStorage.setItem("purrone_user", JSON.stringify(USER)); } catch (e) { /* storage unavailable */ } }
+  function saveAs(nm) {
+    var o = userState(), at = -1; USER.forEach(function (u, i) { if (u.name.toLowerCase() === nm.toLowerCase()) at = i; });
+    if (at >= 0) { USER[at].p = o; cur = FACTORY.length + at; } else { USER.push({ name: nm, cat: "User", p: o }); cur = FACTORY.length + USER.length - 1; }
+    persist(); dirty = false; $("#pnameText").textContent = all()[cur].name; $("#pcat").textContent = "USER"; renderList();
+  }
   $("#save").addEventListener("click", function () {
-    var name = "My sound " + (USER.length + 1), o = {}; Object.keys(S).forEach(function (k) { if (S[k] !== DEF[k]) o[k] = S[k]; });
-    USER.push({ name: name, cat: "User", p: o }); try { localStorage.setItem("purrone_user", JSON.stringify(USER)); } catch (e) { /* storage unavailable */ }
-    loadPreset(all().length - 1);
+    var pr = all()[cur];
+    if (cur >= FACTORY.length) {   /* your own sound: ask before overwriting; "Save as new" keeps the original */
+      ask("Overwrite \"" + pr.name + "\" with the current settings?", null, [["Overwrite", "ow"], ["Save as new", "new"], ["Cancel", "cancel"]], function (k) {
+        if (k === "ow") { USER[cur - FACTORY.length].p = userState(); persist(); dirty = false; $("#pnameText").textContent = pr.name; }
+        else if (k === "new") ask("Name for the new sound", pr.name + " 2", [["Save", "ok"], ["Cancel", "cancel"]], function (k2, nm) { if (k2 === "ok" && nm) saveAs(nm); });
+      });
+    } else ask("Name for your copy of this sound", pr.name, [["Save", "ok"], ["Cancel", "cancel"]], function (k, nm) {
+      if (k !== "ok" || !nm) return;
+      if (USER.some(function (u) { return u.name.toLowerCase() === nm.toLowerCase(); })) ask("A sound called \"" + nm + "\" exists. Overwrite it?", null, [["Overwrite", "ow"], ["Cancel", "cancel"]], function (k2) { if (k2 === "ow") saveAs(nm); });
+      else saveAs(nm);
+    });
   });
+  $("#pname").addEventListener("dblclick", function () { $("#plist").hidden = true; $("#rename").click(); });
   $("#bubbles").addEventListener("change", hideTip);
 
   /* init */

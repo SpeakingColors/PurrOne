@@ -57,7 +57,7 @@ inline juce::AudioProcessorValueTreeState::ParameterLayout createLayout()
     b (ids::lfoSaw, "LFO Saw", false); b (ids::lfoTri, "LFO Triangle", true); b (ids::lfoPulse, "LFO Pulse", false);
     lin (ids::mEnv, "Mod Filter Env", 0, 1, 0.0f); route (ids::mEnvR, "Mod Filter Env Route", 0);
     lin (ids::mOscB, "Mod Osc B", 0, 1, 0.0f); route (ids::mOscBR, "Mod Osc B Route", 0);
-    lin (ids::mLfo, "Mod LFO", 0, 1, 0.25f); route (ids::mLfoR, "Mod LFO Route", 1);
+    lin (ids::mLfo, "Mod LFO", 0, 1, 0.0f); route (ids::mLfoR, "Mod LFO Route", 0);
     route (ids::dest0, "To A Freq", 0); route (ids::dest1, "To A Width", 0); route (ids::dest2, "To B Freq", 0); route (ids::dest3, "To B Width", 0); route (ids::dest4, "To Filter", 0);
     lin (ids::wheel, "Mod Wheel", 0, 1, 0.0f); lin (ids::glide, "Glide", 0, 1, 0.0f); b (ids::glideAuto, "Auto Glide", false);
     b (ids::retrig, "Retrigger", false); b (ids::repeat, "Repeat", false); b (ids::drone, "Drone", false);
