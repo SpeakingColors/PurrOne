@@ -22,6 +22,8 @@ struct Biquad
     { double w = kTwoPi * f / sr, c = std::cos (w), a = std::sin (w) / (2 * q); set ((1 - c) / 2, 1 - c, (1 - c) / 2, 1 + a, -2 * c, 1 - a); }
     void highpass (double sr, double f, double q)
     { double w = kTwoPi * f / sr, c = std::cos (w), a = std::sin (w) / (2 * q); set ((1 + c) / 2, -(1 + c), (1 + c) / 2, 1 + a, -2 * c, 1 - a); }
+    void bandpass (double sr, double f, double q)
+    { double w = kTwoPi * f / sr, c = std::cos (w), a = std::sin (w) / (2 * q); set (a, 0, -a, 1 + a, -2 * c, 1 - a); }
     void peak (double sr, double f, double q, double gainDb)
     { double A = std::pow (10.0, gainDb / 40), w = kTwoPi * f / sr, c = std::cos (w), a = std::sin (w) / (2 * q);
       set (1 + a * A, -2 * c, 1 - a * A, 1 + a / A, -2 * c, 1 - a / A); }
@@ -66,7 +68,7 @@ public:
             line[i].assign ((size_t) len[i] + 64, 0.0f); pos[i] = 0; lp[i] = 0;
             lfoPh[i] = 0.13f * (float) i;
         }
-        pre.assign ((size_t) (sr * 0.05) + 8, 0.0f); prePos = 0;
+        pre.assign ((size_t) (sr * 0.12) + 8, 0.0f); prePos = 0; preSamples = (int) (sr * 0.012);
         for (int i = 0; i < 4; ++i) { ap[i].assign ((size_t) (sr * apT[i]) + 2, 0.0f); apPos[i] = 0; }
         hpL.reset(); hpR.reset(); lpL.reset(); lpR.reset();
         setParams (0.9f, 250.0f);
@@ -78,12 +80,19 @@ public:
         hpL.highpass (sr, highpassHz, 0.707); hpR.highpass (sr, highpassHz, 0.707);
         hpL2.highpass (sr, highpassHz, 0.707); hpR2.highpass (sr, highpassHz, 0.707);
         lpL.lowpass (sr, 7500.0, 0.707); lpR.lowpass (sr, 7500.0, 0.707);
-        damp = 0.55f;     // one pole damping coefficient, softens the tail
+        damp = dampCoef;  // one pole damping coefficient, softens the tail
+    }
+    // pre-delay in ms (default 12), damping 0..1 (default 0.5 = the classic setting), width 0..1 (default 0.8 = the classic spread)
+    void setExtras (float preMs, float dampUi, float widthUi)
+    {
+        preSamples = std::min ((int) pre.size() - 2, std::max (0, (int) (sr * 0.001 * preMs)));
+        dampCoef = std::min (1.0f, std::max (0.1f, 0.55f + (0.5f - dampUi) * 0.9f)); damp = dampCoef;
+        widthF = std::min (1.0f, std::max (0.0f, widthUi)) / 0.8f;
     }
     // wet only, stereo
     void process (float in, float& outL, float& outR)
     {
-        pre[(size_t) prePos] = in; int rp = prePos - (int) (sr * 0.012); if (rp < 0) rp += (int) pre.size(); prePos = (prePos + 1) % (int) pre.size();
+        pre[(size_t) prePos] = in; int rp = prePos - preSamples; if (rp < 0) rp += (int) pre.size(); prePos = (prePos + 1) % (int) pre.size();
         float x = pre[(size_t) rp];
         for (int i = 0; i < 4; ++i) { float d = ap[i][(size_t) apPos[i]]; float v = x + 0.6f * d; ap[i][(size_t) apPos[i]] = v; x = d - 0.6f * v; if (++apPos[i] >= (int) ap[i].size()) apPos[i] = 0; }
         float y[8], sum = 0;
@@ -109,9 +118,10 @@ public:
         l *= 0.5f; r *= 0.5f;
         outL = lpL.process (hpL2.process (hpL.process (l)));
         outR = lpR.process (hpR2.process (hpR.process (r)));
+        if (widthF != 1.0f) { const float m = 0.5f * (outL + outR), sd = 0.5f * (outL - outR) * widthF; outL = m + sd; outR = m - sd; }
     }
 private:
-    double sr = 48000; float rt = 0.9f, damp = 0.3f;
+    double sr = 48000; float rt = 0.9f, damp = 0.3f, dampCoef = 0.55f, widthF = 1.0f; int preSamples = 576;
     int len[8] {}, pos[8] {}; float gain[8] {}, lp[8] {}, lfoPh[8] {};
     std::vector<float> line[8], pre; int prePos = 0;
     static constexpr double apT[4] = { 0.0047, 0.0071, 0.0103, 0.0149 };
@@ -205,6 +215,7 @@ public:
     }
     int latency() const { return L - 1; }
     void setEnabled (bool e) { on = e; }
+    void setCeiling (float db) { ceiling = std::pow (10.0f, std::min (0.0f, std::max (-12.0f, db)) / 20.0f); }
     void process (float& l, float& r)
     {
         // delay line of the audio, so gain computed from the future applies to the right sample
@@ -233,6 +244,7 @@ struct Opto
     void prepare (double sampleRate) { fs = (float) sampleRate; reset(); }
     void reset() { gr1 = gr2 = mem = env = 0.0f; }
     void setAmount (float a) { amount = std::min (1.0f, std::max (0.0f, a)); }
+    void setSpeed (int s) { sm = s <= 0 ? 2.0f : (s == 1 ? 1.0f : 0.4f); }   // 0 slow, 1 medium (the original setting), 2 fast
     void process (float& l, float& r)
     {
         if (amount < 0.0005f) { gr1 = gr2 = mem = env = 0.0f; return; }
@@ -245,9 +257,9 @@ struct Opto
         float target = 0.0f;
         if (over > knee * 0.5f) target = over * (2.0f / 3.0f);
         else if (over > -knee * 0.5f) { const float t = over + knee * 0.5f; target = (2.0f / 3.0f) * t * t / (2.0f * knee); }
-        const float att = 1.0f - std::exp (-1.0f / (0.010f * fs));
-        const float rel1 = 1.0f - std::exp (-1.0f / (0.0866f * fs));
-        const float rel2 = 1.0f - std::exp (-1.0f / ((1.0f + 4.0f * mem) * fs));
+        const float att = 1.0f - std::exp (-1.0f / (0.010f * sm * fs));
+        const float rel1 = 1.0f - std::exp (-1.0f / (0.0866f * sm * fs));
+        const float rel2 = 1.0f - std::exp (-1.0f / ((1.0f + 4.0f * mem) * sm * fs));
         gr1 += (target > gr1 ? att : rel1) * (target - gr1);
         gr2 += (target > gr2 ? att : rel2) * (target - gr2);
         mem += (1.0f - std::exp (-1.0f / (2.0f * fs))) * (std::min (1.0f, std::max (0.0f, 0.5f * (gr1 + gr2) / 15.0f)) - mem);
@@ -255,7 +267,7 @@ struct Opto
         l *= g; r *= g;
     }
 private:
-    float fs = 48000.0f, amount = 0.0f, gr1 = 0.0f, gr2 = 0.0f, mem = 0.0f, env = 0.0f;
+    float sm = 1.0f, fs = 48000.0f, amount = 0.0f, gr1 = 0.0f, gr2 = 0.0f, mem = 0.0f, env = 0.0f;
 };
 
 } // namespace purrone

@@ -2,7 +2,10 @@
 #include <juce_audio_processors/juce_audio_processors.h>
 #include "purrone/Engine.h"
 #include "purrone/Fx.h"
+#include "purrone/Fx2.h"
+#include "purrone/Seq.h"
 #include "Parameters.h"
+#include <unordered_map>
 
 class PurrOneProcessor : public juce::AudioProcessor
 {
@@ -20,7 +23,7 @@ public:
     bool hasEditor() const override { return true; }
     const juce::String getName() const override { return "PurrOne"; }
     bool acceptsMidi() const override { return true; }
-    bool producesMidi() const override { return false; }
+    bool producesMidi() const override { return true; }     // only sends notes when MIDI out is switched on
     bool isMidiEffect() const override { return false; }
     double getTailLengthSeconds() const override { return 4.5; }   // longest reverb setting plus limiter
 
@@ -41,6 +44,38 @@ public:
     bool renameUserPreset (const juce::String& from, const juce::String& to);   // user presets only
     bool loadUserPreset (const juce::String& name);
 
+    // ---- step sequencer data (4 patterns of up to 64 steps; saved in the host state and, if you want, inside sounds) ----
+    purrone::SeqData seq;
+    juce::String patternToString (int pat) const;                       // 3 hex digits per step
+    void patternFromString (int pat, const juce::String& s);
+    void applySeqSpec (const juce::String& spec);                        // factory notation, see Presets.h; fills pattern A and sets the step count
+    static juce::File sequenceDir();
+    juce::StringArray listSequences() const;
+    bool saveSequence (const juce::String& name);                        // current pattern, rate, swing, gate, accent, slide and squelch
+    bool loadSequence (const juce::String& name);
+    std::atomic<int> playStep { -1 };                                    // for the editor playhead
+    std::atomic<bool> seqRunning { false };
+    std::atomic<bool> playButton { false };                              // Play button on the Seq page (starts the sequence by hand)
+    // analyser tap: the last 2048 output samples, written by the audio thread, read by the editor
+    static constexpr int kTap = 4096;
+    float tapL[kTap] {}, tapR[kTap] {}; std::atomic<int> tapPos { 0 };
+    std::atomic<float> grOtt { 0.0f };
+    int saveBank = 3;                                                    // bank (0 = A .. 6 = G) the next Save goes to; A to C are factory
+    static juce::File userBankDir (int bank);
+    juce::StringArray listBank (int bank) const;
+    bool exportBank (int bank, const juce::File& f) const;
+    int importBank (const juce::File& f, int bank);
+    bool exportSound (const juce::File& f);
+    bool importSound (const juce::File& f, int bank);
+    juce::String sequenceCode (const juce::String& name);          // PO-SEQ: text to share
+    bool importSequenceCode (const juce::String& code, const juce::String& name);
+    bool deleteSequence (const juce::String& name);
+    bool deleteUserPreset (const juce::String& name);
+
+    // ---- single fx module presets (the dropdown on each module) ----
+    void applyValues (const std::vector<std::pair<const char*, float>>& v);
+    void setParam (const char* id, float realValue);
+
     juce::AudioProcessorValueTreeState apvts;
     juce::MidiKeyboardState keyState;                      // on-screen keyboard, mixed into the MIDI input
     std::atomic<float> meterL { 0.0f }, meterR { 0.0f };
@@ -54,14 +89,30 @@ private:
     static juce::String sanitize (const juce::String& n);
 
     purrone::Engine engine;
-    purrone::Eq3 eq;
+    purrone::Eq5 eq;
+    purrone::Crush crush;
+    purrone::Ott ott;
+    purrone::DanceMaster dance;
+    purrone::StereoTool stereo;
+    purrone::Sequencer sequencer;
+    std::unordered_map<const char*, std::atomic<float>*> rawCache;
+    float rd (const char* id);
+    void applyFx();
+    void applySeqSettings();
+    void applyTuning (purrone::Params& p);
+    bool passed[128] {};
+    bool eqPre = false, eqPost = false, spaceOn = true; float duckAmt = 0.0f, duckEnv = 0.0f;
+    int lastOversample = 4, lastBend = 0; int lastOut = -1; bool wheelIsCC74 = false;
     purrone::Reverb reverb;
     purrone::Opto opto;
     purrone::Maximizer maximizer;
     purrone::SafetyLimiter limiter;
     std::vector<float> mono;
     juce::SmoothedValue<float> verbMixSm;
-    float midiWheel = 0.0f, bendSemis = 0.0f;
+    float midiWheel = 0.0f, bendNorm = 0.0f, bendRange = 2.0f, slideSeconds = 0.08f;
+    bool midiOutOn = false; int midiOutCh = 1, midiOutVel = 90, midiOutAcc = 120;
+    juce::MidiBuffer outMidi;
+    void resetFx();
     int currentFactory = 0;
     double sr = 48000.0;
 

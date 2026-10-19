@@ -9,6 +9,28 @@ PurrOne is a two oscillator mono synth in the spirit of the classic Pro-One clas
 - Watch the level: Drive, Transistor and Fuzz are level matched, so compare by ear with the knob at zero and at full.
 - Save your own sounds with Save; they stay on your computer when you uninstall unless you choose to remove them.
 
+# Pages
+The tabs in the header switch between Sound, Seq / Arp, FX and Settings. Info bubbles explain every control.
+
+# Seq / Arp
+- Mode: Off plays your keys as usual, Seq plays the step sequence, Arp plays the held keys one at a time.
+- Steps: 1 to 64 per pattern, 4 patterns (A to D). Click a note to raise it, Shift+click or the wheel lowers it; Gate, Accent and Slide are on or off per step. Slide glides in from the step before.
+- Start: With host (the DAW transport starts it and its tempo is followed), on key (pressing a key starts it and the lowest held key transposes the pattern), or a chosen start note (that note toggles it and is not played). The Play button starts it by hand. Mode Off turns it all off.
+- 303 squelch (off by default): accents and slides push the resonance for a moment. Accent loudness and brightness always work.
+- Sequence presets are small files in Studio 87/PurrOne/sequences. Share gives a text code, Import reads one back.
+- MIDI out is off by default. When on, the sequence or arp also sends its notes out so it can play another synth.
+
+# FX
+Signal order is fixed: Colour, Filter, Amp, Crush, EQ, Space, Opto, OTT, Dance master, Maximizer, Stereo, Limiter. New modules start off or neutral.
+- EQ: five bands. Drag a point, wheel over it changes Q. Each band can act on the stereo signal, the mid or the side, and can be dynamic.
+- Space: pre-delay, damping, width and ducking (lowers the tail while you play).
+- Opto speed, OTT, Dance master (3 band compressor and clipper), Maximizer and the limiter ceiling are on the Dynamics page. Stereo has width, mono below, mid and side level and drive.
+- Every module has a Presets button in the left rail; a module preset changes only that module.
+- The analyzer (spectrum, scope, phase) reads the final output.
+
+# Settings
+Banks A to C hold the factory sounds and are read only. Banks D to G are yours: the one selected is where Save puts new sounds. Banks and single sounds can be exported and imported as files. Tuning has Equal, Just, Pythagorean and Custom (drag the bars) plus A4 at 432, 440 or 442. Quality sets 4x or 8x oversampling. Random LFO, pitch wheel range, wheel CC and window size are here too.
+
 # Recommendations
 - Sub bass: Mixer Sub 80 to 95 percent, Osc A and B low, Cutoff around 400 to 700 Hz, Transistor 5 to 15 percent.
 - Reese bass: both oscillators on Saw, Tune B up a little (about 0.1), Transistor 40 to 60 percent, slow LFO on the filter.

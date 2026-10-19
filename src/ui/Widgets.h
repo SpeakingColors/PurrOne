@@ -44,6 +44,15 @@ inline String formatValue (char f, float v)
         case 'V': return String (v, 1) + "s";
         case 'H': return String (roundToInt (v)) + "Hz";
         case 'B': return (v > 0.0f ? String (20.0f * std::log10 (v), 1) : String ("-inf")) + "dB";
+        case 'N': return String (roundToInt (v)) + " bpm";
+        case 'Y': return String (v, 2) + "s";
+        case 'W': return sgn (std::round (v), 0) + " st";
+        case 'I': return String (roundToInt (v));
+        case 'R': return String (roundToInt (v)) + " bit";
+        case 'M': return String (roundToInt (v)) + "ms";
+        case 'Q': return String (v, 1);
+        case 'Z': return v < 0.05f ? String ("static") : sgn (v) + "dB";
+        case 'K': return String (roundToInt (v)) + "dB";
         default:  return String (roundToInt (v * 100.0f)) + "%";
     }
 }
@@ -147,14 +156,14 @@ private:
 class Segments : public Component, public SettableTooltipClient
 {
 public:
-    Segments (RangedAudioParameter& p, const layout::Seg& d, Bubbles& b) : param (p), def (d), bubbles (b), attach (p, [this] (float) { repaint(); })
+    Segments (RangedAudioParameter& p, const layout::Seg& d, Bubbles& b, const layout::Btn* base = layout::segBtns) : param (p), def (d), bubbles (b), btns (base), attach (p, [this] (float) { repaint(); })
     {
         setBounds (rc (def.r)); attach.sendInitialUpdate(); setMouseCursor (MouseCursor::PointingHandCursor);
         if (String (def.tip).isNotEmpty()) setTooltip (def.tip); else if (def.labelFirst) setTooltip ("Click the name to cycle Off, Direct, Wheel");
     }
     String getTooltip() override { return bubbles.on ? SettableTooltipClient::getTooltip() : String(); }
     int current() const { return roundToInt (param.convertFrom0to1 (param.getValue())); }
-    Rectangle<int> btn (int i) const { auto r = rc (layout::segBtns[def.first + i].r); return r.translated (-def.r.x, -def.r.y); }
+    Rectangle<int> btn (int i) const { auto r = rc (btns[def.first + i].r); return r.translated (-def.r.x, -def.r.y); }
     void paint (Graphics& g) override
     {
         const auto all = getLocalBounds().toFloat();
@@ -166,7 +175,7 @@ public:
               const auto b = btn (i);
               if (sel) { g.setColour (col::selected); g.fillRect (b); }
               g.setColour (sel ? col::ink : col::inkDim); g.setFont (labelFont (13.0f, true, 0.08f));
-              g.drawText (layout::segBtns[def.first + i].text, b, Justification::centred, false);
+              g.drawText (btns[def.first + i].text, b, Justification::centred, false);
           } }
         g.setColour (col::line); g.drawRoundedRectangle (all.reduced (0.5f), 3.0f, 1.0f);
     }
@@ -181,7 +190,7 @@ public:
             }
     }
 private:
-    RangedAudioParameter& param; const layout::Seg& def; Bubbles& bubbles; ParameterAttachment attach;
+    RangedAudioParameter& param; const layout::Seg& def; Bubbles& bubbles; const layout::Btn* btns; ParameterAttachment attach;
 };
 
 //==============================================================================

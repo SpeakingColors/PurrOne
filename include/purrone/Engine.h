@@ -93,14 +93,25 @@ struct Params
     float xstr = 0.0f;    // 0..1 Neve-style transistor stage (asymmetric, even harmonics, low-end weight)
     float fuzz = 0.0f;    // 0..1 asymmetric fuzz ahead of the filter
     float volume = 0.7f;
+    // Sequencer feel: accent amount (louder and brighter on accented steps) and the optional 303 squelch
+    // (accents and slides bump the resonance and the filter envelope). Squelch is off by default.
+    bool  squelch = false; float squelchAmt = 0.6f, accAmt = 0.4f;
+    // Random (sample and hold) modulation; depth 0 = off
+    float rndHz = 4.0f, rndSlew = 0.35f, rndDepth = 0.0f; bool rndCut = true, rndPA = false, rndPB = false, rndPW = true;
+    // Tuning: A4 offset in semitones and per pitch class offsets in semitones (C = 0). All zero = equal temperament at 440 Hz.
+    float tuneRef = 0.0f; float tuneOff[12] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 };
 
 class Engine
 {
 public:
+    // factor 4 (normal) or 8 (high): the voice runs at factor x the host rate
+    void setOversampling (int factor) { const int f = factor >= 8 ? 8 : 4; if (f != os) { os = f; prepare ((double) sr); } }
+    int oversampling() const { return os; }
+
     void prepare (double sampleRate)
     {
-        sr = (float) sampleRate; osr = sr * 4.0f; xfC = 1.0f - std::exp (-6.2831853f * 90.0f / osr);
+        sr = (float) sampleRate; osr = sr * (float) os; xfC = 1.0f - std::exp (-6.2831853f * 90.0f / osr);
         for (auto* e : { &fenv, &aenv }) e->sr = osr;
         buildHalfband();
         reset();
@@ -111,6 +122,7 @@ public:
         smoothInit = false; bend = 0.0f; xfLp = 0.0f; nLp = 0.0f; lastDrive = lastXs = lastFuzz = -1.0f;
         phA = phB = phSub = 0.0f; subFlip = 0.0f; fenv.reset(); aenv.reset();
         for (auto& s : st) s = 0.0f;
+        accEnv = sqBump = accLvl = accTarget = 0.0f; glideOverride = 0.0f; rndPh = 0.0f; rndVal = rndTarget = 0.0f; h0Pos = 0; h0Buf.fill (0.0f);
         lfoPh = 0.0f; hbPos = 0; hbBuf.fill (0.0f); hb1Pos = 0; hb1Buf.fill (0.0f); heldCount = 0; curNote = -1; glidePitch = 60.0f;
         prevA = 0.0f; gateOn = false; repeatPh = 0.0f; seed = 22222u; dcX = dcY = 0.0f;
     }
@@ -147,6 +159,30 @@ public:
         else retargetNote (true, false);
     }
 
+    // ---- sequencer voice: one note at a time, never mixed with the key stack ----
+    // slide: glide into the note from the previous one without retriggering the envelopes (only if the previous gate is still open)
+    void seqNoteOn (int note, bool accent, bool slide, float slideSeconds)
+    {
+        const bool legato = slide && gateOn && curNote >= 0;
+        heldCount = 1; held[0] = note;
+        curNote = note;
+        if (legato) glideOverride = std::max (0.005f, slideSeconds) * 0.35f;      // time constant: about 3 of them make the glide time
+        else
+        {
+            glideOverride = 0.0f; glidePitch = (float) note;
+            if (! P.drone) { fenv.gateOn(); aenv.gateOn(); }
+        }
+        gateOn = true;
+        accTarget = accent ? 1.0f : 0.0f;
+        if (accent) { accEnv = 1.0f; sqBump = std::min(1.5f, sqBump * 0.7f + 1.0f); }      // consecutive accents build up, like the 303 accent circuit
+        if (legato) sqBump = std::max (sqBump, 0.6f);
+    }
+    void seqNoteOff()
+    {
+        heldCount = 0; gateOn = false; glideOverride = 0.0f;
+        if (! P.drone) { fenv.gateOff(); aenv.gateOff(); }
+    }
+
     void allNotesOff() { heldCount = 0; gateOn = false; fenv.gateOff(); aenv.gateOff(); }
     bool isActive() const { return aenv.active() || gateOn || P.drone; }
 
@@ -154,12 +190,25 @@ public:
     void process (float* out, int n)
     {
         applyEnvParams();
+        if (os == 8)
+        {
+            for (int i = 0; i < n; ++i)
+            {
+                float z[4];
+                for (int k = 0; k < 4; ++k) { const float a = tick2x(), b = tick2x(); z[k] = half0 (a, b); }
+                out[i] = decimate (half1 (z[0], z[1]), half1 (z[2], z[3]));
+            }
+            return;
+        }
         for (int i = 0; i < n; ++i)
         {
             const float z0 = tick2x(), z1 = tick2x(), z2 = tick2x(), z3 = tick2x();
             out[i] = decimate (half1 (z0, z1), half1 (z2, z3));
         }
     }
+
+    // for the editor's transfer curve: what the colour stages do to one input value (level matched like the real signal path)
+    static float colourCurve (float x, float drive, float xs, float fuzz) { return shaper (x, drive, xs, fuzz) * shaperMakeup (drive, xs, fuzz, 0.9f); }
 
 private:
     static constexpr int kMaxHeld = 16;
@@ -229,6 +278,9 @@ private:
     Adsr fenv, aenv;
     int held[kMaxHeld] {}; int heldCount = 0, curNote = -1; bool gateOn = false;
     float glidePitch = 60.0f;
+    int os = 4;
+    float accEnv = 0.0f, sqBump = 0.0f, accLvl = 0.0f, accTarget = 0.0f, glideOverride = 0.0f;
+    float rndPh = 0.0f, rndVal = 0.0f, rndTarget = 0.0f;
     uint32_t seed = 22222u;
     float dcX = 0, dcY = 0;
     // pending sync correction for the delayed osc A sample
@@ -244,6 +296,16 @@ private:
     static constexpr int kTaps1 = 31;
     std::array<float, kTaps1> hb1 {}, hb1Buf {};
     int hb1Pos = 0;
+    // 8x to 4x stage (same filter as half1, own history)
+    std::array<float, kTaps1> h0Buf {}; int h0Pos = 0;
+    float half0 (float a, float b)
+    {
+        h0Buf[(size_t) h0Pos] = a; h0Pos = (h0Pos + 1) % kTaps1;
+        h0Buf[(size_t) h0Pos] = b; h0Pos = (h0Pos + 1) % kTaps1;
+        float acc = 0.0f; int idx = h0Pos;
+        for (int k = 0; k < kTaps1; ++k) { idx = (idx + kTaps1 - 1) % kTaps1; acc += hb1[(size_t) k] * h0Buf[(size_t) idx]; }
+        return acc;
+    }
     float half1 (float a, float b)
     {
         hb1Buf[(size_t) hb1Pos] = a; hb1Pos = (hb1Pos + 1) % kTaps1;
@@ -320,12 +382,32 @@ private:
         const float dtSec = 1.0f / osr;
         // ---- glide (exponential slew in semitones) ----
         float gt = Q.glide <= 0.001f ? 0.0f : 0.005f * std::pow (800.0f, Q.glide); // 5 ms .. 4 s
+        if (glideOverride > 0.0f) gt = glideOverride;
         if (curNote >= 0)
         {
             if (gt <= 0.0f) glidePitch = (float) curNote;
             else glidePitch += ((float) curNote - glidePitch) * (1.0f - std::exp (-dtSec / gt));
         }
-        const float note = glidePitch + bend;
+        // tuning: per pitch class offsets (interpolated while gliding) plus the A4 reference
+        float tuneAdd = P.tuneRef;
+        {
+            const float gp = glidePitch + 1200.0f; const int k = (int) gp; const float fr = gp - (float) k;
+            tuneAdd += P.tuneOff[k % 12] * (1.0f - fr) + P.tuneOff[(k + 1) % 12] * fr;
+        }
+        // accent and squelch envelopes
+        accEnv -= accEnv * (1.0f - std::exp (-dtSec / 0.12f)); sqBump -= sqBump * (1.0f - std::exp (-dtSec / 0.16f));
+        accLvl += (accTarget - accLvl) * (1.0f - std::exp (-dtSec / 0.004f));
+        const float sq = Q.squelch ? Q.squelchAmt * sqBump : 0.0f;
+        // random (sample and hold) modulation
+        float rv = 0.0f;
+        if (Q.rndDepth > 0.001f)
+        {
+            rndPh += Q.rndHz * dtSec; if (rndPh >= 1.0f) { rndPh -= 1.0f; rndTarget = rnd(); }
+            const float tau = std::max (0.0f, Q.rndSlew) * 0.5f / std::max (0.1f, Q.rndHz);
+            rndVal += (tau < 1.0e-5f ? 1.0f : (1.0f - std::exp (-dtSec / tau))) * (rndTarget - rndVal);
+            rv = rndVal * Q.rndDepth;
+        }
+        const float note = glidePitch + bend + tuneAdd;
 
         // ---- envelopes and repeat ----
         if (Q.repeat && gateOn && ! Q.drone)
@@ -363,6 +445,13 @@ private:
         float dest[5];
         for (int d = 0; d < 5; ++d) dest[d] = (Q.modDest[d] == 1 ? direct : (Q.modDest[d] == 2 ? wheel : 0.0f));
         aFreqMod = dest[0] * 12.0f; aPwMod = dest[1] * 0.4f; bFreqMod = dest[2] * 12.0f; bPwMod = dest[3] * 0.4f; filMod = dest[4] * 5.0f;
+        if (rv != 0.0f)
+        {
+            if (Q.rndPA) aFreqMod += rv * 1.5f;
+            if (Q.rndPB) bFreqMod += rv * 1.5f;
+            if (Q.rndPW) { aPwMod += rv * 0.35f; bPwMod += rv * 0.35f; }
+            if (Q.rndCut) filMod += rv * 2.0f;
+        }
 
         freqB *= std::pow (2.0f, bFreqMod / 12.0f);
         float dtB = clampf (freqB / osr, 1.0e-6f, 0.45f);
@@ -434,12 +523,13 @@ private:
         float mix = emitA * Q.mixA * 0.6f + bv * Q.mixB * 0.6f + noise * Q.mixNoise * 0.5f + subLp * Q.mixSub * 0.6f;
 
         // ---- filter: zero delay feedback 4 pole ladder, tanh on input and in the loop ----
-        float oct = std::log2 (std::max (Q.cutoffHz, 10.0f)) + Q.fenvAmt * fe * 6.0f + Q.kbdAmt * (note - 60.0f) / 12.0f + filMod;
+        float oct = std::log2 (std::max (Q.cutoffHz, 10.0f)) + Q.fenvAmt * fe * 6.0f * (1.0f + 0.6f * sq) + Q.kbdAmt * (note - 60.0f) / 12.0f + filMod
+                  + 0.7f * Q.accAmt * accEnv + 0.35f * sq;
         float fc = clampf (std::exp2 (oct), 15.0f, 0.45f * osr);
         float g = std::tan (kPi * fc / osr);
         float G = g / (1.0f + g);
         // resonance taper: gentle at first, strong near the top (R)
-        float rz = clampf (Q.reso, 0.0f, 1.0f);
+        float rz = clampf (Q.reso + 0.4f * sq, 0.0f, 0.97f > Q.reso ? 0.97f : Q.reso);
         float k = 4.4f * rz * std::sqrt (rz);
         float G4 = G * G * G * G;
         float S = G * G * G * (st[0] / (1.0f + g)) + G * G * (st[1] / (1.0f + g)) + G * (st[2] / (1.0f + g)) + st[3] / (1.0f + g);
@@ -473,8 +563,8 @@ private:
             nLp += (w / (1.0f + w)) * (y - nLp);
             y = nLp;
         }
-        y *= 1.0f + 0.35f * Q.reso;             // keep bass weight when resonance rises (R)
-        y *= ae * Q.volume * 1.4f;
+        y *= 1.0f + 0.35f * rz;             // keep bass weight when resonance rises (R)
+        y *= ae * Q.volume * 1.4f * (1.0f + 0.6f * Q.accAmt * accLvl);
         return y;
     }
 
@@ -495,6 +585,8 @@ private:
         Q.glide = P.glide; Q.glideAuto = P.glideAuto; Q.lfoSaw = P.lfoSaw; Q.lfoTri = P.lfoTri; Q.lfoPulse = P.lfoPulse;
         for (int i = 0; i < 3; ++i) Q.modRoute[i] = P.modRoute[i];
         for (int i = 0; i < 5; ++i) Q.modDest[i] = P.modDest[i];
+        Q.squelch = P.squelch; Q.squelchAmt = P.squelchAmt; Q.accAmt = P.accAmt; Q.rndHz = P.rndHz; Q.rndSlew = P.rndSlew; Q.rndDepth = P.rndDepth;
+        Q.rndCut = P.rndCut; Q.rndPA = P.rndPA; Q.rndPB = P.rndPB; Q.rndPW = P.rndPW;
         Q.retrig = P.retrig; Q.repeat = P.repeat; Q.drone = P.drone; Q.filterMode = P.filterMode; Q.colourPos = P.colourPos;
     }
 

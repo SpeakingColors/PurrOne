@@ -70,14 +70,14 @@ struct PurrOneEditor::Button : public juce::Component, public juce::SettableTool
     void paint (juce::Graphics& g) override
     {
         const auto r = getLocalBounds().toFloat();
-        g.setColour (over ? juce::Colour (0xff23252c) : col::panel2); g.fillRoundedRectangle (r, 3.0f);
-        g.setColour (over ? juce::Colour (0xff4a4d58) : col::line); g.drawRoundedRectangle (r.reduced (0.5f), 3.0f, 1.0f);
-        g.setColour (col::ink); g.setFont (labelFont (14.0f, true, 0.08f)); g.drawText (text.toUpperCase(), getLocalBounds(), juce::Justification::centred, false);
+        g.setColour (on ? juce::Colour (0xff1f3a33) : over ? juce::Colour (0xff23252c) : col::panel2); g.fillRoundedRectangle (r, 3.0f);
+        g.setColour (on ? juce::Colour (0xff2c6a59) : over ? juce::Colour (0xff4a4d58) : col::line); g.drawRoundedRectangle (r.reduced (0.5f), 3.0f, 1.0f);
+        g.setColour (on ? col::green : col::ink); g.setFont (labelFont (14.0f, true, 0.08f)); g.drawText (text.toUpperCase(), getLocalBounds(), juce::Justification::centred, false);
     }
     void mouseEnter (const juce::MouseEvent&) override { over = true; repaint(); }
     void mouseExit (const juce::MouseEvent&) override { over = false; repaint(); }
     void mouseUp (const juce::MouseEvent& e) override { if (getLocalBounds().contains (e.getPosition()) && onClick) onClick(); }
-    juce::String text; std::function<void()> onClick; bool over = false;
+    juce::String text; std::function<void()> onClick; bool over = false, on = false;
 };
 
 struct PurrOneEditor::Check : public juce::Component
@@ -132,12 +132,30 @@ struct PurrOneEditor::Content : public juce::Component
         addAndMakeVisible (meter); addAndMakeVisible (keys);
         keys.setBounds (rc (m.keys));
         for (juce::Component* c : std::initializer_list<juce::Component*> { &prev, &next, &save, &rename, &init, &zoom, &check, &nameBox }) addAndMakeVisible (c);
-        prev.setBounds (rc (m.prev)); next.setBounds (rc (m.next)); save.setBounds (rc (m.save)); rename.setBounds (rc (m.rename)); init.setBounds (rc (m.init));
-        nameBox.setBounds (rc (m.pname)); check.setBounds (rc (m.bubbles).withWidth (140)); zoom.setBounds (rc (m.zoom));
+        // header: the preset name box is narrower than the Sound-only mockup to make room for the page tabs
+        prev.setBounds (rc (m.prev)); nameBox.setBounds (298, 13, 380, 32); next.setBounds (684, 14, 33, 31); save.setBounds (723, 14, 63, 31); rename.setBounds (791, 14, 87, 31); init.setBounds (883, 14, 53, 31);
+        check.setBounds (rc (m.bubbles).withWidth (140)); zoom.setBounds (rc (m.zoom));
+        { static const char* names[4] = { "Sound", "Seq / Arp", "FX", "Settings" }; static const int xs[4] = { 945, 1019, 1119, 1175 }, ws[4] = { 70, 96, 52, 88 };
+          for (int i = 0; i < 4; ++i) { auto* t = new Button (names[i], i == 0 ? "The synth" : i == 1 ? "Step sequencer and arpeggiator" : i == 2 ? "Effects, EQ and analyzer" : "Banks, tuning, quality and window"); t->setBounds (xs[i], 14, ws[i], 31); t->onClick = [this, i] { owner.showView (i); }; tabs.add (t); addAndMakeVisible (t); } }
+        seqPage = std::make_unique<purrone::ui::SeqPage> (proc, o.bubbles); addChildComponent (*seqPage);
+        fxHost = std::make_unique<purrone::ui::FxHost> (proc, o.bubbles); addChildComponent (*fxHost);
+        settingsPage = std::make_unique<purrone::ui::SettingsPage> (proc, o.bubbles, [&o] { return o.zoomPercent(); }, [&o] (int v) { static const int pc[5] = { 70, 85, 100, 115, 130 }; o.setZoomPercent (pc[juce::jlimit (0, 4, v)]); });
+        addChildComponent (*settingsPage);
+        keys.toFront (false);
         save.setTooltip ("Stores the current sound as your own. Asks before it overwrites one."); rename.setTooltip ("Rename this sound. A factory sound is saved as your own copy under the new name.");
         editor.setFont (monoFont (15.0f)); editor.setMultiLine (false); editor.setBorder ({ 0, 10, 0, 10 }); editor.setJustification (juce::Justification::centredLeft);
-        editor.setBounds (rc (m.pname)); editor.setVisible (false); editor.setInputRestrictions (60); addChildComponent (editor);
+        editor.setBounds (298, 13, 380, 32); editor.setVisible (false); editor.setInputRestrictions (60); addChildComponent (editor);
     }
+
+    void setView (int v)
+    {
+        view = v; const bool snd = v == 0;
+        for (auto* k : knobs) k->setVisible (snd); for (auto* t : togs) t->setVisible (snd); for (auto* sg : segs) sg->setVisible (snd); for (auto* d : displays) d->setVisible (snd);
+        meter.setVisible (snd); seqPage->setVisible (v == 1); fxHost->setVisible (v == 2); settingsPage->setVisible (v == 3);
+        for (int i = 0; i < tabs.size(); ++i) { tabs[i]->on = i == v; tabs[i]->repaint(); }
+        repaint();
+    }
+    void tickPages() { if (view == 1) seqPage->tick(); else if (view == 2) fxHost->tick(); else if (view == 3) settingsPage->tick(); }
 
     // double click on either wood cheek: back to the default window size (100%)
     void mouseDoubleClick (const juce::MouseEvent& e) override
@@ -160,7 +178,7 @@ struct PurrOneEditor::Content : public juce::Component
         g.setColour (col::ink); g.setFont (labelFont (34.0f, true, 0.12f)); g.drawText ("PurrOne", m.brand.x + 48, m.brand.y - 2, 160, 42, juce::Justification::centredLeft, false);
         g.setColour (col::line); g.drawHorizontalLine (m.header.y + m.header.h - 1, (float) m.header.x, (float) (m.header.x + m.header.w));
 
-        for (auto& s : L::secs)
+        if (view == 0) for (auto& s : L::secs)
         {
             const auto r = rc (s.r).toFloat();
             g.setColour (col::panel2); g.fillRoundedRectangle (r, 3.0f);
@@ -169,7 +187,7 @@ struct PurrOneEditor::Content : public juce::Component
             g.setColour (col::ink); g.setFont (labelFont (16.0f, true, 0.2f)); g.drawText (s.title, (int) r.getX() + 10, (int) r.getY() + 8, 200, 18, juce::Justification::centredLeft, false);
             g.setColour (col::inkDim); g.setFont (labelFont (12.0f, false, 0.1f)); g.drawText (s.sub, (int) r.getX() + 90, (int) r.getY() + 8, (int) r.getWidth() - 100, 18, juce::Justification::centredRight, false);
         }
-        g.setColour (col::inkDim); g.setFont (labelFont (13.0f, false, 0.12f)); g.drawText ("DESTINATIONS", m.keys.x + 0, 344, 110, 14, juce::Justification::centredLeft, false);
+        if (view == 0) { g.setColour (col::inkDim); g.setFont (labelFont (13.0f, false, 0.12f)); g.drawText ("DESTINATIONS", m.keys.x + 0, 344, 110, 14, juce::Justification::centredLeft, false); }
 
         // keyboard panel and status line
         const juce::Rectangle<float> kb (50.0f, 685.0f, 1600.0f, 129.0f);
@@ -195,6 +213,7 @@ struct PurrOneEditor::Content : public juce::Component
     PurrOneEditor& owner; PurrOneProcessor& proc;
     std::unique_ptr<juce::Drawable> logo;
     juce::OwnedArray<Knob> knobs; juce::OwnedArray<LedToggle> togs; juce::OwnedArray<Segments> segs; juce::OwnedArray<Display> displays;
+    int view = 0; juce::OwnedArray<Button> tabs; std::unique_ptr<purrone::ui::SeqPage> seqPage; std::unique_ptr<purrone::ui::FxHost> fxHost; std::unique_ptr<purrone::ui::SettingsPage> settingsPage;
     Button prev, next, save, rename, init, zoom; Check check; NameBox nameBox; juce::TextEditor editor; Meter meter; Keys keys;
 };
 
@@ -215,6 +234,9 @@ PurrOneEditor::PurrOneEditor (PurrOneProcessor& p) : AudioProcessorEditor (&p), 
     content->editor.onEscapeKey = [this] { content->editor.setVisible (false); };
     content->editor.onFocusLost = [this] { content->editor.setVisible (false); };
     refreshNames();
+    content->setView (0);
+    if (const char* v = std::getenv ("PURRONE_VIEW")) content->setView (juce::jlimit (0, 3, std::atoi (v)));   // test hook for screenshots
+    if (const char* v = std::getenv ("PURRONE_FX")) content->fxHost->select (juce::jlimit (0, 4, std::atoi (v)));
 
     constrainer.setFixedAspectRatio ((double) L::W / L::H); constrainer.setSizeLimits (680, (int) (680 * (double) L::H / L::W), 2400, (int) (2400 * (double) L::H / L::W));
     setConstrainer (&constrainer);
@@ -246,6 +268,15 @@ void PurrOneEditor::cycleZoom()
     const int w = kDefaultW * next / 100; setSize (w, (int) std::lround (w * (double) L::H / L::W));
 }
 
+void PurrOneEditor::setZoomPercent (int pct) { const int w = kDefaultW * pct / 100; setSize (w, (int) std::lround (w * (double) L::H / L::W)); }
+int PurrOneEditor::zoomPercent() const
+{
+    static const int pc[5] = { 70, 85, 100, 115, 130 }; const int cur = juce::roundToInt ((float) getWidth() / kDefaultW * 100.0f);
+    int best = 2, bd = 1000; for (int i = 0; i < 5; ++i) if (std::abs (pc[i] - cur) < bd) { bd = std::abs (pc[i] - cur); best = i; }
+    return bd <= 3 ? best : -1;
+}
+void PurrOneEditor::showView (int v) { content->setView (v); }
+
 void PurrOneEditor::resetZoom() { setSize (kDefaultW, (int) std::lround (kDefaultW * (double) L::H / L::W)); }
 
 void PurrOneEditor::timerCallback()
@@ -253,6 +284,7 @@ void PurrOneEditor::timerCallback()
     if (! isShowing()) return;
     for (auto* d : content->displays) d->tick();
     content->meter.tick();
+    content->tickPages();
     auto& nb = content->nameBox;
     if (nb.name != proc.currentPresetName) refreshNames();
 }
@@ -281,9 +313,20 @@ void PurrOneEditor::step (int dir)
 void PurrOneEditor::openList()
 {
     refreshNames();
-    juce::PopupMenu menu; int id = 1;
-    for (auto& f : purrone::factoryPresets()) { menu.addItem (id, juce::String (f.category).toUpperCase() + "   " + f.name, true, proc.currentPresetName == f.name); ++id; }
-    if (names.size() > numFactory) { menu.addSeparator(); for (int i = numFactory; i < names.size(); ++i) menu.addItem (id++, "USER   " + names[i], true, proc.currentPresetName == names[i]); }
+    juce::PopupMenu menu;
+    const auto& fp = purrone::factoryPresets();
+    for (int b = 0; b * purrone::kBankSize < (int) fp.size(); ++b)
+    {
+        juce::PopupMenu sub; const int from = b * purrone::kBankSize, to = juce::jmin ((int) fp.size(), from + purrone::kBankSize);
+        for (int i = from; i < to; ++i) sub.addItem (i + 1, juce::String (fp[(size_t) i].category).toUpperCase() + "   " + fp[(size_t) i].name, true, proc.currentPresetName == fp[(size_t) i].name);
+        menu.addSubMenu ("BANK " + juce::String::charToString ((juce::juce_wchar) ('A' + b)) + "   " + juce::String (to - from) + " sounds", sub);
+    }
+    for (int b = 3; b <= 6; ++b)
+    {
+        const auto list = proc.listBank (b); if (list.isEmpty()) continue;
+        juce::PopupMenu sub; for (auto& n : list) { const int at = names.indexOf (n); if (at >= numFactory) sub.addItem (at + 1, n, true, proc.currentPresetName == n); }
+        menu.addSubMenu ("BANK " + juce::String::charToString ((juce::juce_wchar) ('A' + b)) + "   yours", sub);
+    }
     menu.showMenuAsync (juce::PopupMenu::Options().withTargetComponent (&content->nameBox).withMinimumWidth (content->nameBox.getWidth()).withStandardItemHeight (26),
                         [this] (int r) { if (r <= 0) return; const int i = r - 1; if (i < numFactory) proc.setCurrentProgram (i); else proc.loadUserPreset (names[i]); refreshNames(); });
 }

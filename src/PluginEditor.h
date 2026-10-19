@@ -1,6 +1,7 @@
 #pragma once
 #include "PluginProcessor.h"
 #include "ui/Widgets.h"
+#include "ui/Pages.h"
 
 // The PurrOne window. Layout, colours and wording follow docs/mockup/purrone-mockup.html; it is drawn in a fixed
 // 1700 x 828 space and scaled to the window size (aspect ratio locked).
@@ -22,6 +23,9 @@ private:
     void saveDialog();
     void saveNamed (const juce::String& name);
     void cycleZoom();
+    void setZoomPercent (int pct);
+    int zoomPercent() const;
+    void showView (int v);
     void resetZoom();
     static constexpr int kDefaultW = 1360;   // the 100% size
 

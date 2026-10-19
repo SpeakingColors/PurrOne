@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22)
-project(PurrOne VERSION 0.1.1 LANGUAGES C CXX)
+project(PurrOne VERSION 0.2.0 LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
@@ -8,6 +8,8 @@ add_executable(purrone_render tools/render.cpp)
 target_include_directories(purrone_render PRIVATE include)
 add_executable(purrone_fxtest tools/fxtest.cpp)
 target_include_directories(purrone_fxtest PRIVATE include)
+add_executable(purrone_seqtest tools/seqtest.cpp)
+target_include_directories(purrone_seqtest PRIVATE include)
 
 # Plugin. Pass -DPURRONE_JUCE_DIR=/path/to/JUCE to use a local JUCE, otherwise JUCE is fetched.
 option(PURRONE_BUILD_PLUGIN "Build the VST3 plugin" ON)
@@ -28,7 +30,7 @@ if(PURRONE_BUILD_PLUGIN)
     PRODUCT_NAME "PurrOne"
     IS_SYNTH TRUE
     NEEDS_MIDI_INPUT TRUE
-    NEEDS_MIDI_OUTPUT FALSE
+    NEEDS_MIDI_OUTPUT TRUE
     VST3_CATEGORIES Instrument Synth
     COPY_PLUGIN_AFTER_BUILD FALSE)
 
@@ -40,4 +42,14 @@ if(PURRONE_BUILD_PLUGIN)
   target_link_libraries(PurrOne PRIVATE
     juce::juce_audio_utils juce::juce_dsp
     PUBLIC juce::juce_recommended_config_flags juce::juce_recommended_warning_flags)
+endif()
+
+# Preset and backend check (console app, runs the real processor offline). Off by default: -DPURRONE_BUILD_CHECK=ON
+option(PURRONE_BUILD_CHECK "Build the offline preset checker" OFF)
+if(PURRONE_BUILD_PLUGIN AND PURRONE_BUILD_CHECK)
+  juce_add_console_app(PurrOneCheck PRODUCT_NAME "PurrOneCheck")
+  target_sources(PurrOneCheck PRIVATE tools/presetcheck.cpp src/PluginProcessor.cpp src/PluginEditor.cpp)
+  target_include_directories(PurrOneCheck PRIVATE include src)
+  target_compile_definitions(PurrOneCheck PRIVATE JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0 JUCE_STANDALONE_APPLICATION=1)
+  target_link_libraries(PurrOneCheck PRIVATE juce::juce_audio_utils juce::juce_dsp PUBLIC juce::juce_recommended_config_flags)
 endif()

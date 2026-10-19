@@ -1,14 +1,13 @@
 // Factory presets. Values use the parameter IDs in Parameters.h; anything not listed keeps its default.
 // Generated from docs/mockup first, then tuned by ear. Original sounds, no copies of other makers' presets.
 #pragma once
-#include <vector>
-#include <utility>
+#include "PresetTypes.h"
+#include "PresetsGen.h"
 
 namespace purrone
 {
-struct FactoryPreset { const char* name; const char* category; std::vector<std::pair<const char*, float>> values; };
 
-inline const std::vector<FactoryPreset>& factoryPresets()
+inline const std::vector<FactoryPreset>& corePresets()
 {
     static const std::vector<FactoryPreset> list = {
         { "Init", "Init", {  } },
@@ -34,4 +33,12 @@ inline const std::vector<FactoryPreset>& factoryPresets()
     };
     return list;
 }
+
+// Bank A = the 20 hand made sounds + 108 generated, bank B = 128 sequences and arps, bank C = 128 FX showcases. Banks D to G are for the user.
+inline const std::vector<FactoryPreset>& factoryPresets()
+{
+    static const std::vector<FactoryPreset> all = [] { auto v = corePresets(); const auto& g = generatedPresets(); v.insert (v.end(), g.begin(), g.end()); return v; }();
+    return all;
+}
+inline int factoryBankOf (int index) { return index / kBankSize; }      // 0 = A, 1 = B, 2 = C
 } // namespace purrone
