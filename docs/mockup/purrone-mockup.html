@@ -45,7 +45,7 @@ header.top { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap
 .brand { display: flex; align-items: center; gap: 10px; }
 .brand svg { width: 38px; height: 38px; }
 .brand b { font-size: 30px; font-weight: 700; letter-spacing: .12em; }
-.presets { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto auto; gap: 6px; align-items: center; position: relative; }
+.presets { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto auto auto; gap: 6px; align-items: center; position: relative; }
 .pname {
   background: #0a0a0c; border: 1px solid var(--line); border-radius: 3px; padding: 7px 12px; font-family: var(--f-num); font-size: 14px; color: var(--ink);
   display: flex; justify-content: space-between; gap: 8px; cursor: pointer; min-width: 0; text-align: left;
@@ -144,7 +144,7 @@ canvas.disp { width: 100%; height: 64px; display: block; background: #0a0a0c; bo
 
 @media (max-width: 560px) {
   header.top { grid-template-columns: 1fr; }
-  .presets { grid-template-columns: auto minmax(0, 1fr) auto auto; }
+  .presets { grid-template-columns: auto minmax(0, 1fr) auto auto auto; }
   .presets #save { display: none; }
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
@@ -163,6 +163,7 @@ canvas.disp { width: 100%; height: 64px; display: block; background: #0a0a0c; bo
         <button class="pname" id="pname" aria-haspopup="listbox" aria-expanded="false"><span id="pnameText">Init</span><span id="pcat">INIT</span></button>
         <button id="next" aria-label="Next preset">&gt;</button>
         <button id="save" title="Stores the current sound in this browser">Save</button>
+        <button id="rename" title="Rename this sound. A factory sound is saved as your own copy under the new name.">Rename</button>
         <button id="init" title="Reset to the init sound">Init</button>
         <div class="plist" id="plist" role="listbox" hidden></div>
       </div>
@@ -234,15 +235,15 @@ canvas.disp { width: 100%; height: 64px; display: block; background: #0a0a0c; bo
   var hz = function (v) { return v >= 1000 ? (v / 1000).toFixed(1) + "k" : Math.round(v) + ""; };
   var sec = function (v) { var s = 0.002 * Math.pow(3000, v); return s < 1 ? Math.round(s * 1000) + "ms" : s.toFixed(1) + "s"; };
 
-  G("aOct", "secA", "Range", ["16'", "8'", "4'", "2'"], 1, "Octave range of oscillator A.");
+  G("aOct", "secA", "Range", ["16'", "8'", "4'", "2'"], 0, "Octave range of oscillator A.");
   K("aTune", "secA", "Tune", -6, 6, 0, { fmt: sgn, tip: "Fine pitch of A in semitones, up to half an octave each way." });
   T("aSaw", "secA", "Saw", true, { c: "var(--led-green)", tip: "Full harmonic sawtooth, the classic brassy shape." });
   T("aPulse", "secA", "Pulse", false, { c: "var(--led-yellow)", tip: "Pulse wave. Width sets how thin or hollow it sounds." });
   K("aPW", "secA", "Width", 0.05, 0.95, 0.5, { fmt: pct, tip: "Pulse width. 50% is a square wave." });
   T("aSync", "secA", "Sync", false, { c: "var(--led-pink)", tip: "A restarts every time B restarts. Sweep A's tune for the tearing sync sound." });
 
-  G("bOct", "secB", "Range", ["16'", "8'", "4'", "2'"], 1, "Octave range of oscillator B.");
-  K("bTune", "secB", "Tune", -6, 6, 0, { fmt: sgn, tip: "Fine pitch of B in semitones." });
+  G("bOct", "secB", "Range", ["16'", "8'", "4'", "2'"], 0, "Octave range of oscillator B.");
+  K("bTune", "secB", "Tune", -6, 6, 0.4, { fmt: sgn, tip: "Fine pitch of B in semitones." });
   T("bSaw", "secB", "Saw", true, { c: "var(--led-green)" });
   T("bTri", "secB", "Tri", false, { c: "var(--led-blue)" });
   T("bPulse", "secB", "Pulse", false, { c: "var(--led-yellow)" });
@@ -250,22 +251,22 @@ canvas.disp { width: 100%; height: 64px; display: block; background: #0a0a0c; bo
   T("bLow", "secB", "Low freq", false, { c: "var(--led-violet)", tip: "Moves B down to sub-audio speeds so it works as a second LFO." });
   T("bKbd", "secB", "Keys", true, { c: "var(--led-orange)", tip: "B follows the keyboard. Switch off for a steady pitch." });
 
-  K("mixA", "secMix", "Osc A", 0, 1, 0.8, { fmt: pct });
-  K("mixB", "secMix", "Osc B", 0, 1, 0.6, { fmt: pct });
-  K("mixSub", "secMix", "Sub", 0, 1, 0.0, { fmt: pct, tip: "Soft square one octave under A. Rounded on purpose so it stays warm, not buzzy." });
+  K("mixA", "secMix", "Osc A", 0, 1, 0.7, { fmt: pct });
+  K("mixB", "secMix", "Osc B", 0, 1, 0.7, { fmt: pct });
+  K("mixSub", "secMix", "Sub", 0, 1, 0.4, { fmt: pct, tip: "Soft square one octave under A. Rounded on purpose so it stays warm, not buzzy." });
   K("mixNoise", "secMix", "Noise", 0, 1, 0, { fmt: pct });
 
-  K("cutoff", "secFilter", "Cutoff", 20, 20000, 2400, { log: true, fmt: function (v) { return hz(v) + "Hz"; }, tip: "Where the sound gets darker. A lead starts around 12 kHz open; basses live far lower." });
-  K("reso", "secFilter", "Reso", 0, 1, 0.15, { fmt: pct, tip: "Emphasis at the cutoff. Full turn makes the filter sing on its own." });
-  K("fenvAmt", "secFilter", "Env amt", -1, 1, 0.35, { fmt: function (v) { return sgn(v * 6) + " oct"; }, tip: "How far the filter envelope opens the cutoff." });
+  K("cutoff", "secFilter", "Cutoff", 20, 20000, 585, { log: true, fmt: function (v) { return hz(v) + "Hz"; }, tip: "Where the sound gets darker. A lead starts around 12 kHz open; basses live far lower." });
+  K("reso", "secFilter", "Reso", 0, 1, 0.3, { fmt: pct, tip: "Emphasis at the cutoff. Full turn makes the filter sing on its own." });
+  K("fenvAmt", "secFilter", "Env amt", -1, 1, 0.2, { fmt: function (v) { return sgn(v * 6) + " oct"; }, tip: "How far the filter envelope opens the cutoff." });
   K("kbd", "secFilter", "Key track", 0, 1, 0.5, { fmt: pct, tip: "Higher notes open the filter more. About 50% keeps the tone even." });
 
   K("fA", "secFenv", "Attack", 0, 1, 0.0, { fmt: sec }); K("fD", "secFenv", "Decay", 0, 1, 0.45, { fmt: sec });
-  K("fS", "secFenv", "Sustain", 0, 1, 0.25, { fmt: pct }); K("fR", "secFenv", "Release", 0, 1, 0.3, { fmt: sec });
+  K("fS", "secFenv", "Sustain", 0, 1, 0.5, { fmt: pct }); K("fR", "secFenv", "Release", 0, 1, 0.3, { fmt: sec });
   K("aA", "secAenv", "Attack", 0, 1, 0.0, { fmt: sec, tip: "Minimum is a couple of milliseconds so notes never click." }); K("aD", "secAenv", "Decay", 0, 1, 0.45, { fmt: sec });
-  K("aS", "secAenv", "Sustain", 0, 1, 0.8, { fmt: pct }); K("aR", "secAenv", "Release", 0, 1, 0.3, { fmt: sec });
+  K("aS", "secAenv", "Sustain", 0, 1, 1, { fmt: pct }); K("aR", "secAenv", "Release", 0, 1, 0.3, { fmt: sec });
 
-  K("lfoHz", "secLfo", "Rate", 0.1, 30, 5, { log: true, fmt: function (v) { return v.toFixed(1) + "Hz"; } });
+  K("lfoHz", "secLfo", "Rate", 0.1, 30, 0.4, { log: true, fmt: function (v) { return v.toFixed(1) + "Hz"; } });
   T("lfoSaw", "secLfo", "Saw", false, { c: "var(--led-green)" }); T("lfoTri", "secLfo", "Tri", true, { c: "var(--led-blue)" }); T("lfoPulse", "secLfo", "Pulse", false, { c: "var(--led-yellow)" });
   K("wheel", "secLfo", "Mod wheel", 0, 1, 0, { fmt: pct, tip: "Stands in for the mod wheel. Anything routed to Wheel scales with it." });
 
@@ -276,15 +277,15 @@ canvas.disp { width: 100%; height: 64px; display: block; background: #0a0a0c; bo
   T("drone", "secKeys", "Drone", false, { c: "var(--led-pink)", tip: "Holds the gate open so the note never stops." });
 
   K("drive", "secFilter", "Drive", 0, 1, 0, { fmt: pct, tip: "Analog clip: a symmetric soft clip, the classic overdriven-opamp sound. Mostly odd harmonics. Past 80% it gets nasty, still smooth." });
-  K("xstr", "secFilter", "Transistor", 0, 1, 0.1, { fmt: pct, tip: "Neve-style transistor stage: asymmetric soft clip, warm even harmonics and some extra low-end weight. Low is warm; high gets thick. Past 80% it gets nasty, still smooth." });
-  K("fuzz", "secFilter", "Fuzz", 0, 1, 0, { fmt: pct, tip: "Harder, lopsided fuzz. Past 80% it adds an octave-up growl, still smooth." });
+  K("xstr", "secFilter", "Transistor", 0, 1, 0.49, { fmt: pct, tip: "Neve-style transistor stage: asymmetric soft clip, warm even harmonics and some extra low-end weight. Low is warm; high gets thick. Past 80% it gets nasty, still smooth." });
+  K("fuzz", "secFilter", "Fuzz", 0, 1, 0.37, { fmt: pct, tip: "Harder, lopsided fuzz. Past 80% it adds an octave-up growl, still smooth." });
   K("eqLo", "secEq", "Low", -12, 12, 0, { fmt: function (v) { return sgn(v) + "dB"; }, tip: "Shelf at 100 Hz. A small cut here clears mud; a small boost adds weight to a bass." });
-  K("eqMid", "secEq", "Mid", -12, 12, 0, { fmt: function (v) { return sgn(v) + "dB"; }, tip: "Bell at 1 kHz." });
-  K("eqHi", "secEq", "High", -12, 12, 0, { fmt: function (v) { return sgn(v) + "dB"; }, tip: "Shelf at 6 kHz. Cut a little to keep leads smooth." });
+  K("eqMid", "secEq", "Mid", -12, 12, 2.3, { fmt: function (v) { return sgn(v) + "dB"; }, tip: "Bell at 1 kHz." });
+  K("eqHi", "secEq", "High", -12, 12, -3, { fmt: function (v) { return sgn(v) + "dB"; }, tip: "Shelf at 6 kHz. Cut a little to keep leads smooth." });
   K("verbMix", "secVerb", "Mix", 0, 1, 0.12, { fmt: pct, tip: "Wet level. The return is high-passed so the low end never smears." });
   K("verbSize", "secVerb", "Length", 0.2, 4, 0.9, { fmt: function (v) { return v.toFixed(1) + "s"; }, tip: "Kept short by default. Long tails are for leads." });
   K("verbHP", "secVerb", "Low cut", 80, 600, 250, { log: true, fmt: function (v) { return Math.round(v) + "Hz"; } });
-  K("opto", "secOut", "Opto", 0, 1, 0, { fmt: pct, tip: "LA-2A style optical leveller. Slow, program dependent, makes bass thick and even without pumping." });
+  K("opto", "secOut", "Opto", 0, 1, 0.5, { fmt: pct, tip: "LA-2A style optical leveller. Slow, program dependent, makes bass thick and even without pumping." });
   K("maxAmt", "secOut", "Amount", 0, 1, 0, { fmt: pct, tip: "Gentle upward and downward compression. Smooth, no pumping." });
   T("safety", "secOut", "Safety limiter", true, { c: "var(--led-green)", tip: "Last stage. Keeps the output under -1 dBFS." });
   K("vol", "secOut", "Volume", 0, 1, 0.6, { fmt: function (v) { return (v > 0 ? (20 * Math.log10(v)).toFixed(1) : "-inf") + "dB"; } });
@@ -349,12 +350,12 @@ canvas.disp { width: 100%; height: 64px; display: block; background: #0a0a0c; bo
   var dsts = [["A freq", 0], ["A width", 1], ["B freq", 2], ["B width", 3], ["Filter", 4]];
   var modHost = $("#secMod"); var mx = document.createElement("div"); mx.className = "matrix";
   srcs.forEach(function (s) {
-    DEFS.push({ t: "k", id: s[1], sec: "", label: s[0], min: 0, max: 1, def: s[1] === "mLfo" ? 0.3 : 0, fmt: pct, tip: "How much of this source goes into the modulation paths." }); DEF[s[1]] = s[1] === "mLfo" ? 0.3 : 0;
+    DEFS.push({ t: "k", id: s[1], sec: "", label: s[0], min: 0, max: 1, def: s[1] === "mLfo" ? 0.25 : 0, fmt: pct, tip: "How much of this source goes into the modulation paths." }); DEF[s[1]] = s[1] === "mLfo" ? 0.25 : 0;
     var d = DEFS[DEFS.length - 1];
     mx.appendChild(mkKnob(d));
     var seg = document.createElement("div"); seg.className = "seg"; seg.setAttribute("role", "group"); seg.setAttribute("aria-label", s[0] + " route");
     ["Off", "Direct", "Wheel"].forEach(function (o, i) { var b = document.createElement("button"); b.textContent = o; b.addEventListener("click", function () { setParam(s[1] + "R", i); }); seg.appendChild(b); });
-    DEF[s[1] + "R"] = s[1] === "mLfo" ? 2 : 0; ctlWraps[s[1] + "R"] = seg; mx.appendChild(seg);
+    DEF[s[1] + "R"] = s[1] === "mLfo" ? 1 : 0; ctlWraps[s[1] + "R"] = seg; mx.appendChild(seg);
   });
   modHost.appendChild(mx);
   var dl = document.createElement("div"); dl.className = "ctl-row"; dl.innerHTML = '<span class="lab">Destinations</span>'; modHost.appendChild(dl);
@@ -685,16 +686,17 @@ canvas.disp { width: 100%; height: 64px; display: block; background: #0a0a0c; bo
   function P(name, cat, o) { return { name: name, cat: cat, p: o }; }
   var FACTORY = [
     P("Init", "Init", {}),
-    P("Deep Sub", "Sub", { aSaw: false, aPulse: false, bSaw: false, mixA: 0, mixB: 0, mixSub: 0.95, aOct: 0, cutoff: 500, reso: 0.05, fenvAmt: 0.1, aS: 1, aD: 0.5, xstr: 0.05, eqLo: 2 }),
-    P("Clean Sub Thump", "Sub", { aSaw: false, aPulse: true, aPW: 0.5, bSaw: false, mixA: 0.55, mixB: 0, mixSub: 0.8, aOct: 0, cutoff: 380, reso: 0.1, fenvAmt: 0.5, fD: 0.28, fS: 0, aD: 0.4, aS: 0.7, xstr: 0.1 }),
-    P("Round Bass", "Bass", { aSaw: true, bSaw: false, bTri: true, bOct: 0, mixA: 0.7, mixB: 0.5, mixSub: 0.35, cutoff: 700, reso: 0.25, fenvAmt: 0.55, fD: 0.35, fS: 0.1, aS: 0.85, xstr: 0.15, kbd: 0.4 }),
-    P("Dirty Reese", "Bass", { aSaw: true, bSaw: true, bTune: 0.12, aOct: 0, bOct: 0, mixA: 0.7, mixB: 0.7, mixSub: 0.4, cutoff: 650, reso: 0.3, fenvAmt: 0.2, fS: 0.5, aS: 1, xstr: 0.55, fuzz: 0.15, lfoHz: 0.4, mLfo: 0.25, mLfoR: 1, dest4: 1, eqHi: -3 }),
-    P("Pluck Bass", "Bass", { aSaw: true, bSaw: false, mixA: 0.8, mixB: 0, mixSub: 0.4, cutoff: 420, reso: 0.35, fenvAmt: 0.85, fD: 0.3, fS: 0, aD: 0.35, aS: 0.2, aR: 0.2, xstr: 0.2 }),
-    P("Acid Squelch", "Bass", { aSaw: true, mixA: 0.9, mixB: 0, cutoff: 350, reso: 0.82, fenvAmt: 0.75, fD: 0.33, fS: 0, aD: 0.4, aS: 0.7, glide: 0.25, glideAuto: true, xstr: 0.25, kbd: 0.2 }),
-    P("Sync Lead", "Lead", { aSaw: true, aSync: true, bSaw: true, aTune: 5, bOct: 1, mixA: 0.8, mixB: 0.2, cutoff: 6500, reso: 0.15, fenvAmt: 0.25, aS: 0.9, glide: 0.15, mLfo: 0.1, mLfoR: 2, dest0: 2, verbMix: 0.2, verbSize: 1.6 }),
-    P("Soft Lead", "Lead", { aSaw: true, bSaw: false, bTri: true, bTune: 0.1, mixA: 0.7, mixB: 0.5, cutoff: 3800, reso: 0.1, fenvAmt: 0.2, fA: 0.1, aA: 0.08, aS: 0.9, aR: 0.4, lfoHz: 5.5, mLfo: 0.05, mLfoR: 2, dest0: 2, wheel: 0.4, verbMix: 0.25, verbSize: 2.4, eqHi: -2 }),
-    P("Hollow Pulse", "Lead", { aSaw: false, aPulse: true, aPW: 0.3, bSaw: false, bPulse: true, bPW: 0.6, bTune: 0.08, mixA: 0.6, mixB: 0.5, cutoff: 2600, reso: 0.2, fenvAmt: 0.3, fD: 0.5, fS: 0.3, lfoHz: 0.8, mLfo: 0.3, mLfoR: 1, dest1: 1, dest3: 1, verbMix: 0.15 }),
-    P("Drone Texture", "FX", { aSaw: true, bSaw: true, bTune: 7, mixA: 0.6, mixB: 0.6, mixNoise: 0.1, cutoff: 1400, reso: 0.5, fenvAmt: 0.2, drone: true, lfoHz: 0.3, mLfo: 0.5, mLfoR: 1, dest4: 1, verbMix: 0.4, verbSize: 3.5, aA: 0.5, aR: 0.7 })
+    P("Deep Sub", "Sub", { aSaw: false, aPulse: false, bSaw: false, mixA: 0, mixB: 0, mixSub: 0.95, aOct: 0, cutoff: 500, reso: 0.05, fenvAmt: 0.1, aS: 1, aD: 0.5, xstr: 0.05, eqLo: 2, bOct: 1, bTune: 0, fS: 0.25, lfoHz: 5, mLfo: 0.3, mLfoR: 2, fuzz: 0, eqMid: 0, eqHi: 0, opto: 0 }),
+    P("Clean Sub Thump", "Sub", { aSaw: false, aPulse: true, aPW: 0.5, bSaw: false, mixA: 0.55, mixB: 0, mixSub: 0.8, aOct: 0, cutoff: 380, reso: 0.1, fenvAmt: 0.5, fD: 0.28, fS: 0, aD: 0.4, aS: 0.7, xstr: 0.1, bOct: 1, bTune: 0, lfoHz: 5, mLfo: 0.3, mLfoR: 2, fuzz: 0, eqMid: 0, eqHi: 0, opto: 0 }),
+    P("Round Bass", "Bass", { aSaw: true, bSaw: false, bTri: true, bOct: 0, mixA: 0.7, mixB: 0.5, mixSub: 0.35, cutoff: 700, reso: 0.25, fenvAmt: 0.55, fD: 0.35, fS: 0.1, aS: 0.85, xstr: 0.15, kbd: 0.4, aOct: 1, bTune: 0, lfoHz: 5, mLfo: 0.3, mLfoR: 2, fuzz: 0, eqMid: 0, eqHi: 0, opto: 0 }),
+    P("Dirty Reese", "Bass", { aOct: 0, bOct: 0, bTune: 0.4, mixA: 0.7, mixB: 0.7, mixSub: 0.4, cutoff: 585, reso: 0.3, fenvAmt: 0.2, fS: 0.5, aS: 1, lfoHz: 0.4, mLfo: 0.25, mLfoR: 1, xstr: 0.49, fuzz: 0.37, eqMid: 2.3, eqHi: -3, opto: 0.5, aSaw: true, bSaw: true, aPulse: false, bTri: false, lfoTri: true, mixNoise: 0, kbd: 0.5, aTune: 0, fD: 0.45, aD: 0.45, verbMix: 0.12, verbSize: 0.9, verbHP: 250, drive: 0, maxAmt: 0, vol: 0.6 }),
+    P("Nasty 808 Dub", "Bass", { cutoff: 25, fD: 0.72, fS: 0.21, aD: 0.38, aS: 0.56, bTune: 0.4 }),
+    P("Pluck Bass", "Bass", { aSaw: true, bSaw: false, mixA: 0.8, mixB: 0, mixSub: 0.4, cutoff: 420, reso: 0.35, fenvAmt: 0.85, fD: 0.3, fS: 0, aD: 0.35, aS: 0.2, aR: 0.2, xstr: 0.2, aOct: 1, bOct: 1, bTune: 0, lfoHz: 5, mLfo: 0.3, mLfoR: 2, fuzz: 0, eqMid: 0, eqHi: 0, opto: 0 }),
+    P("Acid Squelch", "Bass", { aSaw: true, mixA: 0.9, mixB: 0, cutoff: 350, reso: 0.82, fenvAmt: 0.75, fD: 0.33, fS: 0, aD: 0.4, aS: 0.7, glide: 0.25, glideAuto: true, xstr: 0.25, kbd: 0.2, aOct: 1, bOct: 1, bTune: 0, mixSub: 0, lfoHz: 5, mLfo: 0.3, mLfoR: 2, fuzz: 0, eqMid: 0, eqHi: 0, opto: 0 }),
+    P("Sync Lead", "Lead", { aSaw: true, aSync: true, bSaw: true, aTune: 5, bOct: 1, mixA: 0.8, mixB: 0.2, cutoff: 6500, reso: 0.15, fenvAmt: 0.25, aS: 0.9, glide: 0.15, mLfo: 0.1, mLfoR: 2, dest0: 2, verbMix: 0.2, verbSize: 1.6, aOct: 1, bTune: 0, mixSub: 0, fS: 0.25, lfoHz: 5, xstr: 0.1, fuzz: 0, eqMid: 0, eqHi: 0, opto: 0 }),
+    P("Soft Lead", "Lead", { aSaw: true, bSaw: false, bTri: true, bTune: 0.1, mixA: 0.7, mixB: 0.5, cutoff: 3800, reso: 0.1, fenvAmt: 0.2, fA: 0.1, aA: 0.08, aS: 0.9, aR: 0.4, lfoHz: 5.5, mLfo: 0.05, mLfoR: 2, dest0: 2, wheel: 0.4, verbMix: 0.25, verbSize: 2.4, eqHi: -2, aOct: 1, bOct: 1, mixSub: 0, fS: 0.25, xstr: 0.1, fuzz: 0, eqMid: 0, opto: 0 }),
+    P("Hollow Pulse", "Lead", { aSaw: false, aPulse: true, aPW: 0.3, bSaw: false, bPulse: true, bPW: 0.6, bTune: 0.08, mixA: 0.6, mixB: 0.5, cutoff: 2600, reso: 0.2, fenvAmt: 0.3, fD: 0.5, fS: 0.3, lfoHz: 0.8, mLfo: 0.3, mLfoR: 1, dest1: 1, dest3: 1, verbMix: 0.15, aOct: 1, bOct: 1, mixSub: 0, aS: 0.8, xstr: 0.1, fuzz: 0, eqMid: 0, eqHi: 0, opto: 0 }),
+    P("Drone Texture", "FX", { aSaw: true, bSaw: true, bTune: 7, mixA: 0.6, mixB: 0.6, mixNoise: 0.1, cutoff: 1400, reso: 0.5, fenvAmt: 0.2, drone: true, lfoHz: 0.3, mLfo: 0.5, mLfoR: 1, dest4: 1, verbMix: 0.4, verbSize: 3.5, aA: 0.5, aR: 0.7, aOct: 1, bOct: 1, mixSub: 0, fS: 0.25, aS: 0.8, xstr: 0.1, fuzz: 0, eqMid: 0, eqHi: 0, opto: 0 })
   ];
   var USER = [], cur = 0, dirty = false;
   try { USER = JSON.parse(localStorage.getItem("purrone_user") || "[]"); } catch (e) { USER = []; }
@@ -715,6 +717,22 @@ canvas.disp { width: 100%; height: 64px; display: block; background: #0a0a0c; bo
   document.addEventListener("click", function (e) { if (!e.target.closest(".presets")) { $("#plist").hidden = true; } });
   $("#prev").addEventListener("click", function () { loadPreset(cur - 1); }); $("#next").addEventListener("click", function () { loadPreset(cur + 1); });
   $("#init").addEventListener("click", function () { loadPreset(0); });
+  $("#rename").addEventListener("click", function () {
+    var pn = $("#pname"), old = all()[cur].name, inp = document.createElement("input"); inp.type = "text"; inp.value = old; inp.maxLength = 40; inp.setAttribute("aria-label", "Sound name");
+    inp.style.cssText = "grid-column: 2; min-width: 0; height: 100%; padding: 0 10px; background: #0a0b0e; color: var(--ink); border: 1px solid var(--line); border-radius: 3px; font: inherit; letter-spacing: .08em; text-transform: uppercase;";
+    pn.style.display = "none"; pn.parentNode.insertBefore(inp, pn); inp.focus(); inp.select();
+    var done = false;
+    function finish(ok) {
+      if (done) return; done = true; var nm = inp.value.replace(/\s+/g, " ").trim(); inp.remove(); pn.style.display = "";
+      if (!ok || !nm || nm === old) return;
+      if (cur >= FACTORY.length) { USER[cur - FACTORY.length].name = nm; }
+      else { var o = {}; Object.keys(S).forEach(function (k) { if (S[k] !== DEF[k]) o[k] = S[k]; }); USER.push({ name: nm, cat: "User", p: o }); cur = FACTORY.length + USER.length - 1; }
+      try { localStorage.setItem("purrone_user", JSON.stringify(USER)); } catch (e) { /* storage unavailable */ }
+      $("#pnameText").textContent = nm; $("#pcat").textContent = "USER"; dirty = false; renderList();
+    }
+    inp.addEventListener("keydown", function (e) { if (e.key === "Enter") finish(true); else if (e.key === "Escape") finish(false); e.stopPropagation(); });
+    inp.addEventListener("blur", function () { finish(true); });
+  });
   $("#save").addEventListener("click", function () {
     var name = "My sound " + (USER.length + 1), o = {}; Object.keys(S).forEach(function (k) { if (S[k] !== DEF[k]) o[k] = S[k]; });
     USER.push({ name: name, cat: "User", p: o }); try { localStorage.setItem("purrone_user", JSON.stringify(USER)); } catch (e) { /* storage unavailable */ }

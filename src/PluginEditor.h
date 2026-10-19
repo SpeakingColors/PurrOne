@@ -15,7 +15,7 @@ private:
     void step (int dir);
 
     PurrOneProcessor& proc;
-    juce::ComboBox presetBox; juce::TextButton prevBtn { "<" }, nextBtn { ">" }, saveBtn { "Save" };
+    juce::ComboBox presetBox; juce::TextButton prevBtn { "<" }, nextBtn { ">" }, saveBtn { "Save" }, renameBtn { "Rename" };
     juce::GenericAudioProcessorEditor generic;
     float dispL = 0, dispR = 0, holdL = 0, holdR = 0; int clipFrames = 0;
     juce::Rectangle<int> meterArea;

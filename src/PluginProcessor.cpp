@@ -148,6 +148,20 @@ bool PurrOneProcessor::saveUserPreset (const juce::String& name)
     currentPresetName = clean;
     return xml->writeTo (dir.getChildFile (clean + ".purrone"));
 }
+bool PurrOneProcessor::renameUserPreset (const juce::String& from, const juce::String& to)
+{
+    auto cleanTo = sanitize (to); if (cleanTo.isEmpty()) return false;
+    auto src = userPresetDir().getChildFile (sanitize (from) + ".purrone");
+    auto dst = userPresetDir().getChildFile (cleanTo + ".purrone");
+    if (! src.existsAsFile() || (dst.existsAsFile() && dst != src)) return false;
+    std::unique_ptr<juce::XmlElement> xml (juce::XmlDocument::parse (src));
+    if (xml == nullptr) return false;
+    xml->setAttribute ("presetName", cleanTo);
+    if (! xml->writeTo (dst)) return false;
+    if (dst != src) src.deleteFile();
+    if (currentPresetName == from) currentPresetName = cleanTo;
+    return true;
+}
 bool PurrOneProcessor::loadUserPreset (const juce::String& name)
 {
     auto file = userPresetDir().getChildFile (sanitize (name) + ".purrone");

@@ -5,7 +5,7 @@ namespace { const int kCheek = 44, kMeterW = 110, kTop = 44; }
 
 PurrOneEditor::PurrOneEditor (PurrOneProcessor& p) : AudioProcessorEditor (&p), proc (p), generic (p)
 {
-    addAndMakeVisible (presetBox); addAndMakeVisible (prevBtn); addAndMakeVisible (nextBtn); addAndMakeVisible (saveBtn); addAndMakeVisible (generic);
+    addAndMakeVisible (presetBox); addAndMakeVisible (prevBtn); addAndMakeVisible (nextBtn); addAndMakeVisible (saveBtn); addAndMakeVisible (renameBtn); addAndMakeVisible (generic);
     refreshPresetBox();
     presetBox.onChange = [this]
     {
@@ -22,6 +22,19 @@ PurrOneEditor::PurrOneEditor (PurrOneProcessor& p) : AudioProcessorEditor (&p), 
         saveDialog->enterModalState (true, juce::ModalCallbackFunction::create ([this] (int r)
         {
             if (r == 1 && saveDialog != nullptr) { proc.saveUserPreset (saveDialog->getTextEditorContents ("name")); refreshPresetBox(); }
+            saveDialog.reset();
+        }), false);
+    };
+    renameBtn.onClick = [this]
+    {
+        const auto cur = proc.currentPresetName;
+        if (! proc.listUserPresets().contains (cur)) { saveBtn.onClick(); return; }   // factory sound: save it as your own copy under a new name
+        saveDialog = std::make_unique<juce::AlertWindow> ("Rename sound", "New name", juce::MessageBoxIconType::NoIcon);
+        saveDialog->addTextEditor ("name", cur);
+        saveDialog->addButton ("Rename", 1, juce::KeyPress (juce::KeyPress::returnKey)); saveDialog->addButton ("Cancel", 0, juce::KeyPress (juce::KeyPress::escapeKey));
+        saveDialog->enterModalState (true, juce::ModalCallbackFunction::create ([this, cur] (int r)
+        {
+            if (r == 1 && saveDialog != nullptr) { proc.renameUserPreset (cur, saveDialog->getTextEditorContents ("name")); refreshPresetBox(); }
             saveDialog.reset();
         }), false);
     };
@@ -100,7 +113,7 @@ void PurrOneEditor::resized()
 {
     auto r = getLocalBounds().withTrimmedLeft (kCheek).withTrimmedRight (kCheek);
     auto top = r.removeFromTop (kTop).reduced (6, 6); top.removeFromLeft (130);
-    saveBtn.setBounds (top.removeFromRight (70)); top.removeFromRight (6); nextBtn.setBounds (top.removeFromRight (34)); top.removeFromRight (4);
+    saveBtn.setBounds (top.removeFromRight (70)); top.removeFromRight (6); renameBtn.setBounds (top.removeFromRight (80)); top.removeFromRight (6); nextBtn.setBounds (top.removeFromRight (34)); top.removeFromRight (4);
     prevBtn.setBounds (top.removeFromLeft (34)); top.removeFromLeft (4); presetBox.setBounds (top);
     meterArea = r.removeFromRight (kMeterW); generic.setBounds (r);
 }

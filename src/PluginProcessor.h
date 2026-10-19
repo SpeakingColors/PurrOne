@@ -38,6 +38,7 @@ public:
     static juce::File userPresetDir();
     juce::StringArray listUserPresets() const;
     bool saveUserPreset (const juce::String& name);
+    bool renameUserPreset (const juce::String& from, const juce::String& to);   // user presets only
     bool loadUserPreset (const juce::String& name);
 
     juce::AudioProcessorValueTreeState apvts;
