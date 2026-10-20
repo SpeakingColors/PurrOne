@@ -16,15 +16,15 @@ The tabs in the header switch between Sound, Seq / Arp, FX and Settings. Info bu
 - Mode: Off plays your keys as usual, Seq plays the step sequence, Arp plays the held keys one at a time.
 - Steps: 1 to 64 per pattern, 4 patterns (A to D). Click a note to raise it, Shift+click or the wheel lowers it; Gate, Accent and Slide are on or off per step. Slide glides in from the step before.
 - Start: With host (the DAW transport starts it and its tempo is followed), on key (pressing a key starts it and the lowest held key transposes the pattern), or a chosen start note (that note toggles it and is not played). The Play button starts it by hand. Mode Off turns it all off.
-- 303 squelch (off by default): accents and slides push the resonance for a moment. Accent loudness and brightness always work.
+- 303 squelch (off by default): accents and slides push the resonance for a moment. Accent loudness and brightness always work: an accented step jumps in level and opens the filter, scaled by the Accent knob.
 - Sequence presets are small files in Studio 87/PurrOne/sequences. Share gives a text code, Import reads one back.
 - MIDI out is off by default. When on, the sequence or arp also sends its notes out so it can play another synth.
 
 # FX
 Signal order is fixed: Colour, Filter, Amp, Crush, EQ, Space, Opto, OTT, Dance master, Maximizer, Stereo, Limiter. New modules start off or neutral.
-- EQ: five bands. Drag a point, wheel over it changes Q. Each band can act on the stereo signal, the mid or the side, and can be dynamic.
+- EQ: five bands. Drag a point, wheel over it changes Q. Each band can act on the stereo signal, the mid or the side, and can be dynamic. Dynamic: positive values boost, negative values cut, by up to that many dB when the band is above its threshold. The graph shows the threshold line, the live level in the band, what the band is doing now (solid dot) and where it ends up at full effect (hollow dot, dashed curve).
 - Space: pre-delay, damping, width and ducking (lowers the tail while you play).
-- Opto speed, OTT, Dance master (3 band compressor and clipper), Maximizer and the limiter ceiling are on the Dynamics page. Stereo has width, mono below, mid and side level and drive.
+- Crush starts at 8 bit, 12 kHz, 70% mix when you switch it on. Opto speed, OTT, Dance master (3 band compressor and clipper), Maximizer and the limiter ceiling are on the Dynamics page. Stereo has width, mono below, mid and side level and drive.
 - Every module has a Presets button in the left rail; a module preset changes only that module.
 - The analyzer (spectrum, scope, phase) reads the final output.
 

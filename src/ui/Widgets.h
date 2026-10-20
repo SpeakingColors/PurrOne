@@ -51,7 +51,7 @@ inline String formatValue (char f, float v)
         case 'R': return String (roundToInt (v)) + " bit";
         case 'M': return String (roundToInt (v)) + "ms";
         case 'Q': return String (v, 1);
-        case 'Z': return v < 0.05f ? String ("static") : sgn (v) + "dB";
+        case 'Z': return std::abs (v) < 0.05f ? String ("static") : sgn (v) + "dB";
         case 'K': return String (roundToInt (v)) + "dB";
         default:  return String (roundToInt (v * 100.0f)) + "%";
     }

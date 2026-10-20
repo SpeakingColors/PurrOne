@@ -83,6 +83,8 @@ public:
     juce::String currentPresetName { "Init" };
     int editorWidth = 1360;                                // window width, remembered while the host session runs
 
+    const purrone::Eq5& eqView() const { return eq; }
+
 private:
     void applyParams();
     void applyFactory (int index);

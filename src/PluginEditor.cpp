@@ -237,10 +237,15 @@ PurrOneEditor::PurrOneEditor (PurrOneProcessor& p) : AudioProcessorEditor (&p), 
     content->setView (0);
     if (const char* v = std::getenv ("PURRONE_VIEW")) content->setView (juce::jlimit (0, 3, std::atoi (v)));   // test hook for screenshots
     if (const char* v = std::getenv ("PURRONE_FX")) content->fxHost->select (juce::jlimit (0, 4, std::atoi (v)));
+    if (const char* v = std::getenv ("PURRONE_PARAMS"))   // test hook: "id=value,id=value" in real units
+        for (auto& kv : juce::StringArray::fromTokens (juce::String (v), ",", ""))
+            if (auto* prm = proc.apvts.getParameter (kv.upToFirstOccurrenceOf ("=", false, false).trim()))
+                prm->setValueNotifyingHost (prm->convertTo0to1 (kv.fromFirstOccurrenceOf ("=", false, false).getFloatValue()));
+    if (const char* v = std::getenv ("PURRONE_NOTE")) proc.keyState.noteOn (1, juce::jlimit (0, 127, std::atoi (v)), 0.8f);
 
     constrainer.setFixedAspectRatio ((double) L::W / L::H); constrainer.setSizeLimits (680, (int) (680 * (double) L::H / L::W), 2400, (int) (2400 * (double) L::H / L::W));
     setConstrainer (&constrainer);
-    border = std::make_unique<juce::ResizableBorderComponent> (this, &constrainer); border->setBorderThickness (juce::BorderSize<int> (6)); addAndMakeVisible (*border);   // every side and corner
+    border = std::make_unique<juce::ResizableBorderComponent> (this, &constrainer); border->setBorderThickness (juce::BorderSize<int> (12)); addAndMakeVisible (*border);   // every side and corner
     corner = std::make_unique<juce::ResizableCornerComponent> (this, &constrainer); addAndMakeVisible (*corner);
     setResizable (true, false);
     const int w = juce::jlimit (680, 2400, proc.editorWidth);
@@ -255,7 +260,8 @@ void PurrOneEditor::resized()
     const float s = (float) getWidth() / (float) L::W;
     content->setTransform (juce::AffineTransform::scale (s));
     content->setBounds (0, 0, L::W, L::H);
-    if (border) border->setBounds (getLocalBounds());
+    if (border) { border->setBounds (getLocalBounds()); border->toFront (false); }
+    if (corner) corner->toFront (false);
     if (corner) corner->setBounds (getWidth() - 26, getHeight() - 26, 26, 26);
     proc.editorWidth = getWidth();
     content->zoom.text = juce::String (juce::roundToInt ((float) getWidth() / (float) kDefaultW * 100.0f)) + "%"; content->zoom.repaint();

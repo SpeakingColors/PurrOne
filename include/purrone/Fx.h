@@ -253,10 +253,10 @@ struct Opto
         const float k = 1.0f - std::exp (-1.0f / (0.0015f * fs));
         env += k * (peak - env);
         const float db = 20.0f * std::log10 (std::max (env, 1.0e-5f));
-        const float thr = -6.0f - 30.0f * p, knee = 12.0f, over = db - thr;
+        const float thr = -6.0f - 36.0f * p, knee = 12.0f, over = db - thr;
         float target = 0.0f;
-        if (over > knee * 0.5f) target = over * (2.0f / 3.0f);
-        else if (over > -knee * 0.5f) { const float t = over + knee * 0.5f; target = (2.0f / 3.0f) * t * t / (2.0f * knee); }
+        if (over > knee * 0.5f) target = over * 0.75f;
+        else if (over > -knee * 0.5f) { const float t = over + knee * 0.5f; target = 0.75f * t * t / (2.0f * knee); }
         const float att = 1.0f - std::exp (-1.0f / (0.010f * sm * fs));
         const float rel1 = 1.0f - std::exp (-1.0f / (0.0866f * sm * fs));
         const float rel2 = 1.0f - std::exp (-1.0f / ((1.0f + 4.0f * mem) * sm * fs));

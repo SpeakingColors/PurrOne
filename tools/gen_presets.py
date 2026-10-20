@@ -127,7 +127,7 @@ mod("EQ", "Mud Cut", **eqflat(eqG2=-4, eqF2=300, eqQ2=1.0, eqMid=1.5, eqHi=-2))
 mod("EQ", "Presence", **eqflat(eqG4=3, eqF4=3200, eqQ4=1.0, eqMid=1, eqHi=-1))
 mod("EQ", "Dark", **eqflat(eqLo=1.5, eqHi=-8, eqHiF=4000))
 mod("EQ", "Bright", **eqflat(eqMid=1, eqHi=4, eqHiF=8000))
-mod("EQ", "Dynamic Tame", **eqflat(eqMid=1.5, eqG4=-2, eqF4=3200, eqQ4=1.0, eqD4=6, eqT4=-30, eqHi=-2))
+mod("EQ", "Dynamic Tame", **eqflat(eqMid=1.5, eqG4=-2, eqF4=3200, eqQ4=1.0, eqD4=-6, eqT4=-30, eqHi=-2))
 mod("EQ", "Side Air", **eqflat(eqMid=1, eqHi=4, eqHiF=8000, eqM5=2))
 mod("EQ", "Mono Low End", **eqflat(eqLo=-12, eqLoF=160, eqM1=2, eqMid=1.5, eqHi=-2))
 mod("EQ", "Scoop", **eqflat(eqLo=3, eqMid=-5, eqMidF=800, eqMidQ=1.0, eqHi=3))
@@ -157,7 +157,7 @@ mod("Dance master", "Off", dmOn=0)
 mod("Dance master", "Standard", dmOn=1, dmMix=0.5, dmDrive=0.3, dmClip=0.3, dmLow=0, dmMid=0.5, dmHigh=0.4)
 mod("Dance master", "Bass Safe", dmOn=1, dmMix=0.6, dmDrive=0.2, dmClip=0.4, dmLow=0, dmMid=0.6, dmHigh=0.5)
 mod("Dance master", "Loud", dmOn=1, dmMix=0.8, dmDrive=0.5, dmClip=0.6, dmLow=0.3, dmMid=0.7, dmHigh=0.6)
-mod("Dance master", "Smash", dmOn=1, dmMix=1.0, dmDrive=0.7, dmClip=0.8, dmLow=0.5, dmMid=0.8, dmHigh=0.7)
+mod("Dance master", "Smash", dmOn=1, dmMix=0.8, dmDrive=0.5, dmClip=0.6, dmLow=0.5, dmMid=0.8, dmHigh=0.7)
 
 mod("Maximizer", "Off", maxAmt=0)
 mod("Maximizer", "Glue", maxAmt=0.25)
@@ -338,7 +338,7 @@ CHAINS = {
  "Rave":      dict(EQ="Bright", Space="Hall", OTT="Light", Dance_master="Loud", Stereo="Wide"),
  "Stadium":   dict(EQ="Side Air", Space="Hall", OTT="Air Lift", Stereo="Extra Wide", Maximizer="Big"),
  "Radio":     dict(Crush="Radio", EQ="Scoop", Space="Room", Opto="Fast Grab"),
- "Smash":     dict(Colour="Nasty", EQ="Tight Low End", Space="Dry", Dance_master="Smash", Maximizer="Max"),
+ "Smash":     dict(Colour="Nasty", EQ="Tight Low End", Space="Dry", Dance_master="Smash", Maximizer="Big"),
  "Grit Side": dict(Colour="Gritty", EQ="Mono Low End", Space="Plate", Stereo="Side Grit", OTT="Light"),
  "Alias":     dict(Crush="Alias 4 bit", Colour="Nasty", EQ="Presence", Space="Bright Splash", Opto="Squash"),
 }

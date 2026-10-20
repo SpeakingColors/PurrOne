@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22)
-project(PurrOne VERSION 0.2.0 LANGUAGES C CXX)
+project(PurrOne VERSION 0.2.1 LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
@@ -8,6 +8,8 @@ add_executable(purrone_render tools/render.cpp)
 target_include_directories(purrone_render PRIVATE include)
 add_executable(purrone_fxtest tools/fxtest.cpp)
 target_include_directories(purrone_fxtest PRIVATE include)
+add_executable(purrone_fxmeasure tools/fxmeasure.cpp)
+target_include_directories(purrone_fxmeasure PRIVATE include)
 add_executable(purrone_seqtest tools/seqtest.cpp)
 target_include_directories(purrone_seqtest PRIVATE include)
 

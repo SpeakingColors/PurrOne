@@ -21,7 +21,7 @@ inline const std::vector<FxModule>& fxModules()
             { "Tube Push", { {"drive", 0.45f}, {"xstr", 0.3f}, {"fuzz", 0.0f}, {"colPos", 1.0f} } },
         } },
         { "Crush", {
-            { "Off", { {"crushOn", 0.0f}, {"crushBits", 16.0f}, {"crushRate", 48000.0f}, {"crushMix", 0.5f} } },
+            { "Off", { {"crushOn", 0.0f}, {"crushBits", 8.0f}, {"crushRate", 12000.0f}, {"crushMix", 0.7f} } },
             { "Subtle 12 bit", { {"crushOn", 1.0f}, {"crushBits", 12.0f}, {"crushRate", 36000.0f}, {"crushMix", 0.35f} } },
             { "Lo-fi 8 bit", { {"crushOn", 1.0f}, {"crushBits", 8.0f}, {"crushRate", 24000.0f}, {"crushMix", 0.5f} } },
             { "Radio", { {"crushOn", 1.0f}, {"crushBits", 10.0f}, {"crushRate", 11000.0f}, {"crushMix", 0.6f} } },
@@ -36,7 +36,7 @@ inline const std::vector<FxModule>& fxModules()
             { "Presence", { {"eqLo", 0.0f}, {"eqLoF", 100.0f}, {"eqG2", 0.0f}, {"eqF2", 350.0f}, {"eqQ2", 1.0f}, {"eqMid", 1.0f}, {"eqMidF", 999.9999f}, {"eqMidQ", 0.8f}, {"eqG4", 3.0f}, {"eqF4", 3200.0f}, {"eqQ4", 1.0f}, {"eqHi", -1.0f}, {"eqHiF", 6000.0f}, {"eqD1", 0.0f}, {"eqT1", -24.0f}, {"eqM1", 0.0f}, {"eqD2", 0.0f}, {"eqT2", -24.0f}, {"eqM2", 0.0f}, {"eqD3", 0.0f}, {"eqT3", -24.0f}, {"eqM3", 0.0f}, {"eqD4", 0.0f}, {"eqT4", -24.0f}, {"eqM4", 0.0f}, {"eqD5", 0.0f}, {"eqT5", -24.0f}, {"eqM5", 0.0f} } },
             { "Dark", { {"eqLo", 1.5f}, {"eqLoF", 100.0f}, {"eqG2", 0.0f}, {"eqF2", 350.0f}, {"eqQ2", 1.0f}, {"eqMid", 0.0f}, {"eqMidF", 999.9999f}, {"eqMidQ", 0.8f}, {"eqG4", 0.0f}, {"eqF4", 3200.0f}, {"eqQ4", 1.0f}, {"eqHi", -8.0f}, {"eqHiF", 4000.0f}, {"eqD1", 0.0f}, {"eqT1", -24.0f}, {"eqM1", 0.0f}, {"eqD2", 0.0f}, {"eqT2", -24.0f}, {"eqM2", 0.0f}, {"eqD3", 0.0f}, {"eqT3", -24.0f}, {"eqM3", 0.0f}, {"eqD4", 0.0f}, {"eqT4", -24.0f}, {"eqM4", 0.0f}, {"eqD5", 0.0f}, {"eqT5", -24.0f}, {"eqM5", 0.0f} } },
             { "Bright", { {"eqLo", 0.0f}, {"eqLoF", 100.0f}, {"eqG2", 0.0f}, {"eqF2", 350.0f}, {"eqQ2", 1.0f}, {"eqMid", 1.0f}, {"eqMidF", 999.9999f}, {"eqMidQ", 0.8f}, {"eqG4", 0.0f}, {"eqF4", 3200.0f}, {"eqQ4", 1.0f}, {"eqHi", 4.0f}, {"eqHiF", 8000.0f}, {"eqD1", 0.0f}, {"eqT1", -24.0f}, {"eqM1", 0.0f}, {"eqD2", 0.0f}, {"eqT2", -24.0f}, {"eqM2", 0.0f}, {"eqD3", 0.0f}, {"eqT3", -24.0f}, {"eqM3", 0.0f}, {"eqD4", 0.0f}, {"eqT4", -24.0f}, {"eqM4", 0.0f}, {"eqD5", 0.0f}, {"eqT5", -24.0f}, {"eqM5", 0.0f} } },
-            { "Dynamic Tame", { {"eqLo", 0.0f}, {"eqLoF", 100.0f}, {"eqG2", 0.0f}, {"eqF2", 350.0f}, {"eqQ2", 1.0f}, {"eqMid", 1.5f}, {"eqMidF", 999.9999f}, {"eqMidQ", 0.8f}, {"eqG4", -2.0f}, {"eqF4", 3200.0f}, {"eqQ4", 1.0f}, {"eqHi", -2.0f}, {"eqHiF", 6000.0f}, {"eqD1", 0.0f}, {"eqT1", -24.0f}, {"eqM1", 0.0f}, {"eqD2", 0.0f}, {"eqT2", -24.0f}, {"eqM2", 0.0f}, {"eqD3", 0.0f}, {"eqT3", -24.0f}, {"eqM3", 0.0f}, {"eqD4", 6.0f}, {"eqT4", -30.0f}, {"eqM4", 0.0f}, {"eqD5", 0.0f}, {"eqT5", -24.0f}, {"eqM5", 0.0f} } },
+            { "Dynamic Tame", { {"eqLo", 0.0f}, {"eqLoF", 100.0f}, {"eqG2", 0.0f}, {"eqF2", 350.0f}, {"eqQ2", 1.0f}, {"eqMid", 1.5f}, {"eqMidF", 999.9999f}, {"eqMidQ", 0.8f}, {"eqG4", -2.0f}, {"eqF4", 3200.0f}, {"eqQ4", 1.0f}, {"eqHi", -2.0f}, {"eqHiF", 6000.0f}, {"eqD1", 0.0f}, {"eqT1", -24.0f}, {"eqM1", 0.0f}, {"eqD2", 0.0f}, {"eqT2", -24.0f}, {"eqM2", 0.0f}, {"eqD3", 0.0f}, {"eqT3", -24.0f}, {"eqM3", 0.0f}, {"eqD4", -6.0f}, {"eqT4", -30.0f}, {"eqM4", 0.0f}, {"eqD5", 0.0f}, {"eqT5", -24.0f}, {"eqM5", 0.0f} } },
             { "Side Air", { {"eqLo", 0.0f}, {"eqLoF", 100.0f}, {"eqG2", 0.0f}, {"eqF2", 350.0f}, {"eqQ2", 1.0f}, {"eqMid", 1.0f}, {"eqMidF", 999.9999f}, {"eqMidQ", 0.8f}, {"eqG4", 0.0f}, {"eqF4", 3200.0f}, {"eqQ4", 1.0f}, {"eqHi", 4.0f}, {"eqHiF", 8000.0f}, {"eqD1", 0.0f}, {"eqT1", -24.0f}, {"eqM1", 0.0f}, {"eqD2", 0.0f}, {"eqT2", -24.0f}, {"eqM2", 0.0f}, {"eqD3", 0.0f}, {"eqT3", -24.0f}, {"eqM3", 0.0f}, {"eqD4", 0.0f}, {"eqT4", -24.0f}, {"eqM4", 0.0f}, {"eqD5", 0.0f}, {"eqT5", -24.0f}, {"eqM5", 2.0f} } },
             { "Mono Low End", { {"eqLo", -12.0f}, {"eqLoF", 160.0f}, {"eqG2", 0.0f}, {"eqF2", 350.0f}, {"eqQ2", 1.0f}, {"eqMid", 1.5f}, {"eqMidF", 999.9999f}, {"eqMidQ", 0.8f}, {"eqG4", 0.0f}, {"eqF4", 3200.0f}, {"eqQ4", 1.0f}, {"eqHi", -2.0f}, {"eqHiF", 6000.0f}, {"eqD1", 0.0f}, {"eqT1", -24.0f}, {"eqM1", 2.0f}, {"eqD2", 0.0f}, {"eqT2", -24.0f}, {"eqM2", 0.0f}, {"eqD3", 0.0f}, {"eqT3", -24.0f}, {"eqM3", 0.0f}, {"eqD4", 0.0f}, {"eqT4", -24.0f}, {"eqM4", 0.0f}, {"eqD5", 0.0f}, {"eqT5", -24.0f}, {"eqM5", 0.0f} } },
             { "Scoop", { {"eqLo", 3.0f}, {"eqLoF", 100.0f}, {"eqG2", 0.0f}, {"eqF2", 350.0f}, {"eqQ2", 1.0f}, {"eqMid", -5.0f}, {"eqMidF", 800.0f}, {"eqMidQ", 1.0f}, {"eqG4", 0.0f}, {"eqF4", 3200.0f}, {"eqQ4", 1.0f}, {"eqHi", 3.0f}, {"eqHiF", 6000.0f}, {"eqD1", 0.0f}, {"eqT1", -24.0f}, {"eqM1", 0.0f}, {"eqD2", 0.0f}, {"eqT2", -24.0f}, {"eqM2", 0.0f}, {"eqD3", 0.0f}, {"eqT3", -24.0f}, {"eqM3", 0.0f}, {"eqD4", 0.0f}, {"eqT4", -24.0f}, {"eqM4", 0.0f}, {"eqD5", 0.0f}, {"eqT5", -24.0f}, {"eqM5", 0.0f} } },
@@ -66,11 +66,11 @@ inline const std::vector<FxModule>& fxModules()
             { "Air Lift", { {"ottOn", 1.0f}, {"ottAmt", 0.5f}, {"ottDepth", 0.6f}, {"ottTime", 0.4f}, {"ottLo", 0.0f}, {"ottMid", 0.0f}, {"ottHi", 4.0f} } },
         } },
         { "Dance master", {
-            { "Off", { {"dmOn", 0.0f}, {"dmMix", 0.5f}, {"dmDrive", 0.3f}, {"dmClip", 0.3f}, {"dmLow", 0.0f}, {"dmMid", 0.5f}, {"dmHigh", 0.4f} } },
+            { "Off", { {"dmOn", 0.0f}, {"dmMix", 0.8f}, {"dmDrive", 0.4f}, {"dmClip", 0.4f}, {"dmLow", 0.5f}, {"dmMid", 0.6f}, {"dmHigh", 0.5f} } },
             { "Standard", { {"dmOn", 1.0f}, {"dmMix", 0.5f}, {"dmDrive", 0.3f}, {"dmClip", 0.3f}, {"dmLow", 0.0f}, {"dmMid", 0.5f}, {"dmHigh", 0.4f} } },
             { "Bass Safe", { {"dmOn", 1.0f}, {"dmMix", 0.6f}, {"dmDrive", 0.2f}, {"dmClip", 0.4f}, {"dmLow", 0.0f}, {"dmMid", 0.6f}, {"dmHigh", 0.5f} } },
             { "Loud", { {"dmOn", 1.0f}, {"dmMix", 0.8f}, {"dmDrive", 0.5f}, {"dmClip", 0.6f}, {"dmLow", 0.3f}, {"dmMid", 0.7f}, {"dmHigh", 0.6f} } },
-            { "Smash", { {"dmOn", 1.0f}, {"dmMix", 1.0f}, {"dmDrive", 0.7f}, {"dmClip", 0.8f}, {"dmLow", 0.5f}, {"dmMid", 0.8f}, {"dmHigh", 0.7f} } },
+            { "Smash", { {"dmOn", 1.0f}, {"dmMix", 0.8f}, {"dmDrive", 0.5f}, {"dmClip", 0.6f}, {"dmLow", 0.5f}, {"dmMid", 0.8f}, {"dmHigh", 0.7f} } },
         } },
         { "Maximizer", {
             { "Off", { {"maxAmt", 0.0f} } },

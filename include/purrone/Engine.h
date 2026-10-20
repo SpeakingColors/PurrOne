@@ -395,7 +395,7 @@ private:
             tuneAdd += P.tuneOff[k % 12] * (1.0f - fr) + P.tuneOff[(k + 1) % 12] * fr;
         }
         // accent and squelch envelopes
-        accEnv -= accEnv * (1.0f - std::exp (-dtSec / 0.12f)); sqBump -= sqBump * (1.0f - std::exp (-dtSec / 0.16f));
+        accEnv -= accEnv * (1.0f - std::exp (-dtSec / 0.18f)); sqBump -= sqBump * (1.0f - std::exp (-dtSec / 0.14f));
         accLvl += (accTarget - accLvl) * (1.0f - std::exp (-dtSec / 0.004f));
         const float sq = Q.squelch ? Q.squelchAmt * sqBump : 0.0f;
         // random (sample and hold) modulation
@@ -523,13 +523,13 @@ private:
         float mix = emitA * Q.mixA * 0.6f + bv * Q.mixB * 0.6f + noise * Q.mixNoise * 0.5f + subLp * Q.mixSub * 0.6f;
 
         // ---- filter: zero delay feedback 4 pole ladder, tanh on input and in the loop ----
-        float oct = std::log2 (std::max (Q.cutoffHz, 10.0f)) + Q.fenvAmt * fe * 6.0f * (1.0f + 0.6f * sq) + Q.kbdAmt * (note - 60.0f) / 12.0f + filMod
-                  + 0.7f * Q.accAmt * accEnv + 0.35f * sq;
+        float oct = std::log2 (std::max (Q.cutoffHz, 10.0f)) + Q.fenvAmt * fe * 6.0f * (1.0f + 1.0f * sq) + Q.kbdAmt * (note - 60.0f) / 12.0f + filMod
+                  + 2.0f * Q.accAmt * accEnv + 2.5f * sq;
         float fc = clampf (std::exp2 (oct), 15.0f, 0.45f * osr);
         float g = std::tan (kPi * fc / osr);
         float G = g / (1.0f + g);
         // resonance taper: gentle at first, strong near the top (R)
-        float rz = clampf (Q.reso + 0.4f * sq, 0.0f, 0.97f > Q.reso ? 0.97f : Q.reso);
+        float rz = clampf (Q.reso + 1.2f * sq, 0.0f, 0.97f > Q.reso ? 0.97f : Q.reso);
         float k = 4.4f * rz * std::sqrt (rz);
         float G4 = G * G * G * G;
         float S = G * G * G * (st[0] / (1.0f + g)) + G * G * (st[1] / (1.0f + g)) + G * (st[2] / (1.0f + g)) + st[3] / (1.0f + g);
@@ -564,7 +564,7 @@ private:
             y = nLp;
         }
         y *= 1.0f + 0.35f * rz;             // keep bass weight when resonance rises (R)
-        y *= ae * Q.volume * 1.4f * (1.0f + 0.6f * Q.accAmt * accLvl);
+        y *= ae * Q.volume * 1.4f * (1.0f + 1.5f * Q.accAmt * accLvl);
         return y;
     }
 

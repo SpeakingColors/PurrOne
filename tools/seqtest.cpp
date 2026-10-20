@@ -29,11 +29,12 @@ int main()
         g = rmsDb (ym, 24000) - 10 * std::log10 (0.25 * 0.25 / 2);
         std::snprintf (d, sizeof d, "measured %+.2f dB", g); check ("eq5 mid band boosts mono signal", std::fabs (g - 6.0) < 0.3, d);
 
-        // dynamic: gain -3, dynamic 6 dB, threshold -30: a loud tone is cut by more than a quiet one
-        auto dyn = [&] (double amp) { Eq5 e; e.prepare (sr); for (int i = 0; i < 5; ++i) e.setBand (i, true, 1000.0f, i == 2 ? -3.0f : 0.0f, 0.8f, i == 2 ? 6.0f : 0.0f, -30.0f, 0);
+        // dynamic is added to the static gain in either direction: static -3 dB and dynamic -6 dB gives -3 quiet and -9 loud; static 0 and dynamic +6 gives 0 quiet and +6 loud
+        auto dyn = [&] (double amp, float sg, float dg) { Eq5 e; e.prepare (sr); for (int i = 0; i < 5; ++i) e.setBand (i, true, 1000.0f, i == 2 ? sg : 0.0f, 0.8f, i == 2 ? dg : 0.0f, -30.0f, 0);
             std::vector<float> o; for (int n = 0; n < 96000; ++n) o.push_back (e.processMono (sine (n, 1000, amp))); return rmsDb (o, 48000) - 10 * std::log10 (amp * amp / 2); };
-        double q = dyn (0.003), lo = dyn (0.5);
-        std::snprintf (d, sizeof d, "quiet %+.2f dB, loud %+.2f dB", q, lo); check ("eq5 dynamic cuts more when loud", lo < q - 2.0 && std::fabs (q + 3.0) < 1.0, d);
+        double q = dyn (0.003, -3.0f, -6.0f), lo = dyn (0.5, -3.0f, -6.0f), qb = dyn (0.003, 0.0f, 6.0f), lb = dyn (0.5, 0.0f, 6.0f);
+        std::snprintf (d, sizeof d, "quiet %+.2f dB, loud %+.2f dB", q, lo); check ("eq5 dynamic cuts more when loud", lo < q - 5.0 && std::fabs (q + 3.0) < 1.0 && std::fabs (lo + 9.0) < 1.0, d);
+        std::snprintf (d, sizeof d, "quiet %+.2f dB, loud %+.2f dB", qb, lb); check ("eq5 dynamic boosts when loud (no static gain)", std::fabs (qb) < 0.5 && std::fabs (lb - 6.0) < 1.0, d);
     }
     { // the default EQ (low 0, mid +2.3, high -3) must sound exactly like the old 3 band EQ
         Eq5 e5; e5.prepare (sr); Eq3 e3; e3.prepare (sr); e3.setGains (0.0, 2.3, -3.0);
@@ -143,9 +144,9 @@ int main()
         std::vector<float> a, b, c8; render (false, 4, true, a); render (true, 4, true, b); render (true, 8, true, c8);
         bool fin = true; for (auto v : a) fin = fin && std::isfinite (v); for (auto v : b) fin = fin && std::isfinite (v); for (auto v : c8) fin = fin && std::isfinite (v);
         auto pkOf = [&] (const std::vector<float>& v, int f, int t) { float m = 0; for (int i = f; i < t; ++i) m = std::max (m, std::fabs (v[(size_t) i])); return m; };
-        double ra = 0, rb = 0; for (int i = 9000; i < 15000; ++i) { ra += a[(size_t) i] * a[(size_t) i]; rb += b[(size_t) i] * b[(size_t) i]; }
-        std::snprintf (d, sizeof d, "accent step rms: squelch off %.3f, on %.3f", std::sqrt (ra / 6000), std::sqrt (rb / 6000));
-        check ("squelch changes the accent step", fin && std::fabs (ra - rb) / (ra + 1e-9) > 0.05, d);
+        double ra = 0, rb = 0, rd = 0; for (int i = 9000; i < 15000; ++i) { ra += a[(size_t) i] * a[(size_t) i]; rb += b[(size_t) i] * b[(size_t) i]; rd += (a[(size_t) i] - b[(size_t) i]) * (a[(size_t) i] - b[(size_t) i]); }
+        std::snprintf (d, sizeof d, "accent step: rms squelch off %.3f, on %.3f, difference to off %.1f dB", std::sqrt (ra / 6000), std::sqrt (rb / 6000), 10 * std::log10 (rd / (ra + 1e-9) + 1e-12));
+        check ("squelch changes the accent step", fin && rd / (ra + 1e-9) > 0.1, d);
         std::snprintf (d, sizeof d, "peak %.2f", pkOf (c8, 0, 24000)); check ("8x oversampling finite and audible", fin && pkOf (c8, 0, 24000) > 0.05f && pkOf (c8, 0, 24000) < 3.0f, d);
         // no squelch and no accent: sequencer voice behaves like a normal voice (same level as a key note)
         Params p; p.cutoffHz = 900; Engine k; k.prepare (sr); k.setParams (p); Engine s; s.prepare (sr); s.setParams (p);

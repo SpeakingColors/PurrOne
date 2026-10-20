@@ -417,10 +417,12 @@ button[aria-disabled="true"] { opacity: .4; }
   K("seqBpm", "sqTrans", "Tempo", 60, 200, 138, { fmt: function (v) { return Math.round(v) + "bpm"; }, tip: "Free running tempo. With Sync on Host the DAW tempo is used instead." });
   K("seqSwing", "sqTrans", "Swing", 0.5, 0.75, 0.5, { fmt: pct, tip: "Delays every second step. 50% is straight." });
   K("seqGate", "sqTrans", "Gate len", 0.1, 1, 0.6, { fmt: pct, tip: "How long each note is held, as a share of the step." });
-  K("seqAcc", "sqTrans", "Accent", 0, 1, 0.4, { fmt: pct, tip: "How much louder and brighter an accented step is." });
+  K("seqAcc", "sqTrans", "Accent", 0, 1, 0.4, { fmt: pct, tip: "How much louder and brighter an accented step is. Accented steps are the ones with the orange mark in the lane." });
+  T("squelch", "sqTrans", "303 squelch", false, { c: "var(--led-orange)", tip: "Off by default. On: accented steps and slides bump the resonance for a moment, the squelch of an acid line." });
+  K("squelchAmt", "sqTrans", "Squelch", 0, 1, 0.6, { fmt: pct, tip: "How hard the resonance bump hits when 303 squelch is on." });
   K("seqSlide", "sqTrans", "Slide", 0.01, 0.3, 0.08, { fmt: function (v) { return v.toFixed(2) + "s"; }, tip: "Glide time on slide steps." });
   K("seqHuman", "sqTrans", "Humanise", 0, 1, 0, { fmt: pct, tip: "Small random timing drift." });
-  K("seqTrans", "sqTrans", "Transpose", -12, 12, 0, { fmt: function (v) { return sgn(Math.round(v)).replace(".0", "") + "st"; }, tip: "Shifts the whole sequence in semitones." });
+  K("seqTrans", "sqTrans", "Transpose", -36, 36, 0, { fmt: function (v) { return sgn(Math.round(v)).replace(".0", "") + "st"; }, tip: "Shifts the whole sequence in semitones." });
   K("seqSteps", "", "Steps", 1, 64, 16, { fmt: int0 });
   G("seqPat", "", "Pattern", ["A", "B", "C", "D"], 0);
   G("arpPat", "sqArp", "Pattern", ["Up", "Down", "Up/Dn", "Random", "Played"], 0, "Order the held keys are played in.");
@@ -436,18 +438,18 @@ button[aria-disabled="true"] { opacity: .4; }
   var lg = { log: true };
   var hzf = function (v) { return hz(v) + "Hz"; };
   T("crushOn", "fxCrush", "On", false, { c: "var(--led-pink)" });
-  K("crushBits", "fxCrush", "Bits", 4, 16, 16, { fmt: function (v) { return Math.round(v) + " bit"; }, tip: "Lower bit depth, grittier." });
-  K("crushRate", "fxCrush", "Rate", 2000, 48000, 48000, { log: true, fmt: function (v) { return hz(v) + "Hz"; }, tip: "Sample rate reducer." });
-  K("crushMix", "fxCrush", "Mix", 0, 1, 0.5, { fmt: pct });
+  K("crushBits", "fxCrush", "Bits", 4, 16, 8, { fmt: function (v) { return Math.round(v) + " bit"; }, tip: "Lower bit depth, grittier." });
+  K("crushRate", "fxCrush", "Rate", 2000, 48000, 12000, { log: true, fmt: function (v) { return hz(v) + "Hz"; }, tip: "Sample rate reducer." });
+  K("crushMix", "fxCrush", "Mix", 0, 1, 0.7, { fmt: pct });
   var bandName = ["Low shelf", "Bell", "Bell", "Bell", "High shelf"];
   var bandIds = [
     { g: "eqLo", f: "eqLoF", q: null }, { g: "eqG2", f: "eqF2", q: "eqQ2" }, { g: "eqMid", f: "eqMidF", q: "eqMidQ" }, { g: "eqG4", f: "eqF4", q: "eqQ4" }, { g: "eqHi", f: "eqHiF", q: null }
   ];
-  K("eqLoF", "fxB1", "Freq", 40, 400, 100, { log: true, fmt: hzf }); K("eqD1", "fxB1", "Dynamic", 0, 12, 0, { fmt: function (v) { return v < 0.05 ? "static" : v.toFixed(1) + "dB"; }, tip: "Makes the band move with the level: 0 keeps it static, higher values add or cut that much more when the signal is loud." }); K("eqT1", "fxB1", "Threshold", -60, 0, -24, { fmt: function (v) { return Math.round(v) + "dB"; } });
-  K("eqF2", "fxB2", "Freq", 150, 800, 350, { log: true, fmt: hzf }); K("eqG2", "fxB2", "Gain", -12, 12, 0, { fmt: db1, tip: "Bell at 350 Hz by default: the usual place to take out mud." }); K("eqQ2", "fxB2", "Q", 0.3, 4, 1, { fmt: function (v) { return v.toFixed(1); } }); K("eqD2", "fxB2", "Dynamic", 0, 12, 0, { fmt: function (v) { return v < 0.05 ? "static" : v.toFixed(1) + "dB"; } }); K("eqT2", "fxB2", "Threshold", -60, 0, -24, { fmt: function (v) { return Math.round(v) + "dB"; } });
-  K("eqMidF", "fxB3", "Freq", 200, 5000, 1000, { log: true, fmt: hzf }); K("eqMidQ", "fxB3", "Q", 0.3, 4, 0.8, { fmt: function (v) { return v.toFixed(1); } }); K("eqD3", "fxB3", "Dynamic", 0, 12, 0, { fmt: function (v) { return v < 0.05 ? "static" : v.toFixed(1) + "dB"; } }); K("eqT3", "fxB3", "Threshold", -60, 0, -24, { fmt: function (v) { return Math.round(v) + "dB"; } });
-  K("eqF4", "fxB4", "Freq", 1500, 6000, 3200, { log: true, fmt: hzf }); K("eqG4", "fxB4", "Gain", -12, 12, 0, { fmt: db1, tip: "Bell at 3.2 kHz by default: tames harshness. Make it dynamic so it only dips when the lead screams." }); K("eqQ4", "fxB4", "Q", 0.3, 4, 1, { fmt: function (v) { return v.toFixed(1); } }); K("eqD4", "fxB4", "Dynamic", 0, 12, 0, { fmt: function (v) { return v < 0.05 ? "static" : v.toFixed(1) + "dB"; } }); K("eqT4", "fxB4", "Threshold", -60, 0, -24, { fmt: function (v) { return Math.round(v) + "dB"; } });
-  K("eqHiF", "fxB5", "Freq", 2000, 16000, 6000, { log: true, fmt: hzf }); K("eqD5", "fxB5", "Dynamic", 0, 12, 0, { fmt: function (v) { return v < 0.05 ? "static" : v.toFixed(1) + "dB"; } }); K("eqT5", "fxB5", "Threshold", -60, 0, -24, { fmt: function (v) { return Math.round(v) + "dB"; } });
+  K("eqLoF", "fxB1", "Freq", 40, 400, 100, { log: true, fmt: hzf }); K("eqD1", "fxB1", "Dynamic", -12, 12, 0, { fmt: function (v) { return Math.abs(v) < 0.05 ? "static" : (v > 0 ? "+" : "") + v.toFixed(1) + "dB"; }, tip: "Makes the band move with the level. 0 keeps it static. Positive boosts and negative cuts, by up to that many dB, when the signal in the band is above the threshold." }); K("eqT1", "fxB1", "Threshold", -60, 0, -24, { fmt: function (v) { return Math.round(v) + "dB"; } });
+  K("eqF2", "fxB2", "Freq", 150, 800, 350, { log: true, fmt: hzf }); K("eqG2", "fxB2", "Gain", -12, 12, 0, { fmt: db1, tip: "Bell at 350 Hz by default: the usual place to take out mud." }); K("eqQ2", "fxB2", "Q", 0.3, 4, 1, { fmt: function (v) { return v.toFixed(1); } }); K("eqD2", "fxB2", "Dynamic", -12, 12, 0, { fmt: function (v) { return Math.abs(v) < 0.05 ? "static" : (v > 0 ? "+" : "") + v.toFixed(1) + "dB"; } }); K("eqT2", "fxB2", "Threshold", -60, 0, -24, { fmt: function (v) { return Math.round(v) + "dB"; } });
+  K("eqMidF", "fxB3", "Freq", 200, 5000, 1000, { log: true, fmt: hzf }); K("eqMidQ", "fxB3", "Q", 0.3, 4, 0.8, { fmt: function (v) { return v.toFixed(1); } }); K("eqD3", "fxB3", "Dynamic", -12, 12, 0, { fmt: function (v) { return Math.abs(v) < 0.05 ? "static" : (v > 0 ? "+" : "") + v.toFixed(1) + "dB"; } }); K("eqT3", "fxB3", "Threshold", -60, 0, -24, { fmt: function (v) { return Math.round(v) + "dB"; } });
+  K("eqF4", "fxB4", "Freq", 1500, 6000, 3200, { log: true, fmt: hzf }); K("eqG4", "fxB4", "Gain", -12, 12, 0, { fmt: db1, tip: "Bell at 3.2 kHz by default: tames harshness. Make it dynamic so it only dips when the lead screams." }); K("eqQ4", "fxB4", "Q", 0.3, 4, 1, { fmt: function (v) { return v.toFixed(1); } }); K("eqD4", "fxB4", "Dynamic", -12, 12, 0, { fmt: function (v) { return Math.abs(v) < 0.05 ? "static" : (v > 0 ? "+" : "") + v.toFixed(1) + "dB"; } }); K("eqT4", "fxB4", "Threshold", -60, 0, -24, { fmt: function (v) { return Math.round(v) + "dB"; } });
+  K("eqHiF", "fxB5", "Freq", 2000, 16000, 6000, { log: true, fmt: hzf }); K("eqD5", "fxB5", "Dynamic", -12, 12, 0, { fmt: function (v) { return Math.abs(v) < 0.05 ? "static" : (v > 0 ? "+" : "") + v.toFixed(1) + "dB"; } }); K("eqT5", "fxB5", "Threshold", -60, 0, -24, { fmt: function (v) { return Math.round(v) + "dB"; } });
   for (var bi = 1; bi <= 5; bi++) { G("eqM" + bi, "fxB" + bi, "Target", ["Stereo", "Mid", "Side"], 0, "Which part of the signal this band works on. Mid and Side let you shape the centre and the width separately."); T("eqO" + bi, "fxB" + bi, "On", true, { c: "var(--led-green)" }); }
   K("spPre", "fxSpace", "Pre-delay", 0, 100, 12, { fmt: function (v) { return Math.round(v) + "ms"; }, tip: "Gap before the tail starts." });
   K("spDamp", "fxSpace", "Damping", 0, 1, 0.5, { fmt: pct, tip: "Darkens the tail." });
@@ -459,8 +461,8 @@ button[aria-disabled="true"] { opacity: .4; }
   K("ottAmt", "fxOtt", "Amount", 0, 1, 0.5, { fmt: pct, tip: "Mix of the OTT effect." }); K("ottDepth", "fxOtt", "Depth", 0, 1, 0.6, { fmt: pct }); K("ottTime", "fxOtt", "Time", 0, 1, 0.4, { fmt: pct });
   K("ottLo", "fxOtt", "Low", -6, 6, 0, { fmt: db1 }); K("ottMid", "fxOtt", "Mid", -6, 6, 0, { fmt: db1 }); K("ottHi", "fxOtt", "High", -6, 6, 0, { fmt: db1 });
   T("dmOn", "fxDm", "On", false, { c: "var(--led-pink)" });
-  K("dmMix", "fxDm", "Mix", 0, 1, 0.5, { fmt: pct, tip: "Dry and wet blend. 50% is the Dance master starting point." }); K("dmDrive", "fxDm", "Drive", 0, 1, 0.3, { fmt: pct }); K("dmClip", "fxDm", "Clip", 0, 1, 0.3, { fmt: pct, tip: "Soft clipper before the limiter." });
-  K("dmLow", "fxDm", "Low", 0, 1, 0, { fmt: pct, tip: "Compression on the low band. Zero keeps the bass untouched (Dance master 2 style)." }); K("dmMid", "fxDm", "Mid", 0, 1, 0.5, { fmt: pct }); K("dmHigh", "fxDm", "High", 0, 1, 0.4, { fmt: pct });
+  K("dmMix", "fxDm", "Mix", 0, 1, 0.8, { fmt: pct, tip: "Dry and wet blend." }); K("dmDrive", "fxDm", "Drive", 0, 1, 0.4, { fmt: pct }); K("dmClip", "fxDm", "Clip", 0, 1, 0.4, { fmt: pct, tip: "Soft clipper before the limiter." });
+  K("dmLow", "fxDm", "Low", 0, 1, 0.5, { fmt: pct, tip: "Compression on the low band. Zero keeps the bass untouched." }); K("dmMid", "fxDm", "Mid", 0, 1, 0.6, { fmt: pct }); K("dmHigh", "fxDm", "High", 0, 1, 0.5, { fmt: pct });
   K("limCeil", "fxLim", "Ceiling", -3, 0, -1, { fmt: function (v) { return v.toFixed(1) + "dB"; }, tip: "Highest level the limiter lets through." });
   T("stOn", "fxWid", "On", false, { c: "var(--led-green)" });
   K("stW", "fxWid", "Width", 0, 2, 1, { fmt: pct, tip: "Overall stereo width. 100% leaves the sound as it is." });
@@ -619,9 +621,10 @@ button[aria-disabled="true"] { opacity: .4; }
     A.oscA.connect(A.gA); A.oscB.connect(A.gB); A.sub.connect(A.subLP); A.subLP.connect(A.gS); A.noise.connect(A.gN);
     [A.gA, A.gB, A.gS, A.gN].forEach(function (g) { g.connect(A.mix); });
     A.mix.connect(A.pre); A.pre.connect(A.ws); A.ws.connect(A.post); A.post.connect(A.f1); A.oscB.connect(A.mobG); A.f1.connect(A.f2); A.f2.connect(A.g2in); A.g2in.connect(A.ws2); A.ws2.connect(A.g2out); A.g2out.connect(A.fizz); A.fizz.connect(A.dcHP); A.dcHP.connect(A.amp); A.f2.connect(A.xfLP); A.xfLP.connect(A.xfG); A.xfG.connect(A.g2in);
-    A.b2 = ctx.createBiquadFilter(); A.b2.type = "peaking"; A.b4 = ctx.createBiquadFilter(); A.b4.type = "peaking"; A.amp.connect(A.lo); A.lo.connect(A.b2); A.b2.connect(A.md); A.md.connect(A.b4); A.b4.connect(A.hi);
+    A.b2 = ctx.createBiquadFilter(); A.b2.type = "peaking"; A.b4 = ctx.createBiquadFilter(); A.b4.type = "peaking"; A.crush = makeFxProc(0); A.amp.connect(A.crush); A.crush.connect(A.lo);
+    A.det = []; A.detAn = []; for (var di = 0; di < 5; di++) { var dbp = ctx.createBiquadFilter(), dan = ctx.createAnalyser(); dbp.type = "bandpass"; dan.fftSize = 1024; A.crush.connect(dbp); dbp.connect(dan); A.det.push(dbp); A.detAn.push(dan); } A.lo.connect(A.b2); A.b2.connect(A.md); A.md.connect(A.b4); A.b4.connect(A.hi);
     A.hi.connect(A.dry); A.hi.connect(A.conv); A.conv.connect(A.verbHP); A.verbHP.connect(A.wet);
-    A.dry.connect(A.sum); A.wet.connect(A.sum); A.sum.connect(A.opto); A.opto.connect(A.optoMk); A.optoMk.connect(A.max); A.max.connect(A.maxMk); A.maxMk.connect(A.lim); A.lim.connect(A.out);
+    A.dry.connect(A.sum); A.wet.connect(A.sum); A.sum.connect(A.opto); A.opto.connect(A.optoMk); A.dyn = makeFxProc(1); A.optoMk.connect(A.dyn); A.dyn.connect(A.max); A.max.connect(A.maxMk); A.maxMk.connect(A.lim); A.lim.connect(A.out);
     A.out.connect(A.split); A.split.connect(A.anL, 0); A.split.connect(A.anR, 1); A.out.connect(ctx.destination);
     A.lfoG.connect(A.f1.detune); A.lfoG.connect(A.f2.detune); A.lfoG.connect(A.oscA.detune); A.lfoG.connect(A.sub.detune); A.lfoG.connect(A.oscB.detune);
     A.oscA.start(); A.oscB.start(); A.sub.start(); A.noise.start(); A.lfo.start();
@@ -655,6 +658,7 @@ button[aria-disabled="true"] { opacity: .4; }
     A.xfG.gain.setTargetAtTime(0.6 * S.xstr * postAmt, t, 0.02); A.g2out.gain.setTargetAtTime(0.5 * (1 + 0.2 * S.xstr * postAmt), t, 0.02);
     A.f1.type = A.f2.type = ["lowpass", "highpass", "bandpass"][S.fMode] || "lowpass";
     var q = 0.7 + S.reso * 14; A.f1.Q.setTargetAtTime(q, t, 0.02); A.f2.Q.setTargetAtTime(Math.max(0.5, q * 0.35), t, 0.02);
+    if (A.det) for (var dj = 0; dj < 5; dj++) { A.det[dj].frequency.setTargetAtTime(Math.min(S[bandIds[dj].f], 0.45 * ctx.sampleRate), t, 0.02); A.det[dj].Q.setTargetAtTime(Math.max(0.3, bandQ(dj)), t, 0.02); }
     A.lo.gain.setTargetAtTime(S.eqO1 ? S.eqLo : 0, t, 0.02); A.md.gain.setTargetAtTime(S.eqO3 ? S.eqMid : 0, t, 0.02); A.hi.gain.setTargetAtTime(S.eqO5 ? S.eqHi : 0, t, 0.02);
     A.lo.frequency.setTargetAtTime(S.eqLoF, t, 0.02); A.md.frequency.setTargetAtTime(S.eqMidF, t, 0.02); A.md.Q.setTargetAtTime(S.eqMidQ, t, 0.02); A.hi.frequency.setTargetAtTime(S.eqHiF, t, 0.02);
     A.b2.frequency.setTargetAtTime(S.eqF2, t, 0.02); A.b2.Q.setTargetAtTime(S.eqQ2, t, 0.02); A.b2.gain.setTargetAtTime(S.eqO2 ? S.eqG2 : 0, t, 0.02);
@@ -694,7 +698,73 @@ button[aria-disabled="true"] { opacity: .4; }
     targets.forEach(function (arr, i) { arr.forEach(function (p) { try { A.lfoG.disconnect(p); } catch (e) { /* not connected */ } if (any[i]) A.lfoG.connect(p); }); });
   }
   function filterBase(note) { return clamp(S.cutoff * Math.pow(2, S.kbd * (note - 60) / 12), 20, 20000); }
-  function gateOnNote(note, legato) {
+
+  /* ---------- FX ports of the plugin DSP: Crush, OTT and Dance master (same maths as Fx2.h) ---------- */
+  function Bq() { this.b0 = 1; this.b1 = this.b2 = this.a1 = this.a2 = this.z1 = this.z2 = 0; }
+  Bq.prototype.rbj = function (hp, sr, f, q) {
+    var w = 2 * Math.PI * f / sr, c = Math.cos(w), a = Math.sin(w) / (2 * q), a0 = 1 + a;
+    if (hp) { this.b0 = (1 + c) / 2 / a0; this.b1 = -(1 + c) / a0; this.b2 = this.b0; } else { this.b0 = (1 - c) / 2 / a0; this.b1 = (1 - c) / a0; this.b2 = this.b0; }
+    this.a1 = -2 * c / a0; this.a2 = (1 - a) / a0; return this;
+  };
+  Bq.prototype.p = function (x) { var y = this.b0 * x + this.z1; this.z1 = this.b1 * x - this.a1 * y + this.z2; this.z2 = this.b2 * x - this.a2 * y; return y; };
+  function LR(hp, sr, f) { this.a = new Bq().rbj(hp, sr, f, 0.70710678); this.b = new Bq().rbj(hp, sr, f, 0.70710678); }
+  LR.prototype.p = function (x) { return this.b.p(this.a.p(x)); };
+  function Split3(sr, f1, f2) {
+    this.ch = [0, 1].map(function () { return { lp1: new LR(0, sr, f1), hp1: new LR(1, sr, f1), lp2: new LR(0, sr, f2), hp2: new LR(1, sr, f2), apL: new LR(0, sr, f2), apH: new LR(1, sr, f2) }; });
+  }
+  Split3.prototype.run = function (c, x, out) {
+    var k = this.ch[c], lo = k.lp1.p(x), rest = k.hp1.p(x); lo = k.apL.p(lo) + k.apH.p(lo); out[0] = lo; out[1] = k.lp2.p(rest); out[2] = k.hp2.p(rest);
+  };
+  var dB2L = function (d) { return Math.pow(10, d / 20); }, L2dB = function (x) { return 20 * Math.log10(x + 1e-9); };
+  function makeFxProc(mode) {
+    var sr = ctx.sampleRate, node = ctx.createScriptProcessor(1024, 2, 2);
+    var ph = 0, held = [0, 0];
+    var so = new Split3(sr, 120, 2500), sd = new Split3(sr, 120, 2800), bo = [0, 0, 0], bd = [0, 0, 0];
+    var oEnv = [-80, -80, -80], oG = [0, 0, 0], dEnv = [-80, -80, -80], dG = [0, 0, 0], bl = [[0, 0, 0], [0, 0, 0]];
+    node.onaudioprocess = function (e) {
+      var inL = e.inputBuffer.getChannelData(0), inR = e.inputBuffer.getChannelData(1), oL = e.outputBuffer.getChannelData(0), oR = e.outputBuffer.getChannelData(1), n = inL.length;
+      var cr = mode === 0 && S.crushOn && S.crushMix > 0.001 && !(S.crushBits >= 15.99 && S.crushRate >= 0.999 * sr), q = Math.pow(2, Math.round(S.crushBits) - 1), step = S.crushRate / sr;
+      var ot = mode === 1 && S.ottOn && S.ottAmt > 0.001, dm = mode === 1 && S.dmOn && S.dmMix > 0.001;
+      var oT = Math.min(1, Math.max(0, S.ottTime)), oAtk = 1 - Math.exp(-1 / ((0.001 + 0.019 * oT) * sr)), oRel = 1 - Math.exp(-1 / ((0.04 + 0.26 * oT) * sr));
+      var dAtk = 1 - Math.exp(-1 / (0.008 * sr)), dRel = 1 - Math.exp(-1 / (0.12 * sr));
+      var rD = 1 + 7 * S.ottDepth, rU = 1 + 3 * S.ottDepth, tD = [-17, -19, -21], tU = [-34, -36, -38], trim = [dB2L(S.ottLo), dB2L(S.ottMid), dB2L(S.ottHi)];
+      var dAmt = [S.dmLow, S.dmMid, S.dmHigh], kd = 1 + 4 * S.dmDrive, th = 1 - 0.55 * S.dmClip;
+      for (var i = 0; i < n; i++) {
+        var x = [inL[i], inR[i]];
+        if (cr) { ph += step; if (ph >= 1) { ph -= Math.floor(ph); held = [x[0], x[1]]; } for (var c = 0; c < 2; c++) x[c] += (Math.round(held[c] * q) / q - x[c]) * S.crushMix; }
+        if (ot) {
+          var w = [0, 0], pk = 0;
+          for (var c = 0; c < 2; c++) { so.run(c, x[c], bo); bl[c][0] = bo[0]; bl[c][1] = bo[1]; bl[c][2] = bo[2]; }
+          for (var k = 0; k < 3; k++) {
+            var lev = L2dB(Math.max(Math.abs(bl[0][k]), Math.abs(bl[1][k]))); oEnv[k] += (lev > oEnv[k] ? oAtk : oRel) * (lev - oEnv[k]);
+            var down = 0, up = 0; if (oEnv[k] > tD[k]) down = -(oEnv[k] - tD[k]) * (1 - 1 / rD); if (oEnv[k] < tU[k]) up = Math.min(18 * S.ottDepth, (tU[k] - oEnv[k]) * (1 - 1 / rU));
+            oG[k] += 0.004 * (down + up - oG[k]); var g = dB2L(oG[k]) * trim[k]; w[0] += bl[0][k] * g; w[1] += bl[1][k] * g;
+          }
+          var mk = dB2L(2.5 * S.ottDepth); x[0] += (w[0] * mk - x[0]) * S.ottAmt; x[1] += (w[1] * mk - x[1]) * S.ottAmt;
+        } else { so.run(0, 0, bo); so.run(1, 0, bo); }
+        if (dm) {
+          var w2 = [0, 0];
+          for (var c = 0; c < 2; c++) { sd.run(c, x[c], bd); bl[c][0] = bd[0]; bl[c][1] = bd[1]; bl[c][2] = bd[2]; }
+          for (var k = 0; k < 3; k++) {
+            var g = 1; if (dAmt[k] > 0.001) {
+              var lev = L2dB(Math.max(Math.abs(bl[0][k]), Math.abs(bl[1][k]))); dEnv[k] += (lev > dEnv[k] ? dAtk : dRel) * (lev - dEnv[k]);
+              var thr = -14 - 18 * dAmt[k], ratio = 1 + 6 * dAmt[k], red = dEnv[k] > thr ? (dEnv[k] - thr) * (1 - 1 / ratio) : 0;
+              dG[k] += 0.01 * (-red - dG[k]); g = dB2L(dG[k] + 0.3 * (14 + 18 * dAmt[k]) * (1 - 1 / ratio));
+            }
+            w2[0] += bl[0][k] * g; w2[1] += bl[1][k] * g;
+          }
+          for (var c = 0; c < 2; c++) {
+            var y = w2[c]; if (S.dmDrive > 0.001) y = Math.tanh(kd * y) / kd * (1 + 0.35 * (kd - 1)); if (S.dmClip > 0.001) y = th * Math.tanh(y / th);
+            x[c] += (y - x[c]) * S.dmMix;
+          }
+        }
+        oL[i] = x[0]; oR[i] = x[1];
+      }
+    };
+    return node;
+  }
+
+  function gateOnNote(note, legato, accent) {
     if (!ready) return;
     var t = ctx.currentTime, fr = mtof(note), tc = 0.005 * Math.pow(800, S.glide) / 3;
     var shift = function (o, tune, oct) { return fr * Math.pow(2, (tune + 12 * (oct - 1)) / 12); };
@@ -703,16 +773,23 @@ button[aria-disabled="true"] { opacity: .4; }
     var set = function (p, v) { if (useGlide) p.setTargetAtTime(v, t, tc); else { p.cancelScheduledValues(t); p.setValueAtTime(v, t); } };
     set(A.oscA.frequency, fa); set(A.oscB.frequency, S.bKbd || S.bLow ? fb : mtof(60));
     A.sub.frequency.setValueAtTime(fa / 2, t);
+    if (S.squelch && (accent || legato)) {          // 303 squelch: accents and slides bump the resonance, then it falls back
+      var q0 = 0.7 + S.reso * 14, bump = (accent ? 1 : 0.6) * S.squelchAmt * 34;
+      [[A.f1.Q, q0], [A.f2.Q, Math.max(0.5, q0 * 0.35)]].forEach(function (x, i) {
+        x[0].cancelScheduledValues(t); x[0].setValueAtTime(x[0].value, t); x[0].setTargetAtTime(x[1] + bump * (i ? 0.35 : 1), t, 0.006); x[0].setTargetAtTime(x[1], t + 0.05, 0.11);
+      });
+    }
     if (legato && !S.retrig && !S.drone) return;
     var base = filterBase(note), pk = clamp(base * Math.pow(2, 6 * S.fenvAmt), 20, 20000), sus = clamp(base * Math.pow(2, 6 * S.fenvAmt * S.fS), 20, 20000);
-    var fA = 0.002 * Math.pow(3000, S.fA), fD = 0.002 * Math.pow(3000, S.fD);
+    var fA = 0.002 * Math.pow(3000, S.fA), fD = 0.002 * Math.pow(3000, S.fD), lvl = 1;
+    if (accent) { pk = clamp(pk * Math.pow(2, 2 * S.seqAcc + (S.squelch ? 2.5 * S.squelchAmt : 0)), 20, 20000); fD = Math.min(fD, S.squelch ? 0.12 : 0.18); lvl = 1 + 1.5 * S.seqAcc; }   // accent: filter opens and the note jumps in level
     [A.f1.frequency, A.f2.frequency].forEach(function (p) {
       p.cancelScheduledValues(t); p.setValueAtTime(Math.max(base, 20), t);
       p.setTargetAtTime(pk, t, fA / 3); p.setTargetAtTime(sus, t + fA, fD / 3);
     });
     var aA = 0.002 * Math.pow(3000, S.aA), aD = 0.002 * Math.pow(3000, S.aD);
     A.amp.gain.cancelScheduledValues(t); A.amp.gain.setValueAtTime(A.amp.gain.value, t);
-    A.amp.gain.setTargetAtTime(1.05, t, Math.max(aA, 0.004) / 3); A.amp.gain.setTargetAtTime(Math.sqrt(S.aS), t + aA, aD / 3);
+    A.amp.gain.setTargetAtTime(1.05 * lvl, t, Math.max(aA, 0.004) / 3); A.amp.gain.setTargetAtTime(Math.sqrt(S.aS) * lvl, t + aA, aD / 3);
     gateOn = true;
   }
   function gateOffNote() {
@@ -865,6 +942,7 @@ button[aria-disabled="true"] { opacity: .4; }
       bar.querySelector(".fill").style.clipPath = "inset(" + (100 - pctv(mv[i])) + "% 0 0 0)"; bar.querySelector(".hold").style.bottom = pctv(mh[i]) + "%";
     });
     if (Math.max(vals[0], vals[1]) > -0.3) clipT = now; $("#clip").classList.toggle("on", now - clipT < 1500);
+    stepDyn();
     if (window.PO && PO.tick) PO.tick(now);
     rafId = requestAnimationFrame(frame);
   }
@@ -1028,13 +1106,27 @@ button[aria-disabled="true"] { opacity: .4; }
   }
   var bandType = [0, 1, 1, 1, 2];
   function bandQ(i) { var q = bandIds[i].q; return q ? S[q] : 0.707; }
-  function eq5Mag(f) { var s = 0; for (var i = 0; i < 5; i++) if (S["eqO" + (i + 1)]) s += bqMag(bandType[i], S[bandIds[i].f], S[bandIds[i].g], bandQ(i), f); return s; }
+  /* dynamic EQ: positive boosts, negative cuts, when the signal in the band is above the threshold. Full effect 12 dB above it. */
+  var dynX = [0, 0, 0, 0, 0], dynLv = [-90, -90, -90, -90, -90], dynEnv = [-90, -90, -90, -90, -90], dynAmt = [0, 0, 0, 0, 0], dynWas = [false, false, false, false, false], dynBuf = new Float32Array(1024);
+  function isDyn(i) { return S["eqO" + (i + 1)] && Math.abs(S["eqD" + (i + 1)]) > 0.05; }
+  function stepDyn() {
+    if (!ready || !A.det) return; var t = ctx.currentTime, nodes = [A.lo, A.b2, A.md, A.b4, A.hi];
+    for (var i = 0; i < 5; i++) {
+      if (!isDyn(i)) { if (dynWas[i]) { dynWas[i] = false; dynX[i] = 0; dynAmt[i] = 0; nodes[i].gain.setTargetAtTime(S["eqO" + (i + 1)] ? S[bandIds[i].g] : 0, t, 0.03); } continue; }
+      dynWas[i] = true; A.detAn[i].getFloatTimeDomainData(dynBuf); var pk = 0; for (var k = 0; k < dynBuf.length; k++) { var a = Math.abs(dynBuf[k]); if (a > pk) pk = a; }
+      var lv = pk > 0 ? 20 * Math.log10(pk) : -90; dynLv[i] = lv; dynEnv[i] += (lv > dynEnv[i] ? 0.6 : 0.1) * (lv - dynEnv[i]);
+      var over = clamp((dynEnv[i] - S["eqT" + (i + 1)]) / 12, 0, 1); dynAmt[i] += 0.25 * (over - dynAmt[i]);
+      dynX[i] = S["eqD" + (i + 1)] * dynAmt[i]; nodes[i].gain.setTargetAtTime(clamp(S[bandIds[i].g] + dynX[i], -24, 24), t, 0.03);
+    }
+  }
+  function eq5Mag(f, live, ghost) { var s = 0; for (var i = 0; i < 5; i++) if (S["eqO" + (i + 1)]) s += bqMag(bandType[i], S[bandIds[i].f], S[bandIds[i].g] + (ghost === i ? S["eqD" + (i + 1)] : live && isDyn(i) ? dynX[i] : 0), bandQ(i), f); return s; }
 
   /* graphic EQ canvas */
   var cvEB = cv("eqBig"), tgtCol = ["#02EBBA", "#6CC9F5", "#FF1383"], selBand = 0, specBuf = null;
   function fx2x(f, w) { return Math.log(f / 20) / Math.log(1000) * w; }
   function x2f(x, w) { return 20 * Math.pow(1000, x / w); }
   var EQ_DB = 14;
+  function specY(db, h) { return h - clamp((db + 90) / 80, 0, 1) * (h - 20); }
   function gy(g, h) { return h / 2 - g / EQ_DB * (h / 2 - 14); }
   function drawEqBig() {
     var o = cvEB, g = o.g, w = o.w, h = o.h; g.clearRect(0, 0, w, h); g.fillStyle = "#0a0a0c"; g.fillRect(0, 0, w, h);
@@ -1046,14 +1138,36 @@ button[aria-disabled="true"] { opacity: .4; }
       for (var x = 0; x <= w; x += 2) { var f = x2f(x, w), bi = Math.min(specBuf.length - 1, Math.round(f / (ctx.sampleRate / 2) * specBuf.length)), db = specBuf[bi]; g.lineTo(x, h - clamp((db + 90) / 80, 0, 1) * (h - 20)); }
       g.lineTo(w, h); g.fill();
     }
+    var anyDyn = false; for (var d0 = 0; d0 < 5; d0++) anyDyn = anyDyn || isDyn(d0);
+    g.fillStyle = "#6f7480"; [-20, -40, -60].forEach(function (db) { g.fillText(db + " dBFS", w - 66, specY(db, h) - 3); });
+    if (anyDyn) {                                      // static curve (dim) and the preview of the selected band at full effect (dashed)
+      g.strokeStyle = "rgba(154,160,173,.6)"; g.lineWidth = 1; g.beginPath();
+      for (var i0 = 0; i0 < 300; i0++) { var f0 = 20 * Math.pow(1000, i0 / 299), y0 = gy(eq5Mag(f0, false), h), x0 = i0 / 299 * w; if (i0) g.lineTo(x0, y0); else g.moveTo(x0, y0); }
+      g.stroke();
+      if (isDyn(selBand)) {
+        g.strokeStyle = "#f4f5f7"; g.setLineDash([5, 4]); g.lineWidth = 1.5; g.beginPath();
+        for (var i1 = 0; i1 < 300; i1++) { var f1 = 20 * Math.pow(1000, i1 / 299), y1 = gy(eq5Mag(f1, true, selBand), h), x1 = i1 / 299 * w; if (i1) g.lineTo(x1, y1); else g.moveTo(x1, y1); }
+        g.stroke(); g.setLineDash([]);
+      }
+    }
     g.strokeStyle = "#FFD100"; g.lineWidth = 2; g.beginPath();
-    for (var i = 0; i < 300; i++) { var ff = 20 * Math.pow(1000, i / 299), y = gy(eq5Mag(ff), h), xx = i / 299 * w; if (i) g.lineTo(xx, y); else g.moveTo(xx, y); }
+    for (var i = 0; i < 300; i++) { var ff = 20 * Math.pow(1000, i / 299), y = gy(eq5Mag(ff, true), h), xx = i / 299 * w; if (i) g.lineTo(xx, y); else g.moveTo(xx, y); }
     g.stroke(); g.lineWidth = 1;
+    for (var b2 = 0; b2 < 5; b2++) if (isDyn(b2)) {   // threshold line across the band and the live level inside it
+      var fc = S[bandIds[b2].f], q2 = Math.max(0.3, bandQ(b2)), sp = Math.pow(2, 0.72 / q2), xa = b2 === 0 ? 0 : fx2x(Math.max(20, fc / sp), w), xb = b2 === 4 ? w : fx2x(Math.min(20000, fc * sp), w);
+      var thr = S["eqT" + (b2 + 1)], yt = specY(thr, h), yv = specY(Math.min(0, dynEnv[b2]), h), over2 = dynEnv[b2] > thr, cc = tgtCol[S["eqM" + (b2 + 1)]];
+      g.strokeStyle = cc; g.globalAlpha = b2 === selBand ? 1 : 0.5; g.lineWidth = b2 === selBand ? 2 : 1; g.beginPath(); g.moveTo(xa, yt); g.lineTo(xb, yt); g.stroke(); g.globalAlpha = 1; g.lineWidth = 1;
+      g.fillStyle = over2 ? "#FF1383" : cc; g.fillRect(fx2x(fc, w) - 3, yv - 3, 6, 6);
+      if (over2) { g.strokeStyle = "rgba(255,19,131,.7)"; g.lineWidth = 2; g.beginPath(); g.moveTo(fx2x(fc, w), yt); g.lineTo(fx2x(fc, w), yv); g.stroke(); g.lineWidth = 1; }
+      if (b2 === selBand) { g.fillStyle = cc; g.fillText("threshold " + Math.round(thr) + " dB", xa + 4, yt - 5); }
+    }
     for (var b = 0; b < 5; b++) {
       var bx = fx2x(S[bandIds[b].f], w), by = gy(S[bandIds[b].g], h), on = S["eqO" + (b + 1)], col = on ? tgtCol[S["eqM" + (b + 1)]] : "#5d616c";
       g.beginPath(); g.arc(bx, by, b === selBand ? 11 : 9, 0, 6.2832); g.fillStyle = "#15161a"; g.fill(); g.lineWidth = b === selBand ? 3 : 2; g.strokeStyle = col; g.stroke();
       g.fillStyle = col; g.fillText(String(b + 1), bx - 3, by + 4);
+      if (isDyn(b)) { var yg = gy(S[bandIds[b].g] + S["eqD" + (b + 1)], h), yl = gy(S[bandIds[b].g] + dynX[b], h); g.strokeStyle = col; g.globalAlpha = 0.5; g.beginPath(); g.moveTo(bx, by); g.lineTo(bx, yg); g.stroke(); g.globalAlpha = 1; g.beginPath(); g.arc(bx, yg, 5, 0, 6.2832); g.stroke(); g.fillStyle = col; g.beginPath(); g.arc(bx, yl, 4, 0, 6.2832); g.fill(); }
     }
+    if (isDyn(selBand)) { g.fillStyle = "#f4f5f7"; g.fillText("band " + (selBand + 1) + " dynamic: now " + sgn(dynX[selBand]) + " dB, full " + sgn(S["eqD" + (selBand + 1)]) + " dB (hollow dot, dashed line)", 40, 14); }
     g.lineWidth = 1;
   }
   (function eqDrag() {
@@ -1289,7 +1403,7 @@ button[aria-disabled="true"] { opacity: .4; }
   function trig(note, slide, accent) {
     ensureAudio(); if (!ready) return; clearTimeout(offTimer);
     var legato = sounding && slide, g0 = S.glide; if (slide) S.glide = Math.max(g0, slideToGlide(S.seqSlide));
-    curNote = note; gateOnNote(note, legato); S.glide = g0; sounding = true;
+    curNote = note; gateOnNote(note, legato, accent); S.glide = g0; sounding = true;
     if (S.midiOut) { midiLed.classList.add("on"); setTimeout(function () { midiLed.classList.remove("on"); }, 80); }
   }
   function release() { if (sounding && !held.length) gateOffNote(); sounding = false; }

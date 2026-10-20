@@ -351,6 +351,9 @@ public:
         add (new Stepper ({ 515, 449, 138, 26 }, [this] { return noteName (jlimit (0, 127, (int) std::lround (proc.apvts.getRawParameterValue (ids::seqTrigNote)->load()))); },
                           [this] (int d) { proc.setParam (ids::seqTrigNote, (float) jlimit (0, 127, (int) std::lround (proc.apvts.getRawParameterValue (ids::seqTrigNote)->load()) + d)); }, "The note that starts and stops the sequence when START NOTE is on."));
         if (auto* sq = proc.apvts.getParameter (ids::squelchAmt)) add (new MiniSlider (*sq, { 1046, 449, 210, 26 }, "How hard accents and slides push the resonance."));
+        auto oct = [this] (const char* label, int d) { auto* t = add (new TextBtn (label, d > 0 ? "Transposes the whole sequence up one octave. The Transpose knob moves it in semitones (3 octaves each way)." : "Transposes the whole sequence down one octave. The Transpose knob moves it in semitones (3 octaves each way).")); t->setBounds (d > 0 ? Rectangle<int> (1356, 449, 82, 26) : Rectangle<int> (1266, 449, 82, 26));
+            t->onClick = [this, d] { proc.setParam (ids::seqTrans, (float) jlimit (-36, 36, (int) std::lround (proc.apvts.getRawParameterValue (ids::seqTrans)->load()) + d * 12)); }; };
+        oct ("OCT -", -1); oct ("OCT +", 1);
         mode_ = proc.apvts.getRawParameterValue (ids::seqMode);
     }
     int mode() const { return (int) std::lround (mode_->load()); }
@@ -595,7 +598,7 @@ inline const EqBand kEqBands[5] = {
 class EqGraph : public Component
 {
 public:
-    EqGraph (PurrOneProcessor& p, int& bandRef) : proc (p), band (bandRef) { setBounds (rc (L2::fxEq_items[2].r)); }
+    EqGraph (PurrOneProcessor& p, int& bandRef) : proc (p), band (bandRef) { setBounds (rc (L2::fxEq_items[2].r)); std::fill (std::begin (sm), std::end (sm), -100.0f); }
     float raw (const char* id) const { return proc.apvts.getRawParameterValue (id)->load(); }
     float xOf (float f) const { return std::log (f / 20.0f) / std::log (1000.0f) * (float) getWidth(); }
     float yOf (float db) const { return (float) getHeight() * 0.5f - db / 15.0f * ((float) getHeight() * 0.5f - 16.0f); }
@@ -610,31 +613,99 @@ public:
         const double w = 2.0 * MathConstants<double>::pi * f / fs; const std::complex<double> z1 = std::polar (1.0, -w), z2 = std::polar (1.0, -2.0 * w);
         return std::abs ((b0 + b1 * z1 + b2 * z2) / (a0 + a1 * z1 + a2 * z2));
     }
-    float bandDb (int b, float f) const
+    float bandDb (int b, float f, float extra = 0.0f) const
     {
         const auto& d = kEqBands[b]; if (raw (d.o) < 0.5f) return 0.0f;
-        return (float) (20.0 * std::log10 (mag (b == 0 ? 0 : b == 4 ? 2 : 1, raw (d.f), raw (d.g), d.q ? raw (d.q) : 0.7071, f)));
+        return (float) (20.0 * std::log10 (mag (b == 0 ? 0 : b == 4 ? 2 : 1, raw (d.f), jlimit (-24.0f, 24.0f, raw (d.g) + extra), d.q ? raw (d.q) : 0.7071, f)));
     }
-    void tick() { float s = 0; for (int b = 0; b < 5; ++b) { const auto& d = kEqBands[b]; s += (raw (d.f) * 0.001f + raw (d.g) * 3.1f + (d.q ? raw (d.q) : 0.0f) * 7.0f + raw (d.o) * 11.0f + raw (d.m) * 13.0f) * (float) (b + 1); } s += (float) band * 1000.0f;
-                  if (s != last) { last = s; repaint(); } }
+    bool isDyn (int b) const { const auto& d = kEqBands[b]; return raw (d.o) > 0.5f && std::fabs (raw (d.d)) > 0.05f; }
+    float liveExtra (int b) const { return isDyn (b) ? proc.eqView().liveDynDb (b) : 0.0f; }
+    // spectrum scale is the same as the analyzer: 0 dBFS at the top, -90 at the bottom
+    float ySpec (float db) const { return jlimit (0.0f, (float) getHeight(), db / -90.0f * (float) getHeight()); }
+    void tick() { repaint(); }
+    void paintSpectrum (Graphics& g, float w, float h)
+    {
+        std::vector<float> l (2048), r (2048);
+        { const int e = proc.tapPos.load(); for (int i = 0; i < 2048; ++i) { const int idx = (e - 2048 + i + PurrOneProcessor::kTap * 2) % PurrOneProcessor::kTap; l[(size_t) i] = proc.tapL[idx]; r[(size_t) i] = proc.tapR[idx]; } }
+        float data[4096] = {}; for (int i = 0; i < 2048; ++i) data[i] = (l[(size_t) i] + r[(size_t) i]) * 0.5f * win[(size_t) i];
+        fft.performFrequencyOnlyForwardTransform (data);
+        const double sr = jmax (8000.0, proc.getSampleRate()); const int cols = 160; Path p;
+        for (int c = 0; c < cols; ++c)
+        {
+            const float f0 = 20.0f * std::pow (1000.0f, (float) c / cols), f1 = 20.0f * std::pow (1000.0f, (float) (c + 1) / cols);
+            const int b0 = jlimit (1, 1023, (int) std::floor (f0 / (sr / 2048.0))), b1 = jlimit (b0, 1023, (int) std::ceil (f1 / (sr / 2048.0)));
+            float mx = 0.0f; for (int bb = b0; bb <= b1; ++bb) mx = jmax (mx, data[bb]);
+            const float db = 20.0f * std::log10 (mx / 512.0f + 1.0e-6f);
+            sm[c] = db > sm[c] ? db : sm[c] * 0.85f + db * 0.15f;
+            const float x = (float) c / (cols - 1) * w, y = ySpec (jmin (0.0f, sm[c]));
+            if (c) p.lineTo (x, y); else p.startNewSubPath (x, y);
+        }
+        Path fill (p); fill.lineTo (w, h); fill.lineTo (0, h); fill.closeSubPath();
+        g.setColour (Colour (0xff8a93a6).withAlpha (0.13f)); g.fillPath (fill); g.setColour (Colour (0xff8a93a6).withAlpha (0.45f)); g.strokePath (p, PathStrokeType (1.0f));
+    }
     void paint (Graphics& g) override
     {
         const float w = (float) getWidth(), h = (float) getHeight(); g.fillAll (col::black); g.setColour (col::line); g.drawRect (getLocalBounds(), 1);
         g.setFont (monoFont (10.0f));
         for (float db : { -12.0f, -6.0f, 0.0f, 6.0f, 12.0f }) { g.setColour (db == 0.0f ? Colour (0xff2b2d34) : Colour (0xff1d1f26)); g.drawHorizontalLine ((int) yOf (db), 0.0f, w); g.setColour (Colour (0xff6f7480)); g.drawText (String (db > 0 ? "+" : "") + String ((int) db), 4, (int) yOf (db) - 12, 30, 10, Justification::left, false); }
         for (float f : { 50.0f, 100.0f, 200.0f, 500.0f, 1000.0f, 2000.0f, 5000.0f, 10000.0f }) { const float x = xOf (f); g.setColour (Colour (0xff1d1f26)); g.drawVerticalLine ((int) x, 0.0f, h); g.setColour (Colour (0xff6f7480)); g.drawText (f >= 1000 ? String (f / 1000, 0) + "k" : String ((int) f), (int) x + 2, (int) h - 13, 30, 10, Justification::left, false); }
-        Path p; const int n = 300;
-        for (int i = 0; i < n; ++i) { const float f = 20.0f * std::pow (1000.0f, (float) i / (n - 1)); float db = 0; for (int b = 0; b < 5; ++b) db += bandDb (b, f); const float x = (float) i / (n - 1) * w, y = yOf (jlimit (-15.0f, 15.0f, db)); if (i) p.lineTo (x, y); else p.startNewSubPath (x, y); }
-        Path fill (p); fill.lineTo (w, yOf (0)); fill.lineTo (0, yOf (0)); fill.closeSubPath(); g.setColour (col::yellow.withAlpha (0.10f)); g.fillPath (fill); g.setColour (col::yellow); g.strokePath (p, PathStrokeType (2.0f));
+        paintSpectrum (g, w, h);
+        // levels scale for the spectrum and the thresholds (dBFS), on the right edge
+        g.setColour (Colour (0xff6f7480)); g.setFont (monoFont (9.0f));
+        for (float db : { -20.0f, -40.0f, -60.0f }) g.drawText (String ((int) db) + " dBFS", (int) w - 62, (int) ySpec (db) - 11, 58, 10, Justification::right, false);
+
+        // static curve (dim) and live curve (bright): the live one includes what the dynamic bands are doing right now
+        Path stat, live, ghost; const int n = 300; bool anyDyn = false; for (int b = 0; b < 5; ++b) anyDyn |= isDyn (b);
+        for (int i = 0; i < n; ++i)
+        {
+            const float f = 20.0f * std::pow (1000.0f, (float) i / (n - 1)); float ds = 0, dl = 0, dg = 0;
+            for (int b = 0; b < 5; ++b)
+            {
+                ds += bandDb (b, f); dl += bandDb (b, f, liveExtra (b));
+                dg += bandDb (b, f, b == band && isDyn (b) ? raw (kEqBands[b].d) : liveExtra (b));
+            }
+            const float x = (float) i / (n - 1) * w;
+            const float ys = yOf (jlimit (-15.0f, 15.0f, ds)), yl = yOf (jlimit (-15.0f, 15.0f, dl)), yg = yOf (jlimit (-15.0f, 15.0f, dg));
+            if (i) { stat.lineTo (x, ys); live.lineTo (x, yl); ghost.lineTo (x, yg); } else { stat.startNewSubPath (x, ys); live.startNewSubPath (x, yl); ghost.startNewSubPath (x, yg); }
+        }
+        if (anyDyn) { g.setColour (Colour (0xff9aa0ad).withAlpha (0.6f)); g.strokePath (stat, PathStrokeType (1.0f)); }
+        if (anyDyn && isDyn (band)) { Path dashed; const float dl[2] = { 5.0f, 4.0f }; PathStrokeType (1.5f).createDashedStroke (dashed, ghost, dl, 2); g.setColour (col::ink.withAlpha (0.75f)); g.fillPath (dashed); }
+        Path fill (live); fill.lineTo (w, yOf (0)); fill.lineTo (0, yOf (0)); fill.closeSubPath(); g.setColour (col::yellow.withAlpha (0.10f)); g.fillPath (fill); g.setColour (col::yellow); g.strokePath (live, PathStrokeType (2.0f));
+
         for (int b = 0; b < 5; ++b)
         {
             const auto& d = kEqBands[b]; const int tg = (int) std::lround (raw (d.m)); const Colour c = tg == 0 ? col::green : tg == 1 ? col::blue : col::orange;
-            const float x = xOf (raw (d.f)), y = yOf (jlimit (-15.0f, 15.0f, raw (d.g))); const bool on = raw (d.o) > 0.5f;
+            const bool on = raw (d.o) > 0.5f; const float x = xOf (raw (d.f));
+            if (isDyn (b))
+            {
+                // threshold line across the band, and the live detector level inside the band
+                const float q = d.q ? raw (d.q) : 0.7f, fc = raw (d.f), sp = std::pow (2.0f, 0.72f / jmax (0.3f, q));
+                const float xa = b == 0 ? 0.0f : xOf (jmax (20.0f, fc / sp)), xb = b == 4 ? w : xOf (jmin (20000.0f, fc * sp));
+                const float yt = ySpec (raw (d.t)), lv = proc.eqView().liveLevelDb (b), yv = ySpec (jmin (0.0f, lv));
+                const bool over = lv > raw (d.t);
+                g.setColour (c.withAlpha (b == band ? 0.95f : 0.5f)); g.drawLine (xa, yt, xb, yt, b == band ? 2.0f : 1.0f);
+                g.drawLine (xa, yt - 4.0f, xa, yt + 4.0f, 1.0f); g.drawLine (xb, yt - 4.0f, xb, yt + 4.0f, 1.0f);
+                g.setColour (over ? col::pink : c); g.fillRect (x - 3.0f, yv - 3.0f, 6.0f, 6.0f);
+                if (over) { g.setColour (col::pink.withAlpha (0.7f)); g.drawLine (x, yt, x, yv, 2.0f); }
+                if (b == band) { g.setColour (c); g.setFont (monoFont (10.0f)); g.drawText ("threshold " + String (roundToInt (raw (d.t))) + " dB", (int) xa + 4, (int) yt - 14, 130, 11, Justification::left, false); }
+            }
+            const float live0 = raw (d.g) + liveExtra (b), y = yOf (jlimit (-15.0f, 15.0f, raw (d.g)));
+            if (isDyn (b))
+            {
+                const float yl = yOf (jlimit (-15.0f, 15.0f, live0)), ym = yOf (jlimit (-15.0f, 15.0f, raw (d.g) + raw (d.d)));
+                g.setColour (c.withAlpha (0.5f)); g.drawLine (x, y, x, ym, 1.0f); g.drawEllipse (x - 5.0f, ym - 5.0f, 10.0f, 10.0f, 1.5f);   // hollow: where it would end up at full effect
+                g.setColour (c); g.fillEllipse (x - 4.0f, yl - 4.0f, 8.0f, 8.0f);                                                             // small solid: where it is now
+            }
             g.setColour (c.withAlpha (on ? 1.0f : 0.3f)); g.fillEllipse (x - 8.0f, y - 8.0f, 16.0f, 16.0f);
             if (b == band) { g.setColour (col::ink); g.drawEllipse (x - 11.0f, y - 11.0f, 22.0f, 22.0f, 2.0f); }
             g.setColour (col::black); g.setFont (labelFont (12.0f, true, 0.0f)); g.drawText (String (b + 1), Rectangle<float> (x - 8.0f, y - 8.0f, 16.0f, 16.0f).toNearestInt(), Justification::centred, false);
         }
-        g.setColour (col::inkDim); g.setFont (monoFont (11.0f)); g.drawText ("green: stereo   blue: mid   orange: side", 40, 4, 300, 14, Justification::left, false);
+        g.setColour (col::inkDim); g.setFont (monoFont (11.0f)); g.drawText ("green: stereo   blue: mid   orange: side   grey: output spectrum", 40, 4, 420, 14, Justification::left, false);
+        if (isDyn (band))
+        {
+            const auto& d = kEqBands[band]; const float now = proc.eqView().liveDynDb (band);
+            g.setColour (col::ink); g.drawText ("band " + String (band + 1) + " dynamic: now " + String (now > 0 ? "+" : "") + String (now, 1) + " dB, full " + String (raw (d.d) > 0 ? "+" : "") + String (raw (d.d), 1) + " dB (hollow dot, dashed line)", 40, 20, 520, 14, Justification::left, false);
+        }
     }
     int nearest (Point<int> pt) const
     {
@@ -665,6 +736,7 @@ public:
     }
 private:
     PurrOneProcessor& proc; int& band; int drag = -1; RangedAudioParameter *fp = nullptr, *gp = nullptr; float last = -1;
+    dsp::FFT fft { 11 }; std::vector<float> win = [] { std::vector<float> w (2048); for (int i = 0; i < 2048; ++i) w[(size_t) i] = 0.5f - 0.5f * std::cos (2.0f * MathConstants<float>::pi * (float) i / 2047.0f); return w; }(); float sm[160];
 };
 
 class FxPage : public PageBase
@@ -701,8 +773,8 @@ public:
             mk (d.f, "FREQ", slot++, 'C', "Where the band acts.");
             mk (d.g, b == 0 || b == 4 ? "GAIN" : "GAIN", slot++, 'D', b == 0 ? "Low shelf. A small cut clears mud; a small boost adds weight to a bass." : b == 4 ? "High shelf. Adds air, or tames fizz." : "Boost or cut around the frequency.");
             if (d.q) mk (d.q, "Q", slot++, 'Q', "Width of the band. The mouse wheel over a point changes it too. Higher is narrower.");
-            mk (d.d, "DYNAMIC", slot++, 'Z', "Makes the band move with the level: 0 keeps it static, higher values add or cut that much more when the signal is loud.");
-            mk (d.t, "THRESHOLD", slot++, 'K', "Level above which the dynamic part starts working.");
+            mk (d.d, "DYNAMIC", slot++, 'Z', "Makes the band move with the level. 0 keeps it static. Positive boosts and negative cuts, by up to that many dB, when the signal in the band is above the threshold. The display shows the result live.");
+            mk (d.t, "THRESHOLD", slot++, 'K', "Level above which the dynamic part starts working. The line on the graph shows where it sits against the spectrum; the square is the live level in the band.");
             auto* tg = new layout::Tog { d.o, "ON", { 415, 482, 56, 26 }, 0xff02ebbau, "Switches this band on or off." }; tgDefs.add (tg);
             auto* lt = new LedToggle (*a.getParameter (d.o), *tg, bubbles); owned.add (lt); addAndMakeVisible (lt); bandWidgets[b].add (lt);
             auto* sd = segDef ("eqM1");

@@ -2,6 +2,7 @@
 // Header only, no JUCE types, no allocation after construction. Everything is neutral (bit exact bypass) when off.
 #pragma once
 #include "Fx.h"
+#include <atomic>
 
 namespace purrone {
 
@@ -11,11 +12,13 @@ inline float clampf2 (float x, float lo, float hi) { return x < lo ? lo : (x > h
 
 // ---------- 5 band EQ. Band 1 low shelf, 2 to 4 bells, 5 high shelf. Each band: on, freq, gain, Q, dynamic, threshold, target ----------
 // target 0 = Stereo (works on the mono synth signal before the space), 1 = Mid, 2 = Side (work on the stereo result).
-// Dynamic: 0 keeps the band static. Above 0 the band moves by that many dB more (same direction as its gain, cut when the gain is 0)
-// when the signal in the band is above the threshold.
+// Dynamic: 0 keeps the band static. Positive: the band boosts by up to that many dB when the signal in the band is above the
+// threshold. Negative: it cuts by up to that many dB. This is added to the static gain, in either direction, whatever the gain is.
+// Full effect is reached 12 dB above the threshold.
 class Eq5
 {
 public:
+    Eq5() { for (auto& l : liveLvl) l.store (-90.0f); }
     void prepare (double s)
     {
         sr = s;
@@ -25,10 +28,13 @@ public:
     void setBand (int i, bool on, float f, float gainDb, float q, float dynDb, float thrDb, int target)
     {
         Band& b = band[i];
-        if (b.f != f || b.g != gainDb || b.q != q) dirty[i] = true;
+        if (b.f != f || b.g != gainDb || b.q != q || b.dyn != dynDb) dirty[i] = true;
         if (b.f != f || b.q != q) detDirty[i] = true;
         b.on = on; b.f = f; b.g = gainDb; b.q = q; b.dyn = dynDb; b.thr = thrDb; b.target = target;
     }
+    // for the display: the dB the dynamic part is adding right now, and the detector level in dBFS (valid while the band is dynamic)
+    float liveDynDb (int i) const { return liveDyn[i].load (std::memory_order_relaxed); }
+    float liveLevelDb (int i) const { return liveLvl[i].load (std::memory_order_relaxed); }
     bool anyMono() const { for (auto& b : band) if (active (b) && b.target == 0) return true; return false; }
     bool anyStereo() const { for (auto& b : band) if (active (b) && b.target != 0) return true; return false; }
 
@@ -50,24 +56,25 @@ public:
     }
 private:
     struct Band { bool on = true; float f = 1000.0f, g = 0.0f, q = 0.8f, dyn = 0.0f, thr = -24.0f; int target = 0; };
-    static bool active (const Band& b) { return b.on && (std::fabs (b.g) > 0.005f || b.dyn > 0.005f); }
+    static bool active (const Band& b) { return b.on && (std::fabs (b.g) > 0.005f || std::fabs (b.dyn) > 0.005f); }
 
     float run (int i, float x, float detIn)
     {
         const Band& b = band[i];
         if (detDirty[i]) { det[i].bandpass (sr, std::min (b.f, (float) (0.45 * sr)), std::max (0.3f, b.q)); detDirty[i] = false; }
         float g = b.g;
-        if (b.dyn > 0.005f)
+        if (std::fabs (b.dyn) > 0.005f)
         {
             const float y = std::fabs (det[i].process (detIn));
             env[i] += (y > env[i] ? atk : rel) * (y - env[i]);
             const float over = clampf2 ((linToDb (env[i]) - b.thr) / 12.0f, 0.0f, 1.0f);
             amt[i] += 0.02f * (over - amt[i]);
-            g = clampf2 (b.g + (b.g > 0.0f ? 1.0f : -1.0f) * b.dyn * amt[i], -24.0f, 24.0f);
+            g = clampf2 (b.g + b.dyn * amt[i], -24.0f, 24.0f);
             if (std::fabs (g - curGain[i]) > 0.02f) dirty[i] = true;
         }
-        if (b.dyn > 0.005f) ++cnt[i];
-        if (dirty[i] && (b.dyn < 0.005f || (cnt[i] & 31) == 0 || curGain[i] > 1.0e8f))
+        const bool dynOn = std::fabs (b.dyn) > 0.005f;
+        if (dynOn && ((++cnt[i] & 31) == 0)) { liveDyn[i].store (g - b.g, std::memory_order_relaxed); liveLvl[i].store (linToDb (env[i]), std::memory_order_relaxed); }
+        if (dirty[i] && (! dynOn || (cnt[i] & 31) == 0 || curGain[i] > 1.0e8f))
         {
             curGain[i] = g; dirty[i] = false;
             const double f = std::min ((double) b.f, 0.45 * sr);
@@ -79,6 +86,7 @@ private:
     }
 
     double sr = 48000.0; Band band[5]; Biquad flt[5], det[5]; float env[5] {}, amt[5] {}, curGain[5] {};
+    std::atomic<float> liveDyn[5] {}, liveLvl[5] {};
     bool dirty[5] {}, detDirty[5] { true, true, true, true, true }; float atk = 0.01f, rel = 0.001f; unsigned cnt[5] {};
 };
 
@@ -185,10 +193,10 @@ public:
             {
                 const float lev = linToDb (std::max (std::fabs (b[k][0]), std::fabs (b[k][1])));
                 env[k] += (lev > env[k] ? atk : rel) * (lev - env[k]);
-                const float thr = -8.0f - 16.0f * amt[k], ratio = 1.0f + 5.0f * amt[k];
+                const float thr = -14.0f - 18.0f * amt[k], ratio = 1.0f + 6.0f * amt[k];
                 float red = env[k] > thr ? (env[k] - thr) * (1.0f - 1.0f / ratio) : 0.0f;
                 gdb[k] += 0.01f * (-red - gdb[k]);
-                g = dbToLin (gdb[k] + 0.5f * (8.0f + 16.0f * amt[k]) * (1.0f - 1.0f / ratio));       // makeup
+                g = dbToLin (gdb[k] + 0.3f * (14.0f + 18.0f * amt[k]) * (1.0f - 1.0f / ratio));       // makeup
             }
             wl += b[k][0] * g; wr += b[k][1] * g;
         }
