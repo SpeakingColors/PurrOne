@@ -117,7 +117,7 @@ struct PurrOneEditor::NameBox : public juce::Component, public juce::SettableToo
 struct PurrOneEditor::Content : public juce::Component
 {
     Content (PurrOneEditor& o) : owner (o), proc (o.proc),
-        prev ("<"), next (">"), save ("Save"), rename ("Rename"), init ("Init"), zoom ("100%"), check (o.bubbles), meter (o.proc), keys (o.proc.keyState)
+        prev ("<"), next (">"), save ("Save"), rename ("Rename"), init ("Init"), zoom ("100%"), playBtn ("Play"), check (o.bubbles), meter (o.proc), keys (o.proc.keyState)
     {
         setOpaque (true);
         logo = juce::Drawable::createFromSVG (*juce::XmlDocument::parse (kLogoSvg));
@@ -131,10 +131,12 @@ struct PurrOneEditor::Content : public juce::Component
         for (auto* d : displays) addAndMakeVisible (d);
         addAndMakeVisible (meter); addAndMakeVisible (keys);
         keys.setBounds (rc (m.keys));
-        for (juce::Component* c : std::initializer_list<juce::Component*> { &prev, &next, &save, &rename, &init, &zoom, &check, &nameBox }) addAndMakeVisible (c);
+        for (juce::Component* c : std::initializer_list<juce::Component*> { &prev, &next, &save, &rename, &init, &zoom, &playBtn, &check, &nameBox }) addAndMakeVisible (c);
         // header: the preset name box is narrower than the Sound-only mockup to make room for the page tabs
         prev.setBounds (rc (m.prev)); nameBox.setBounds (298, 13, 380, 32); next.setBounds (684, 14, 33, 31); save.setBounds (723, 14, 63, 31); rename.setBounds (791, 14, 87, 31); init.setBounds (883, 14, 53, 31);
         check.setBounds (rc (m.bubbles).withWidth (140)); zoom.setBounds (rc (m.zoom));
+        playBtn.setBounds (1522, 14, 100, 31); playBtn.setTooltip ("Starts and stops the sequence or arp from any page. In a DAW the transport, a key or a start note can do it too (Seq / Arp page).");
+        playBtn.onClick = [this] { const bool on = ! proc.playButton.load(); if (on && (int) std::lround (proc.apvts.getRawParameterValue (purrone::ids::seqMode)->load()) == 0) proc.setParam (purrone::ids::seqMode, 1.0f); proc.playButton.store (on); };
         { static const char* names[4] = { "Sound", "Seq / Arp", "FX", "Settings" }; static const int xs[4] = { 945, 1019, 1119, 1175 }, ws[4] = { 70, 96, 52, 88 };
           for (int i = 0; i < 4; ++i) { auto* t = new Button (names[i], i == 0 ? "The synth" : i == 1 ? "Step sequencer and arpeggiator" : i == 2 ? "Effects, EQ and analyzer" : "Banks, tuning, quality and window"); t->setBounds (xs[i], 14, ws[i], 31); t->onClick = [this, i] { owner.showView (i); }; tabs.add (t); addAndMakeVisible (t); } }
         seqPage = std::make_unique<purrone::ui::SeqPage> (proc, o.bubbles); addChildComponent (*seqPage);
@@ -155,7 +157,8 @@ struct PurrOneEditor::Content : public juce::Component
         for (int i = 0; i < tabs.size(); ++i) { tabs[i]->on = i == v; tabs[i]->repaint(); }
         repaint();
     }
-    void tickPages() { if (view == 1) seqPage->tick(); else if (view == 2) fxHost->tick(); else if (view == 3) settingsPage->tick(); }
+    void tickHeader() { const bool on = proc.playButton.load(); const juce::String t = on ? "Stop" : "Play"; if (playBtn.text != t || playBtn.on != on) { playBtn.text = t; playBtn.on = on; playBtn.repaint(); } }
+    void tickPages() { tickHeader(); if (view == 1) seqPage->tick(); else if (view == 2) fxHost->tick(); else if (view == 3) settingsPage->tick(); }
 
     // double click on either wood cheek: back to the default window size (100%)
     void mouseDoubleClick (const juce::MouseEvent& e) override
@@ -214,7 +217,7 @@ struct PurrOneEditor::Content : public juce::Component
     std::unique_ptr<juce::Drawable> logo;
     juce::OwnedArray<Knob> knobs; juce::OwnedArray<LedToggle> togs; juce::OwnedArray<Segments> segs; juce::OwnedArray<Display> displays;
     int view = 0; juce::OwnedArray<Button> tabs; std::unique_ptr<purrone::ui::SeqPage> seqPage; std::unique_ptr<purrone::ui::FxHost> fxHost; std::unique_ptr<purrone::ui::SettingsPage> settingsPage;
-    Button prev, next, save, rename, init, zoom; Check check; NameBox nameBox; juce::TextEditor editor; Meter meter; Keys keys;
+    Button prev, next, save, rename, init, zoom, playBtn; Check check; NameBox nameBox; juce::TextEditor editor; Meter meter; Keys keys;
 };
 
 //==============================================================================
