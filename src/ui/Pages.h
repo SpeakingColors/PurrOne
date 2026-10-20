@@ -746,7 +746,7 @@ public:
         : PageBase (p, b, L2::views[viewIdx]), idx (viewIdx), analyzer (an), getAna (anaMode), setAna_ (setAna)
     {
         const bool eq = viewIdx == L2::vFxEq;
-        build ([eq] (const char* id) { const String s (id); if (s == "anaTabs" || s == "bandSel") return true; if (! eq) return false; return s == "eqLoF" || s == "eqLo" || s == "eqD1" || s == "eqT1" || s == "eqM1" || s == "eqO1"; });
+        build ([eq] (const char* id) { const String s (id); if (s == "anaTabs" || s == "bandSel") return true; if (! eq) return false; return s.startsWith ("eq"); });   // every EQ control is built per band in buildEq()
         addLocal ("anaTabs", getAna, setAna_);
         if (viewIdx == L2::vFxColour) curve = add (new CurveView (proc));
         if (viewIdx == L2::vFxSpace)  tail = add (new TailView (proc));
@@ -824,6 +824,7 @@ public:
         preset->setBounds (62, 446, 146, 31); preset->onClick = [this] { menu(); };
         select (0);
     }
+    void testBand (int b) { if (auto* e = pages[1]) { e->band = jlimit (0, 4, b); e->layoutBand(); } }   // screenshot test hook
     void select (int i) { cur = i; for (int k = 0; k < pages.size(); ++k) pages[k]->setVisible (k == cur); repaint(); }
     int current() const { return cur; }
     void tick() { pages[cur]->tick(); analyzer.tick(); }

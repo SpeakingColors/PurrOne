@@ -237,6 +237,7 @@ PurrOneEditor::PurrOneEditor (PurrOneProcessor& p) : AudioProcessorEditor (&p), 
     content->setView (0);
     if (const char* v = std::getenv ("PURRONE_VIEW")) content->setView (juce::jlimit (0, 3, std::atoi (v)));   // test hook for screenshots
     if (const char* v = std::getenv ("PURRONE_FX")) content->fxHost->select (juce::jlimit (0, 4, std::atoi (v)));
+    if (const char* v = std::getenv ("PURRONE_BAND")) content->fxHost->testBand (std::atoi (v));
     if (const char* v = std::getenv ("PURRONE_PARAMS"))   // test hook: "id=value,id=value" in real units
         for (auto& kv : juce::StringArray::fromTokens (juce::String (v), ",", ""))
             if (auto* prm = proc.apvts.getParameter (kv.upToFirstOccurrenceOf ("=", false, false).trim()))
