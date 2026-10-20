@@ -855,6 +855,12 @@ button[aria-disabled="true"] { opacity: .4; }
   $("#enable").addEventListener("click", function () { ensureAudio(); noteOn(60); setTimeout(function () { noteOff(60); }, 450); });
 
   /* ---------- parameter updates and displays ---------- */
+  setTimeout(function () {   // octave buttons next to the Transpose knob (the knob itself moves in semitones, 3 octaves each way)
+    var host = document.getElementById("sqTrans"); if (!host) return;
+    var row = document.createElement("div"); row.style.cssText = "grid-column:1/-1;display:flex;gap:8px;justify-content:flex-end;margin-top:8px";
+    ["Oct -", "Oct +"].forEach(function (l, i) { var b = document.createElement("button"); b.textContent = l; b.title = (i ? "Up" : "Down") + " one octave. The Transpose knob moves it in semitones."; b.addEventListener("click", function () { setParam("seqTrans", clamp(Math.round(S.seqTrans) + (i ? 12 : -12), -36, 36)); }); row.appendChild(b); });
+    host.appendChild(row);
+  }, 0);
   function setParam(id, v) {
     S[id] = v; refreshControl(id); applyAudio(); drawAll(); markUser(); if (window.PO && PO.onParam) PO.onParam(id);
   }

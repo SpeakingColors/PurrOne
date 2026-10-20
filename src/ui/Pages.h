@@ -356,6 +356,7 @@ public:
         oct ("OCT -", -1); oct ("OCT +", 1);
         mode_ = proc.apvts.getRawParameterValue (ids::seqMode);
     }
+    int lastAcc = 0, accFlash = 0;
     int mode() const { return (int) std::lround (mode_->load()); }
     int steps() const { return (int) std::lround (proc.apvts.getRawParameterValue (ids::seqSteps)->load()); }
     int pat() const { return (int) std::lround (proc.apvts.getRawParameterValue (ids::seqPat)->load()); }
@@ -367,10 +368,15 @@ public:
         if (led != ledOn) { ledOn = led; repaint(); }
         const int ph = proc.playStep.load(); if (ph >= 0 && followPlay && proc.seqRunning.load() && ph / 16 != page && ph != lastPh) page = jmin (3, ph / 16);
         lastPh = ph;
+        const int ac = proc.accentCount.load (std::memory_order_relaxed);
+        if (ac != lastAcc) { lastAcc = ac; accFlash = 4; repaint(); } else if (accFlash > 0 && --accFlash == 0) repaint();   // about 130 ms at 30 Hz
     }
     void paint (Graphics& g) override
     {
         PageBase::paint (g);
+        { const auto k = Rectangle<float> (1159.0f, 104.0f, 62.0f, 74.0f); const Point<float> c (k.getCentreX() + 24.0f, k.getY() + 6.0f);   // accent light, top right of the Accent knob
+          if (accFlash > 0) { g.setColour (col::orange.withAlpha (0.4f)); g.fillEllipse (c.x - 8.0f, c.y - 8.0f, 16.0f, 16.0f); g.setColour (col::orange); } else g.setColour (Colour (0xff2a2c33));
+          g.fillEllipse (c.x - 4.0f, c.y - 4.0f, 8.0f, 8.0f); }
         const auto r = rc (itemOf (vd, "led").r).toFloat();
         if (ledOn) { g.setColour (col::pink.withAlpha (0.4f)); g.fillEllipse (r.expanded (3.0f)); g.setColour (col::pink); } else g.setColour (Colour (0xff2a2c33));
         g.fillEllipse (r);
@@ -798,10 +804,11 @@ public:
     void tick() override
     {
         PageBase::tick();
+        if (idx == L2::vFxEq && shownBand != band) { shownBand = band; layoutBand(); }   // a band picked by clicking its point in the graph
         if (curve) curve->tick(); if (tail) tail->tick(); if (level) level->tick(); if (field) field->tick(); if (graph) graph->tick();
         if (idx == L2::vFxEq) { const int sig = band * 100000 + (int) (proc.apvts.getRawParameterValue (kEqBands[band].f)->load() * 10) + (int) (proc.apvts.getRawParameterValue (kEqBands[band].g)->load() * 100); if (sig != lastSig) { lastSig = sig; repaint(); } }
     }
-    int idx; int band = 2;
+    int idx; int band = 2, shownBand = 2;
 private:
     Analyzer& analyzer; std::function<int()> getAna; std::function<void(int)> setAna_;
     CurveView* curve = nullptr; TailView* tail = nullptr; LevelView* level = nullptr; FieldView* field = nullptr; EqGraph* graph = nullptr;

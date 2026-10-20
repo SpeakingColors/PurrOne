@@ -53,6 +53,7 @@ public:
     juce::StringArray listSequences() const;
     bool saveSequence (const juce::String& name);                        // current pattern, rate, swing, gate, accent, slide and squelch
     bool loadSequence (const juce::String& name);
+    std::atomic<int> accentCount { 0 };                                  // counts accented steps played, for the editor accent light
     std::atomic<int> playStep { -1 };                                    // for the editor playhead
     std::atomic<bool> seqRunning { false };
     std::atomic<bool> playButton { false };                              // Play button on the Seq page (starts the sequence by hand)

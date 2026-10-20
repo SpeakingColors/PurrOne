@@ -189,7 +189,7 @@ void PurrOneProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mid
         {
             const auto& e = sequencer.event (i);
             renderTo (e.at);
-            if (e.type == SeqEvent::On) engine.seqNoteOn (e.note, e.accent, e.slide, slideSeconds); else engine.seqNoteOff();
+            if (e.type == SeqEvent::On) { if (e.accent) accentCount.fetch_add (1, std::memory_order_relaxed); engine.seqNoteOn (e.note, e.accent, e.slide, slideSeconds); } else engine.seqNoteOff();
             sendOut (e);
         }
     };
