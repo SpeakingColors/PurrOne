@@ -700,7 +700,7 @@ public:
             if (b == band) { g.setColour (col::ink); g.drawEllipse (x - 11.0f, y - 11.0f, 22.0f, 22.0f, 2.0f); }
             g.setColour (col::black); g.setFont (labelFont (12.0f, true, 0.0f)); g.drawText (String (b + 1), Rectangle<float> (x - 8.0f, y - 8.0f, 16.0f, 16.0f).toNearestInt(), Justification::centred, false);
         }
-        g.setColour (col::inkDim); g.setFont (monoFont (11.0f)); g.drawText ("green: stereo   blue: mid   orange: side   grey: output spectrum", 40, 4, 420, 14, Justification::left, false);
+        g.setColour (col::inkDim); g.setFont (monoFont (11.0f)); g.drawText ("green: stereo   blue: mid   orange: side   grey: output spectrum", 40, 4, 600, 14, Justification::left, false);
         if (isDyn (band))
         {
             const auto& d = kEqBands[band]; const float now = proc.eqView().liveDynDb (band);

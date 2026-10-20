@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22)
-project(PurrOne VERSION 0.2.1 LANGUAGES C CXX)
+project(PurrOne VERSION 0.2.2 LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
@@ -26,6 +26,7 @@ if(PURRONE_BUILD_PLUGIN)
 
   juce_add_plugin(PurrOne
     COMPANY_NAME "Studio 87"
+    BUNDLE_ID "com.studio87.purrone"
     PLUGIN_MANUFACTURER_CODE Spkc
     PLUGIN_CODE PurO
     FORMATS VST3 Standalone
