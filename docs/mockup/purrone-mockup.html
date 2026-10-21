@@ -1352,6 +1352,10 @@ button[aria-disabled="true"] { opacity: .4; }
   trRow.appendChild(labelled("Steps", stp));
   var playBtn = btn("Play", function () { if (S.seqMode === 0) return; playing ? seqStop() : seqStart(); }, "In the plugin the DAW transport starts and stops this. Here you use this button.");
   playBtn.className = "play"; playBtn.setAttribute("aria-pressed", "false"); trRow.appendChild(playBtn);
+  var hdrPlay = document.createElement("button"); hdrPlay.id = "hdrPlay"; hdrPlay.className = "play"; hdrPlay.textContent = "Play"; hdrPlay.title = "Start or stop the sequence or arp from any page.";
+  hdrPlay.addEventListener("click", function () { if (S.seqMode === 0) { S.seqMode = 1; sqUi(); } playing ? seqStop() : seqStart(); });
+  var hr = document.querySelector(".hdr-right"); if (hr) hr.insertBefore(hdrPlay, document.getElementById("zoom"));
+  setInterval(function () { hdrPlay.textContent = playing ? "Stop" : "Play"; hdrPlay.setAttribute("aria-pressed", playing ? "true" : "false"); }, 100);
   var midiLed = document.createElement("span"); midiLed.className = "midi-led"; midiLed.title = "Lights when a note would be sent out as MIDI";
   trRow.appendChild(labelled("MIDI out", midiLed));
 
