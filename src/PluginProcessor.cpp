@@ -94,8 +94,8 @@ void PurrOneProcessor::applyParams()
     const int os = raw (ids::oversmp) > 0.5f ? 8 : 4;
     if (os != lastOversample) { lastOversample = os; engine.setOversampling (os); }
     engine.setParams (p);
-    static const float bends[3] = { 2.0f, 5.0f, 12.0f };
-    bendRange = bends[std::min (std::max ((int) std::lround (raw (ids::bend)), 0), 2)];
+    static const float bends[4] = { 2.0f, 5.0f, 12.0f, 24.0f };   // semitones up and down at full wheel; 12 is an octave, 24 two octaves
+    bendRange = bends[std::min (std::max ((int) std::lround (raw (ids::bend)), 0), 3)];
     wheelIsCC74 = raw (ids::wheelCC) > 0.5f;
     engine.setPitchBend (bendNorm * bendRange);
 }

@@ -288,7 +288,7 @@ inline juce::AudioProcessorValueTreeState::ParameterLayout createLayout()
     b (ids::rndPB, "Random Pitch B", false);
     b (ids::rndPW, "Random Pulse Width", true);
     ch (ids::oversmp, "Oversampling", { "Normal 4x", "High 8x" }, 0);
-    ch (ids::bend, "Bend Range", { "2", "5", "12" }, 0);
+    ch (ids::bend, "Bend Range", { "2", "5", "12", "24" }, 0);
     ch (ids::wheelCC, "Mod Wheel CC", { "CC1", "CC74" }, 0);
     ch (ids::tuneTemp, "Temperament", { "Equal", "Just", "Pythagorean", "Custom" }, 0);
     ch (ids::tuneRef, "A4 Reference", { "432", "440", "442" }, 1);
