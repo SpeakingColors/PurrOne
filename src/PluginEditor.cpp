@@ -130,7 +130,20 @@ struct PurrOneEditor::Content : public juce::Component
         displays.add (new Display (a, Display::aenv, m.aenv));   displays.add (new Display (a, Display::eq, m.eq));
         for (auto* d : displays) addAndMakeVisible (d);
         addAndMakeVisible (meter); addAndMakeVisible (keys);
-        keys.setBounds (rc (m.keys));
+        {   // pitch wheel and mod wheel left of the keyboard
+            const auto kr = rc (m.keys); keys.setBounds (kr.withTrimmedLeft (84));
+            pitchWheel = std::make_unique<Wheel> (true, [this] { return proc.bendShown.load(); }, [this] (float v) { proc.uiBend.store (v); proc.uiBendNew.store (true); }, nullptr, col::pink);
+            pitchWheel->setBounds (kr.getX(), kr.getY(), 36, kr.getHeight());
+            pitchWheel->setTooltip ("Pitch wheel. Springs back to the middle. The range (2, 5, 12 or 24 semitones, up and down) is on the Settings page. A MIDI keyboard moves it too.");
+            addAndMakeVisible (*pitchWheel);
+            if (auto* wp = proc.apvts.getParameter (purrone::ids::wheel))
+            {
+                modWheel = std::make_unique<Wheel> (false, [wp] { return wp->getValue(); }, [wp] (float v) { wp->setValueNotifyingHost (v); }, [wp] (bool down) { if (down) wp->beginChangeGesture(); else wp->endChangeGesture(); }, col::green);
+                modWheel->setBounds (kr.getX() + 42, kr.getY(), 36, kr.getHeight());
+                modWheel->setTooltip ("Mod wheel. Same as the Wheel knob: anything routed to Wheel scales with it. Double-click to zero.");
+                addAndMakeVisible (*modWheel);
+            }
+        }
         for (juce::Component* c : std::initializer_list<juce::Component*> { &prev, &next, &save, &rename, &init, &zoom, &playBtn, &check, &nameBox }) addAndMakeVisible (c);
         // header: the preset name box is narrower than the Sound-only mockup to make room for the page tabs
         prev.setBounds (rc (m.prev)); nameBox.setBounds (298, 13, 380, 32); next.setBounds (684, 14, 33, 31); save.setBounds (723, 14, 63, 31); rename.setBounds (791, 14, 87, 31); init.setBounds (883, 14, 53, 31);
@@ -217,7 +230,7 @@ struct PurrOneEditor::Content : public juce::Component
     std::unique_ptr<juce::Drawable> logo;
     juce::OwnedArray<Knob> knobs; juce::OwnedArray<LedToggle> togs; juce::OwnedArray<Segments> segs; juce::OwnedArray<Display> displays;
     int view = 0; juce::OwnedArray<Button> tabs; std::unique_ptr<purrone::ui::SeqPage> seqPage; std::unique_ptr<purrone::ui::FxHost> fxHost; std::unique_ptr<purrone::ui::SettingsPage> settingsPage;
-    Button prev, next, save, rename, init, zoom, playBtn; Check check; NameBox nameBox; juce::TextEditor editor; Meter meter; Keys keys;
+    Button prev, next, save, rename, init, zoom, playBtn; Check check; NameBox nameBox; juce::TextEditor editor; Meter meter; Keys keys; std::unique_ptr<Wheel> pitchWheel, modWheel;
 };
 
 //==============================================================================

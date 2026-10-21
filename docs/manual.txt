@@ -29,7 +29,7 @@ Signal order is fixed: Colour, Filter, Amp, Crush, EQ, Space, Opto, OTT, Dance m
 - The analyzer (spectrum, scope, phase) reads the final output.
 
 # Settings
-Banks A to C hold the factory sounds and are read only. Banks D to G are yours: the one selected is where Save puts new sounds. Banks and single sounds can be exported and imported as files. Tuning has Equal, Just, Pythagorean and Custom (drag the bars) plus A4 at 432, 440 or 442. Quality sets 4x or 8x oversampling. Random LFO, pitch wheel range (2, 5, 12 or 24 semitones), wheel CC and window size are here too.
+Banks A to C hold the factory sounds and are read only. Banks D to G are yours: the one selected is where Save puts new sounds. Banks and single sounds can be exported and imported as files. Tuning has Equal, Just, Pythagorean and Custom (drag the bars) plus A4 at 432, 440 or 442. Quality sets 4x or 8x oversampling. Random LFO, pitch wheel range (2, 5, 12 or 24 semitones), wheel CC and window size are here too. The two wheels left of the on-screen keyboard are the pitch wheel (it springs back to the middle; the range is set on the Settings page) and the mod wheel (the same control as the Wheel knob; double-click to zero it). A MIDI keyboard moves them too.
 
 # Recommendations
 - Sub bass: Mixer Sub 80 to 95 percent, Osc A and B low, Cutoff around 400 to 700 Hz, Transistor 5 to 15 percent.

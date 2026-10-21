@@ -368,4 +368,43 @@ private:
     int octave = 3;
 };
 
+// Vertical wheel. Pitch (bipolar) springs back to the middle when let go; mod stays where it is, double-click returns it to zero.
+// The cap follows 'get' every frame, so it also moves when the wheel is played from a MIDI keyboard.
+class Wheel : public Component, public SettableTooltipClient, private Timer
+{
+public:
+    Wheel (bool bipolar, std::function<float()> getter, std::function<void (float)> setter, std::function<void (bool)> gesture, Colour capColour)
+        : bi (bipolar), get (std::move (getter)), set (std::move (setter)), gest (std::move (gesture)), capCol (capColour) { startTimerHz (30); }
+    void paint (Graphics& g) override
+    {
+        const auto r = getLocalBounds().toFloat().reduced (1.0f);
+        g.setColour (col::field); g.fillRoundedRectangle (r, 5.0f);
+        g.setColour (col::line); g.drawRoundedRectangle (r, 5.0f, 1.0f);
+        g.setColour (Colours::white.withAlpha (0.06f));
+        for (float y = r.getY() + 3.0f; y < r.getBottom() - 2.0f; y += 4.0f) g.drawHorizontalLine ((int) y, r.getX() + 3.0f, r.getRight() - 3.0f);
+        if (bi) { g.setColour (Colours::white.withAlpha (0.35f)); g.drawHorizontalLine ((int) r.getCentreY(), r.getX() + 3.0f, r.getRight() - 3.0f); }
+        const float t = 1.0f - (bi ? (shown + 1.0f) * 0.5f : shown);
+        const Rectangle<float> cap (r.getX() + 1.0f, r.getY() + 1.0f + t * (r.getHeight() - 2.0f - capH), r.getWidth() - 2.0f, capH);
+        g.setColour (capCol); g.fillRoundedRectangle (cap, 4.0f);
+        g.setColour (Colours::white.withAlpha (0.35f)); g.drawHorizontalLine ((int) cap.getY() + 1, cap.getX() + 3.0f, cap.getRight() - 3.0f);
+        g.setColour (Colours::black.withAlpha (0.35f)); g.drawRoundedRectangle (cap, 4.0f, 1.0f);
+    }
+    void mouseDown (const MouseEvent& e) override { dragging = true; if (gest) gest (true); apply (e); }
+    void mouseDrag (const MouseEvent& e) override { apply (e); }
+    void mouseUp (const MouseEvent&) override { if (bi) push (0.0f); dragging = false; if (gest) gest (false); }
+    void mouseDoubleClick (const MouseEvent&) override { push (0.0f); }
+private:
+    static constexpr float capH = 16.0f;
+    void apply (const MouseEvent& e)
+    {
+        const float t = jlimit (0.0f, 1.0f, (e.position.y - 1.0f - capH * 0.5f) / jmax (1.0f, (float) getHeight() - 2.0f - capH));
+        float v = bi ? 1.0f - 2.0f * t : 1.0f - t;
+        if (bi && std::abs (v) < 0.04f) v = 0.0f;
+        push (v);
+    }
+    void push (float v) { shown = v; if (set) set (v); repaint(); }
+    void timerCallback() override { if (dragging || ! get) return; const float v = get(); if (std::abs (v - shown) > 0.002f) { shown = v; repaint(); } }
+    bool bi; std::function<float()> get; std::function<void (float)> set; std::function<void (bool)> gest; Colour capCol; float shown = 0.0f; bool dragging = false;
+};
+
 } // namespace purrone::ui

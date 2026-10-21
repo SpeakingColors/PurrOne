@@ -148,6 +148,7 @@ void PurrOneProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mid
     const int n = buffer.getNumSamples();
     if ((int) mono.size() < n) return;                       // prepareToPlay not called with a big enough block; stay silent instead of allocating
     buffer.clear();
+    if (uiBendNew.exchange (false)) { bendNorm = uiBend.load(); engine.setPitchBend (bendNorm * bendRange); bendShown.store (bendNorm); }
     keyState.processNextMidiBuffer (midi, 0, n, true);       // notes played on the editor keyboard
     applyParams(); applyFx(); applySeqSettings();
 
@@ -216,7 +217,7 @@ void PurrOneProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mid
         {
             engine.allNotesOff(); sequencer.allKeysOff(); std::fill (std::begin (passed), std::end (passed), false);
         }
-        else if (m.isPitchWheel()) { bendNorm = (float) (m.getPitchWheelValue() - 8192) / 8192.0f; engine.setPitchBend (bendNorm * bendRange); }
+        else if (m.isPitchWheel()) { bendNorm = (float) (m.getPitchWheelValue() - 8192) / 8192.0f; engine.setPitchBend (bendNorm * bendRange); bendShown.store (bendNorm); }
         else if (m.isController() && m.getControllerNumber() == (wheelIsCC74 ? 74 : 1)) { midiWheel = (float) m.getControllerValue() / 127.0f; applyParams(); }
     }
     runSeq (segStart, n);

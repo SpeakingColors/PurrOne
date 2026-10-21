@@ -56,6 +56,8 @@ public:
     std::atomic<int> accentCount { 0 };                                  // counts accented steps played, for the editor accent light
     std::atomic<int> playStep { -1 };                                    // for the editor playhead
     std::atomic<bool> seqRunning { false };
+    std::atomic<float> uiBend { 0.0f }, bendShown { 0.0f };               // on-screen pitch wheel -> audio, and the wheel position (MIDI or screen) -> editor
+    std::atomic<bool> uiBendNew { false };
     std::atomic<bool> playButton { false };                              // Play button on the Seq page (starts the sequence by hand)
     // analyser tap: the last 2048 output samples, written by the audio thread, read by the editor
     static constexpr int kTap = 4096;
