@@ -46,7 +46,7 @@ public:
 
     // ---- step sequencer data (4 patterns of up to 64 steps; saved in the host state and, if you want, inside sounds) ----
     purrone::SeqData seq;
-    juce::String patternToString (int pat) const;                       // 3 hex digits per step
+    juce::String patternToString (int pat) const;                       // 4 hex digits per step (older saves have 3)
     void patternFromString (int pat, const juce::String& s);
     void applySeqSpec (const juce::String& spec);                        // factory notation, see Presets.h; fills pattern A and sets the step count
     static juce::File sequenceDir();
@@ -88,11 +88,21 @@ public:
 
     const purrone::Eq5& eqView() const { return eq; }
 
+    // ---- MIDI learn: right-click a knob or switch, then move a control on your controller. Saved in the host state. ----
+    void startLearn (const juce::String& paramId);
+    void cancelLearn() { learnTarget.store (-1); }
+    juce::String learningId() const { const int i = learnTarget.load(); return i >= 0 && i < (int) learnParams.size() ? learnParams[(size_t) i]->paramID : juce::String(); }
+    int ccFor (const juce::String& paramId) const;                       // -1 when not mapped
+    void forgetCC (const juce::String& paramId);
+    std::atomic<int> learnTarget { -1 };
+
 private:
     void applyParams();
     void applyFactory (int index);
     static juce::String sanitize (const juce::String& n);
 
+    std::vector<juce::RangedAudioParameter*> learnParams;
+    std::atomic<int> ccMap[128];
     purrone::Engine engine;
     purrone::Eq5 eq;
     purrone::Crush crush;

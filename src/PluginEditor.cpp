@@ -148,6 +148,20 @@ struct PurrOneEditor::Content : public juce::Component
         // header: the preset name box is narrower than the Sound-only mockup to make room for the page tabs
         prev.setBounds (rc (m.prev)); nameBox.setBounds (298, 13, 380, 32); next.setBounds (684, 14, 33, 31); save.setBounds (723, 14, 63, 31); rename.setBounds (791, 14, 87, 31); init.setBounds (883, 14, 53, 31);
         check.setBounds (rc (m.bubbles).withWidth (140)); zoom.setBounds (rc (m.zoom));
+        o.bubbles.learnMenu = [this] (const juce::String& id)
+        {
+            juce::PopupMenu m; const int cc = proc.ccFor (id); const bool learning = proc.learningId() == id;
+            m.addItem (1, learning ? "Cancel MIDI learn" : "MIDI learn: then move a control on your controller");
+            if (cc >= 0) m.addItem (2, "Forget MIDI CC " + juce::String (cc));
+            m.addItem (3, "Reset to default");
+            m.showMenuAsync (juce::PopupMenu::Options(), [this, id] (int r)
+            {
+                if (r == 1) { if (proc.learningId() == id) proc.cancelLearn(); else proc.startLearn (id); }
+                else if (r == 2) proc.forgetCC (id);
+                else if (r == 3) if (auto* p = proc.apvts.getParameter (id)) { p->beginChangeGesture(); p->setValueNotifyingHost (p->getDefaultValue()); p->endChangeGesture(); }
+                repaint();
+            });
+        };
         playBtn.setBounds (1522, 14, 100, 31); playBtn.setTooltip ("Starts and stops the sequence or arp from any page. In a DAW the transport, a key or a start note can do it too (Seq / Arp page).");
         playBtn.onClick = [this] { const bool on = ! proc.playButton.load(); if (on && (int) std::lround (proc.apvts.getRawParameterValue (purrone::ids::seqMode)->load()) == 0) proc.setParam (purrone::ids::seqMode, 1.0f); proc.playButton.store (on); };
         { static const char* names[4] = { "Sound", "Seq / Arp", "FX", "Settings" }; static const int xs[4] = { 945, 1019, 1119, 1175 }, ws[4] = { 70, 96, 52, 88 };
@@ -170,7 +184,7 @@ struct PurrOneEditor::Content : public juce::Component
         for (int i = 0; i < tabs.size(); ++i) { tabs[i]->on = i == v; tabs[i]->repaint(); }
         repaint();
     }
-    void tickHeader() { const bool on = proc.playButton.load(); const juce::String t = on ? "Stop" : "Play"; if (playBtn.text != t || playBtn.on != on) { playBtn.text = t; playBtn.on = on; playBtn.repaint(); } }
+    void tickHeader() { const juce::String li = proc.learningId(); if (li != learnShown) { learnShown = li; repaint(); }  const bool on = proc.playButton.load(); const juce::String t = on ? "Stop" : "Play"; if (playBtn.text != t || playBtn.on != on) { playBtn.text = t; playBtn.on = on; playBtn.repaint(); } }
     void tickPages() { tickHeader(); if (view == 1) seqPage->tick(); else if (view == 2) fxHost->tick(); else if (view == 3) settingsPage->tick(); }
 
     // double click on either wood cheek: back to the default window size (100%)
@@ -210,9 +224,17 @@ struct PurrOneEditor::Content : public juce::Component
         g.setColour (col::panel2); g.fillRoundedRectangle (kb, 3.0f); g.setColour (col::line); g.drawRoundedRectangle (kb.reduced (0.5f), 3.0f, 1.0f);
         g.setColour (juce::Colour (0xff3a3d48)); g.fillRect (kb.getX() + 1.0f, kb.getY(), kb.getWidth() - 2.0f, 3.0f);
         juce::AttributedString as; as.setJustification (juce::Justification::centredLeft);
+        if (learnShown.isNotEmpty())
+        {
+            as.append ("MIDI learn: ", labelFont (14.0f, true, 0.03f), col::pink);
+            as.append ("move a knob or fader on your controller to map it to " + learnShown + ". Right-click the control again to cancel.", labelFont (14.0f, false, 0.03f), col::ink);
+        }
+        else
+        {
         as.append ("Play with the mouse or keys ", labelFont (14.0f, false, 0.03f), col::inkDim);
         as.append ("A W S E D F T G Y H U J K", labelFont (14.0f, true, 0.03f), col::ink);
-        as.append (", Z and X shift the octave", labelFont (14.0f, false, 0.03f), col::inkDim);
+        as.append (", Z and X shift the octave. Right-click a knob for MIDI learn", labelFont (14.0f, false, 0.03f), col::inkDim);
+        }
         as.draw (g, juce::Rectangle<float> ((float) m.status.x, (float) m.status.y - 1.0f, 900.0f, 18.0f));
     }
 
@@ -230,7 +252,7 @@ struct PurrOneEditor::Content : public juce::Component
     std::unique_ptr<juce::Drawable> logo;
     juce::OwnedArray<Knob> knobs; juce::OwnedArray<LedToggle> togs; juce::OwnedArray<Segments> segs; juce::OwnedArray<Display> displays;
     int view = 0; juce::OwnedArray<Button> tabs; std::unique_ptr<purrone::ui::SeqPage> seqPage; std::unique_ptr<purrone::ui::FxHost> fxHost; std::unique_ptr<purrone::ui::SettingsPage> settingsPage;
-    Button prev, next, save, rename, init, zoom, playBtn; Check check; NameBox nameBox; juce::TextEditor editor; Meter meter; Keys keys; std::unique_ptr<Wheel> pitchWheel, modWheel;
+    juce::String learnShown; Button prev, next, save, rename, init, zoom, playBtn; Check check; NameBox nameBox; juce::TextEditor editor; Meter meter; Keys keys; std::unique_ptr<Wheel> pitchWheel, modWheel;
 };
 
 //==============================================================================

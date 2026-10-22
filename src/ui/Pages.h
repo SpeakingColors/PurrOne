@@ -212,7 +212,7 @@ public:
     SeqLanes (PurrOneProcessor& p, int& pageRef) : proc (p), page (pageRef) { setBounds (rc (itemOf (L2::views[L2::vSeq], "lanes").r)); }
     int pat() const { return (int) std::lround (proc.apvts.getRawParameterValue (ids::seqPat)->load()); }
     int steps() const { return (int) std::lround (proc.apvts.getRawParameterValue (ids::seqSteps)->load()); }
-    static constexpr int kLabW = 82, kRowY[5] = { 0, 26, 58, 90, 122 }, kRowH[5] = { 22, 28, 28, 28, 28 };
+    static constexpr int kLabW = 82, kRows = 7, kRowY[7] = { 0, 21, 42, 63, 84, 105, 126 }, kRowH[7] = { 19, 20, 20, 20, 20, 20, 20 };
     float pitch() const { return (float) (getWidth() - kLabW + 4) / 16.0f; }
     Rectangle<float> cell (int cx, int row) const { return { (float) kLabW + cx * pitch(), (float) kRowY[row], pitch() - 4.0f, (float) kRowH[row] }; }
     void tick() { const int ph = proc.playStep.load(); const uint64 sig = (uint64) (ph + 2) * 1000003ull + (uint64) pat() * 977 + (uint64) steps() * 31 + (uint64) page; uint64 h = sig;
@@ -242,11 +242,13 @@ public:
             fill (2, col::green, SeqData::gate (v), SeqData::gate (v) ? "ON" : "");
             fill (3, col::orange, SeqData::accent (v), SeqData::accent (v) ? "ACC" : "");
             fill (4, col::blue, SeqData::slide (v), SeqData::slide (v) ? "SLD" : "");
+            { const int ch = SeqData::chance (v); static const char* const chTxt[4] = { "", "75%", "50%", "25%" }; fill (5, col::yellow, ch != 0, chTxt[ch]); }
+            { const int rt = SeqData::ratchet (v); fill (6, col::pink, rt > 1, rt > 1 ? "x" + String (rt) : String()); }
         }
     }
     bool hit (Point<int> p, int& col_, int& row) const
     {
-        for (int c = 0; c < 16; ++c) for (int r = 1; r < 5; ++r) if (cell (c, r).expanded (2.0f, 1.0f).contains (p.toFloat())) { col_ = c; row = r; return true; }
+        for (int c = 0; c < 16; ++c) for (int r = 1; r < kRows; ++r) if (cell (c, r).expanded (2.0f, 1.0f).contains (p.toFloat())) { col_ = c; row = r; return true; }
         return false;
     }
     void mouseDown (const MouseEvent& e) override
@@ -254,7 +256,7 @@ public:
         dragCol = -1; if (! hit (e.getPosition(), dragCol, dragRow)) return;
         const int i = page * 16 + dragCol; if (i >= steps()) { dragCol = -1; return; }
         startV = proc.seq.get (pat(), i); moved = false;
-        if (dragRow >= 2) { toggle (i, dragRow); dragCol = -1; }
+        if (dragRow >= 2) { toggle (i, dragRow, e.mods.isShiftDown() || e.mods.isRightButtonDown()); dragCol = -1; }
     }
     void mouseDrag (const MouseEvent& e) override
     {
@@ -281,7 +283,16 @@ public:
         proc.seq.set (pat(), i, (uint16_t) ((v & ~63) | jlimit (0, 36, SeqData::note (v) + (w.deltaY > 0 ? 1 : -1)))); repaint();
     }
 private:
-    void toggle (int i, int row) { auto v = proc.seq.get (pat(), i); const uint16_t bit = row == 2 ? 64 : row == 3 ? 128 : 256; proc.seq.set (pat(), i, (uint16_t) (v ^ bit)); repaint(); }
+    void toggle (int i, int row, bool back)
+    {
+        auto v = proc.seq.get (pat(), i);
+        if (row >= 5)                                              // chance and ratchet cycle through their four values; shift or right click goes back
+        {
+            const int shift = row == 5 ? 9 : 11; const int cur = (v >> shift) & 3, next = (cur + (back ? 3 : 1)) & 3;
+            proc.seq.set (pat(), i, (uint16_t) ((v & ~(3 << shift)) | (next << shift))); repaint(); return;
+        }
+        const uint16_t bit = row == 2 ? 64 : row == 3 ? 128 : 256; proc.seq.set (pat(), i, (uint16_t) (v ^ bit)); repaint();
+    }
     PurrOneProcessor& proc; int& page; int dragCol = -1, dragRow = 0; uint16_t startV = 0; bool moved = false; uint64 lastHash = 1;
 };
 

@@ -24,6 +24,35 @@ int main (int argc, char** argv)
             }
         return 0;
     }
+    if (mode == "learntest")
+    {
+        int fails = 0; auto ck = [&] (bool ok, const char* what) { std::printf ("%s %s\n", ok ? "ok  " : "FAIL", what); if (! ok) ++fails; };
+        auto run = [] (PurrOneProcessor& q, int cc, int v) { juce::AudioBuffer<float> b (2, 256); b.clear(); juce::MidiBuffer m; m.addEvent (juce::MidiMessage::controllerEvent (1, cc, v), 0); q.processBlock (b, m); };
+        p.prepareToPlay (48000.0, 256);
+        auto val = [] (PurrOneProcessor& q) { return q.apvts.getRawParameterValue ("glide")->load(); };
+        run (p, 20, 127); ck (std::fabs (val (p)) < 0.001f, "unmapped CC does nothing");
+        p.startLearn ("glide"); ck (p.learningId() == "glide", "learn armed");
+        run (p, 20, 10); ck (p.ccFor ("glide") == 20 && p.learningId().isEmpty(), "first CC is taken");
+        run (p, 20, 127); ck (std::fabs (val (p) - 1.0f) < 0.01f, "CC 127 sets the top");
+        run (p, 20, 0); ck (std::fabs (val (p)) < 0.01f, "CC 0 sets the bottom");
+        juce::MemoryBlock mb; p.getStateInformation (mb);
+        PurrOneProcessor q; q.prepareToPlay (48000.0, 256); q.setStateInformation (mb.getData(), (int) mb.getSize());
+        ck (q.ccFor ("glide") == 20, "mapping survives save and load");
+        run (q, 20, 64); ck (std::fabs (val (q) - 0.504f) < 0.02f, "loaded mapping moves the knob");
+        p.startLearn ("glide"); run (p, 21, 5); ck (p.ccFor ("glide") == 21, "re-learn moves it to the new CC");
+        p.forgetCC ("glide"); ck (p.ccFor ("glide") == -1, "forget clears it");
+        { // sequencer step format: chance and ratchet survive state, and old 3-digit saves still load
+            p.seq.set (0, 3, purrone::SeqData::pack (7, true, true, false, 2, 3)); p.seq.set (0, 9, purrone::SeqData::pack (12, true, false, true, 3, 1));
+            juce::MemoryBlock m2; p.getStateInformation (m2); PurrOneProcessor r; r.prepareToPlay (48000.0, 256); r.setStateInformation (m2.getData(), (int) m2.getSize());
+            const auto a3 = r.seq.get (0, 3), a9 = r.seq.get (0, 9);
+            ck (purrone::SeqData::note (a3) == 7 && purrone::SeqData::gate (a3) && purrone::SeqData::accent (a3) && purrone::SeqData::chance (a3) == 2 && purrone::SeqData::ratchet (a3) == 4, "step chance and ratchet survive state");
+            ck (purrone::SeqData::note (a9) == 12 && purrone::SeqData::slide (a9) && purrone::SeqData::chance (a9) == 3 && purrone::SeqData::ratchet (a9) == 2, "second step too");
+            juce::String old; for (int i = 0; i < 64; ++i) old << juce::String::toHexString (i == 2 ? 0xC5 : 0).paddedLeft ('0', 3);   // note 5, gate, accent
+            r.patternFromString (0, old); const auto o2 = r.seq.get (0, 2);
+            ck (purrone::SeqData::note (o2) == 5 && purrone::SeqData::gate (o2) && purrone::SeqData::accent (o2) && purrone::SeqData::chance (o2) == 0 && purrone::SeqData::ratchet (o2) == 1, "old 3-digit pattern still loads");
+        }
+        std::printf ("%d failures\n", fails); return fails != 0;
+    }
     const double target = argc > 2 ? std::atof (argv[2]) : -18.0;
     const double sr = 48000.0; const int block = 256, total = (int) (sr * 4.0);
     const int n = p.getNumPrograms();

@@ -100,6 +100,41 @@ int main()
         for (auto& e : ev) if (e.type == SeqEvent::Off && e.at > 5 * 6000 && e.at < on6) noOffBeforeSlide = false;
         check ("seq: slide keeps previous gate open", on6 == 6 * 6000 && noOffBeforeSlide, "no note off between step 5 and the slide step");
     }
+    { // sequencer: ratchets and chance
+        auto runSeq = [&] (SeqData& data, int total, std::vector<SeqEvent>& ev, float gate)
+        {
+            Sequencer sq; sq.prepare (sr); SeqSettings c; c.mode = 1; c.rate = 2; c.syncHost = false; c.bpm = 120.0f; c.gate = gate; c.steps = 16; c.startHost = c.startKey = c.startNote = false; sq.setSettings (c);
+            HostTime h; for (int pos = 0; pos < total; pos += 256) { sq.run (data, h, pos, 256); for (int i = 0; i < sq.numEvents(); ++i) ev.push_back (sq.event (i)); }
+        };
+        { // ratchet: step 0 is x3, step 1 is x2, everything else plain
+            SeqData data; for (int i = 0; i < 16; ++i) data.set (0, i, SeqData::pack (i, true, false, false, 0, i == 0 ? 2 : (i == 1 ? 1 : 0)));
+            std::vector<SeqEvent> ev; runSeq (data, 6000 * 4, ev, 0.5f);
+            std::vector<int> onAt; for (auto& e : ev) if (e.type == SeqEvent::On) onAt.push_back (e.at);
+            std::snprintf (d, sizeof d, "on times %d %d %d | %d %d | %d", onAt.size() > 0 ? onAt[0] : -1, onAt.size() > 1 ? onAt[1] : -1, onAt.size() > 2 ? onAt[2] : -1, onAt.size() > 3 ? onAt[3] : -1, onAt.size() > 4 ? onAt[4] : -1, onAt.size() > 5 ? onAt[5] : -1);
+            check ("seq ratchet x3 then x2 split the step evenly", onAt.size() >= 6 && onAt[0] == 0 && onAt[1] == 2000 && onAt[2] == 4000 && onAt[3] == 6000 && onAt[4] == 9000 && onAt[5] == 12000, d);
+            int on = 0, off = 0; for (auto& e : ev) (e.type == SeqEvent::On ? on : off)++;
+            check ("seq ratchet notes all get released", off >= on - 1, "offs follow ons");
+        }
+        { // chance 50 percent: about half of 1600 steps play; chance 25: about a quarter; 100 plays all
+            auto count = [&] (int chance, int& played)
+            {
+                SeqData data; for (int i = 0; i < 16; ++i) data.set (0, i, SeqData::pack (0, true, false, false, chance, 0));
+                std::vector<SeqEvent> ev; runSeq (data, 6000 * 1600, ev, 0.5f); played = 0; for (auto& e : ev) if (e.type == SeqEvent::On) ++played;
+            };
+            int a = 0, b = 0, c2 = 0; count (0, a); count (2, b); count (3, c2);
+            std::snprintf (d, sizeof d, "100%%: %d, 50%%: %d, 25%%: %d of 1600", a, b, c2);
+            check ("seq chance 100/50/25 percent", a >= 1600 && a <= 1601 && b > 700 && b < 900 && c2 > 330 && c2 < 470, d);
+        }
+        { // a slide step that chance drops must not leave the previous note stuck open
+            SeqData data; for (int i = 0; i < 16; ++i) data.set (0, i, SeqData::pack (0, true, false, i % 2 == 1, i % 2 == 1 ? 3 : 0, 0));
+            std::vector<SeqEvent> ev; runSeq (data, 6000 * 16 * 60, ev, 0.5f);
+            int open = 0, maxOpen = 0, nOn = 0; for (auto& e : ev) { if (e.type == SeqEvent::On) { ++nOn; open = 1; } else open = 0; (void) maxOpen; }
+            // every On must be followed by an Off before the next non-slide On: count consecutive Ons without an Off
+            int run = 0, worst = 0; for (auto& e : ev) { if (e.type == SeqEvent::On && ! e.slide) { run = 0; } if (e.type == SeqEvent::Off) run = 0; else ++run; worst = std::max (worst, run); }
+            std::snprintf (d, sizeof d, "%d ons, longest On run without an Off %d", nOn, worst);
+            check ("seq dropped slide step does not stick a note", nOn > 100 && worst <= 2, d);
+        }
+    }
     { // sequencer: host sync follows ppq and starts on the grid
         SeqData data; Sequencer sq; sq.prepare (sr); for (int i = 0; i < 16; ++i) data.set (0, i, SeqData::pack (i, true, false, false));
         SeqSettings c; c.mode = 1; c.rate = 2; c.syncHost = true; c.steps = 16; c.startHost = true; c.startKey = false; c.startNote = false; sq.setSettings (c);

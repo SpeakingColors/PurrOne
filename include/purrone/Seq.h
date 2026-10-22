@@ -14,13 +14,14 @@ constexpr int kSeqMaxSteps = 64;
 constexpr int kSeqPatterns = 4;
 constexpr int kSeqBaseNote = 36;      // step value 0 = C2
 
-// One step packed in 9 bits: note 0..36 (6 bits), gate, accent, slide. Atomic so the editor can edit while audio runs.
+// One step packed in 13 bits: note 0..36 (6 bits), gate, accent, slide, chance (2 bits: 100, 75, 50, 25 %), ratchet (2 bits: 1 to 4 hits). Atomic so the editor can edit while audio runs.
 struct SeqData
 {
     std::array<std::array<std::atomic<uint16_t>, kSeqMaxSteps>, kSeqPatterns> step;
     SeqData() { clear(); }
     SeqData (const SeqData&) = delete;
-    static uint16_t pack (int note, bool gate, bool acc, bool slide) { return (uint16_t) ((std::min (std::max (note, 0), 36) & 63) | (gate ? 64 : 0) | (acc ? 128 : 0) | (slide ? 256 : 0)); }
+    static uint16_t pack (int note, bool gate, bool acc, bool slide, int chance = 0, int ratchet = 0)
+    { return (uint16_t) ((std::min (std::max (note, 0), 36) & 63) | (gate ? 64 : 0) | (acc ? 128 : 0) | (slide ? 256 : 0) | ((chance & 3) << 9) | ((ratchet & 3) << 11)); }
     void clear() { for (auto& p : step) for (auto& s : p) s.store (pack (0, false, false, false), std::memory_order_relaxed); }
     uint16_t get (int pat, int i) const { return step[(size_t) (pat & 3)][(size_t) (i & 63)].load (std::memory_order_relaxed); }
     void set (int pat, int i, uint16_t v) { step[(size_t) (pat & 3)][(size_t) (i & 63)].store (v, std::memory_order_relaxed); }
@@ -28,6 +29,9 @@ struct SeqData
     static bool gate (uint16_t v) { return (v & 64) != 0; }
     static bool accent (uint16_t v) { return (v & 128) != 0; }
     static bool slide (uint16_t v) { return (v & 256) != 0; }
+    static int chance (uint16_t v) { return (v >> 9) & 3; }              // 0 = 100 %, 1 = 75 %, 2 = 50 %, 3 = 25 %
+    static int ratchet (uint16_t v) { return ((v >> 11) & 3) + 1; }     // hits per step, 1 to 4
+    static float chanceValue (int c) { static const float t[4] = { 1.0f, 0.75f, 0.5f, 0.25f }; return t[c & 3]; }
 };
 
 struct SeqSettings
@@ -62,7 +66,7 @@ public:
     void prepare (double s) { sr = s; reset(); }
     void reset()
     {
-        running = false; noteActive = false; activeNote = 0; beat = 0.0; nextK = 0; offBeat = 1.0e18; nOut = 0; heldN = 0; latchN = 0; physN = 0; arpIdx = 0; arpDir = 1;
+        running = false; noteActive = false; activeNote = 0; beat = 0.0; nextK = 0; offBeat = 1.0e18; ratchLeft = 0; pendingIdx = -1; pendingSkip = false; nOut = 0; heldN = 0; latchN = 0; physN = 0; arpIdx = 0; arpDir = 1;
         trigState = false; keysDown = 0; rngState = 12345u;
     }
 
@@ -113,7 +117,7 @@ public:
         if (! want)
         {
             if (running) stopNote (start);
-            running = false; return;
+            ratchLeft = 0; running = false; return;
         }
         if (! running)
         {
@@ -133,8 +137,13 @@ public:
         const double beat1 = beat + count * bps;
         for (;;)
         {
-            const bool stepDue = nextT < beat1, offDue = noteActive && offBeat < beat1;
-            if (! stepDue && ! offDue) break;
+            const bool stepDue = nextT < beat1, offDue = noteActive && offBeat < beat1, subDue = ratchLeft > 0 && ratchT < beat1;
+            if (! stepDue && ! offDue && ! subDue) break;
+            if (subDue && (! offDue || ratchT < offBeat) && (! stepDue || ratchT < nextT))
+            {
+                fireSub (sampleAt (ratchT, bps, start, count));
+                continue;
+            }
             if (offDue && (! stepDue || offBeat <= nextT))
             {
                 const int at = sampleAt (offBeat, bps, start, count);
@@ -195,7 +204,14 @@ private:
         if (cfg.mode != 1) return false;
         const int j = (lastStep + 1) % cfg.steps;
         const uint16_t v = d.get (cfg.pattern, j);
-        return SeqData::gate (v) && SeqData::slide (v);
+        const bool skipped = pendingIdx == j && pendingSkip;              // a step the chance roll has dropped cannot take a slide
+        return SeqData::gate (v) && SeqData::slide (v) && ! skipped;
+    }
+    bool rollSkip (const SeqData& d, int idx)
+    {
+        const uint16_t v = d.get (cfg.pattern, idx);
+        const int c = SeqData::chance (v);
+        return SeqData::gate (v) && c != 0 && rand01() >= SeqData::chanceValue (c);
     }
 
     int keyOffset() const
@@ -209,11 +225,14 @@ private:
     {
         const int idx = (int) (nextK % cfg.steps);
         lastStep = idx;
-        int note = -1; bool acc = false, sl = false;
+        int note = -1; bool acc = false, sl = false; int ratch = 1;
+        ratchLeft = 0;                                                               // a new step ends any ratchet still running
         if (cfg.mode == 1)
         {
             const uint16_t v = d.get (cfg.pattern, idx);
-            if (SeqData::gate (v)) { note = kSeqBaseNote + SeqData::note (v) + cfg.transpose + keyOffset(); acc = SeqData::accent (v); sl = SeqData::slide (v); }
+            const bool skip = pendingIdx == idx ? pendingSkip : rollSkip (d, idx);
+            pendingIdx = (idx + 1) % cfg.steps; pendingSkip = rollSkip (d, pendingIdx);   // decided one step ahead so a slide never waits for a dropped note
+            if (SeqData::gate (v) && ! skip) { note = kSeqBaseNote + SeqData::note (v) + cfg.transpose + keyOffset(); acc = SeqData::accent (v); sl = SeqData::slide (v); ratch = SeqData::ratchet (v); }
         }
         else
         {
@@ -225,7 +244,21 @@ private:
         if (noteActive && ! sl) emitOff (at);                                        // not a slide: end the previous note first
         SeqEvent e; e.type = SeqEvent::On; e.at = at; e.note = note; e.accent = acc; e.slide = sl; push (e);
         noteActive = true; activeNote = note;
-        offBeat = nextT + std::min (std::max ((double) cfg.gate, 0.05), 1.0) * stepBeats;
+        const double g = std::min (std::max ((double) cfg.gate, 0.05), 1.0);
+        if (ratch > 1)
+        {
+            subLen = stepBeats / (double) ratch; ratchLeft = ratch - 1; ratchT = nextT + subLen; ratchNote = note;
+            offBeat = nextT + std::min (g, 0.85) * subLen;
+        }
+        else offBeat = nextT + g * stepBeats;
+    }
+    void fireSub (int at)
+    {
+        emitOff (at);
+        SeqEvent e; e.type = SeqEvent::On; e.at = at; e.note = ratchNote; push (e);
+        noteActive = true; activeNote = ratchNote;
+        offBeat = ratchT + std::min (std::min (std::max ((double) cfg.gate, 0.05), 1.0), 0.85) * subLen;
+        ratchT += subLen; --ratchLeft;
     }
 
     int arpNote()
@@ -254,7 +287,8 @@ private:
 
     double sr = 48000.0; SeqSettings cfg;
     bool manual = false, running = false, startedOnHost = false, noteActive = false, trigState = false;
-    double beat = 0.0, nextT = 0.0, offBeat = 1.0e18; long long nextK = 0;
+    double beat = 0.0, nextT = 0.0, offBeat = 1.0e18, ratchT = 0.0, subLen = 0.0; long long nextK = 0;
+    int ratchLeft = 0, ratchNote = 0, pendingIdx = -1; bool pendingSkip = false;
     int activeNote = 0, lastStep = -1, arpIdx = 0, arpDir = 1, keysDown = 0;  // arpDir kept for compatibility
     int held[16] {}, latched[16] {}, phys[16] {}; int heldN = 0, latchN = 0, physN = 0;
     std::array<SeqEvent, kMaxEvents> out {}; int nOut = 0; uint32_t rngState = 12345u;

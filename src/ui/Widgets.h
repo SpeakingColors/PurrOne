@@ -26,7 +26,7 @@ inline Font labelFont (float h, bool bold = false, float tracking = 0.04f)
 inline Font monoFont (float h) { return Font (FontOptions (h).withName (Font::getDefaultMonospacedFontName()).withStyle ("Regular")); }
 
 // Shared switch for the info bubbles.
-struct Bubbles { bool on = true; };
+struct Bubbles { bool on = true; std::function<void (const juce::String&)> learnMenu; };  // learnMenu: right-click menu (MIDI learn), set by the editor
 
 // Text for a knob value, same wording as the mockup.
 inline String formatValue (char f, float v)
@@ -99,14 +99,15 @@ public:
         g.drawText (formatValue (def.fmt, v), 0, 60, getWidth(), 14, Justification::centred, false);
     }
 
-    void mouseDown (const MouseEvent&) override { dragStart = param.getValue(); attach.beginGesture(); }
+    void mouseDown (const MouseEvent& e) override { if (e.mods.isPopupMenu()) { dragStart = -1.0f; if (bubbles.learnMenu) bubbles.learnMenu (param.paramID); return; } dragStart = param.getValue(); attach.beginGesture(); }
     void mouseDrag (const MouseEvent& e) override
     {
+        if (dragStart < 0.0f) return;
         const float dy = (float) -e.getDistanceFromDragStartY();
         const float n = jlimit (0.0f, 1.0f, dragStart + dy / (e.mods.isShiftDown() ? 700.0f : 180.0f));
         attach.setValueAsPartOfGesture (param.convertFrom0to1 (n));
     }
-    void mouseUp (const MouseEvent&) override { attach.endGesture(); }
+    void mouseUp (const MouseEvent&) override { if (dragStart >= 0.0f) attach.endGesture(); }
     void mouseDoubleClick (const MouseEvent&) override { attach.setValueAsCompleteGesture (param.convertFrom0to1 (param.getDefaultValue())); }
     void mouseWheelMove (const MouseEvent&, const MouseWheelDetails& w) override
     {
@@ -147,7 +148,7 @@ public:
         g.setColour (on ? col::ink : col::inkDim); g.setFont (labelFont (13.0f, true, 0.08f));
         g.drawFittedText (def.label, Rectangle<int> (26, 0, getWidth() - 30, getHeight()), Justification::centredLeft, 2, 0.8f);
     }
-    void mouseDown (const MouseEvent&) override { attach.setValueAsCompleteGesture (param.getValue() > 0.5f ? 0.0f : 1.0f); }
+    void mouseDown (const MouseEvent& e) override { if (e.mods.isPopupMenu()) { if (bubbles.learnMenu) bubbles.learnMenu (param.paramID); return; } attach.setValueAsCompleteGesture (param.getValue() > 0.5f ? 0.0f : 1.0f); }
 private:
     RangedAudioParameter& param; const layout::Tog& def; Bubbles& bubbles; ParameterAttachment attach;
 };

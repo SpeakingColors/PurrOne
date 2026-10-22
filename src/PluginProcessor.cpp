@@ -9,6 +9,8 @@ PurrOneProcessor::PurrOneProcessor()
       apvts (*this, nullptr, "PurrOne", createLayout())
 {
     rawCache.reserve (512);
+    for (auto& c : ccMap) c.store (-1);
+    for (auto* q : getParameters()) if (auto* r = dynamic_cast<juce::RangedAudioParameter*> (q)) learnParams.push_back (r);
     outMidi.ensureSize (4096);
 }
 
@@ -218,7 +220,22 @@ void PurrOneProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mid
             engine.allNotesOff(); sequencer.allKeysOff(); std::fill (std::begin (passed), std::end (passed), false);
         }
         else if (m.isPitchWheel()) { bendNorm = (float) (m.getPitchWheelValue() - 8192) / 8192.0f; engine.setPitchBend (bendNorm * bendRange); bendShown.store (bendNorm); }
-        else if (m.isController() && m.getControllerNumber() == (wheelIsCC74 ? 74 : 1)) { midiWheel = (float) m.getControllerValue() / 127.0f; applyParams(); }
+        else if (m.isController())
+        {
+            const int cc = m.getControllerNumber(); const int lt = learnTarget.load();
+            if (lt >= 0 && cc > 0 && cc < 120 && cc != 32)              // MIDI learn: the next CC that moves is taken
+            {
+                for (auto& c : ccMap) if (c.load() == lt) c.store (-1);
+                ccMap[cc].store (lt); learnTarget.store (-1);
+            }
+            if (cc == (wheelIsCC74 ? 74 : 1)) { midiWheel = (float) m.getControllerValue() / 127.0f; applyParams(); }
+            const int idx = ccMap[cc & 127].load();
+            if (idx >= 0 && idx < (int) learnParams.size())
+            {
+                learnParams[(size_t) idx]->setValueNotifyingHost ((float) m.getControllerValue() / 127.0f);
+                applyParams();
+            }
+        }
     }
     runSeq (segStart, n);
     renderTo (n);
@@ -354,11 +371,23 @@ bool PurrOneProcessor::loadUserPreset (const juce::String& name)
 }
 
 // ---- state ----
+void PurrOneProcessor::startLearn (const juce::String& id)
+{
+    for (size_t i = 0; i < learnParams.size(); ++i) if (learnParams[i]->paramID == id) { learnTarget.store ((int) i); return; }
+}
+int PurrOneProcessor::ccFor (const juce::String& id) const
+{
+    for (int c = 0; c < 128; ++c) { const int i = ccMap[c].load(); if (i >= 0 && i < (int) learnParams.size() && learnParams[(size_t) i]->paramID == id) return c; }
+    return -1;
+}
+void PurrOneProcessor::forgetCC (const juce::String& id) { const int c = ccFor (id); if (c >= 0) ccMap[c].store (-1); }
+
 void PurrOneProcessor::getStateInformation (juce::MemoryBlock& dest)
 {
     auto state = apvts.copyState(); std::unique_ptr<juce::XmlElement> xml (state.createXml());
     xml->setAttribute ("format", 1); xml->setAttribute ("presetName", currentPresetName);
     for (int i = 0; i < kSeqPatterns; ++i) xml->setAttribute ("seqP" + juce::String (i), patternToString (i));
+    { juce::String cm; for (int c = 0; c < 128; ++c) { const int i = ccMap[c].load(); if (i >= 0 && i < (int) learnParams.size()) cm << c << ":" << learnParams[(size_t) i]->paramID << ","; } xml->setAttribute ("ccmap", cm); }
     copyXmlToBinary (*xml, dest);
 }
 void PurrOneProcessor::setStateInformation (const void* data, int size)
@@ -370,23 +399,35 @@ void PurrOneProcessor::setStateInformation (const void* data, int size)
     for (auto* child : xml->getChildWithTagNameIterator ("PARAM"))              // only known ids, values clamped by the parameter
         if (auto* r = apvts.getParameter (child->getStringAttribute ("id")))
             r->setValueNotifyingHost (r->convertTo0to1 ((float) child->getDoubleAttribute ("value")));
+    if (xml->hasAttribute ("ccmap"))
+    {
+        for (auto& c : ccMap) c.store (-1);
+        for (const auto& item : juce::StringArray::fromTokens (xml->getStringAttribute ("ccmap").substring (0, 8000), ",", ""))
+        {
+            const int colon = item.indexOfChar (':'); if (colon < 1) continue;
+            const int cc = item.substring (0, colon).getIntValue(); const auto id = item.substring (colon + 1);
+            if (cc < 1 || cc > 127) continue;
+            for (size_t i = 0; i < learnParams.size(); ++i) if (learnParams[i]->paramID == id) { ccMap[cc].store ((int) i); break; }
+        }
+    }
     if (xml->hasAttribute ("seqP0")) for (int i = 0; i < kSeqPatterns; ++i) patternFromString (i, xml->getStringAttribute ("seqP" + juce::String (i)));
 }
 
 // ---- sequence data ----
 juce::String PurrOneProcessor::patternToString (int pat) const
 {
-    juce::String out; out.preallocateBytes (kSeqMaxSteps * 3 + 4);
-    for (int i = 0; i < kSeqMaxSteps; ++i) out << juce::String::toHexString ((int) seq.get (pat, i)).paddedLeft ('0', 3);
+    juce::String out; out.preallocateBytes (kSeqMaxSteps * 4 + 4);
+    for (int i = 0; i < kSeqMaxSteps; ++i) out << juce::String::toHexString ((int) seq.get (pat, i)).paddedLeft ('0', 4);
     return out;
 }
 void PurrOneProcessor::patternFromString (int pat, const juce::String& s)
 {
+    const int w = s.length() > kSeqMaxSteps * 3 ? 4 : 3;                    // old saves use 3 hex digits per step, new ones 4 (chance and ratchet)
     for (int i = 0; i < kSeqMaxSteps; ++i)
     {
-        const auto part = s.substring (i * 3, i * 3 + 3);
-        const int v = part.length() == 3 ? part.getHexValue32() : 0;
-        seq.set (pat, i, SeqData::pack (std::min (v & 63, 36), (v & 64) != 0, (v & 128) != 0, (v & 256) != 0));
+        const auto part = s.substring (i * w, i * w + w);
+        const int v = part.length() == w ? part.getHexValue32() : 0;
+        seq.set (pat, i, SeqData::pack (std::min (v & 63, 36), (v & 64) != 0, (v & 128) != 0, (v & 256) != 0, (v >> 9) & 3, (v >> 11) & 3));
     }
 }
 // Factory notation: space separated steps. "-" is a rest. A note is a name and octave, like "C2", "F#3", "Bb2" (C2 is the lowest, C5 the highest).
