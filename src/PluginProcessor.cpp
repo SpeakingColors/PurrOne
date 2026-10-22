@@ -86,6 +86,7 @@ void PurrOneProcessor::applyParams()
     p.modAmt[1] = raw (ids::mOscB); p.modRoute[1] = (int) raw (ids::mOscBR);
     p.modAmt[2] = raw (ids::mLfo); p.modRoute[2] = (int) raw (ids::mLfoR);
     p.modDest[0] = (int) raw (ids::dest0); p.modDest[1] = (int) raw (ids::dest1); p.modDest[2] = (int) raw (ids::dest2); p.modDest[3] = (int) raw (ids::dest3); p.modDest[4] = (int) raw (ids::dest4);
+    p.uniVoices = 1 + (int) std::lround (raw (ids::uniVoices)); p.uniDetune = raw (ids::uniDetune);
     p.modWheel = std::max (raw (ids::wheel), midiWheel);
     { const float w = p.modWheel, a = midiAT;
       p.perfCutOct = 6.0f * (w * raw (ids::wheelCut) + a * raw (ids::atCut));

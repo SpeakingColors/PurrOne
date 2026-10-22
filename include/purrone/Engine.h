@@ -88,6 +88,8 @@ struct Params
     float modWheel = 0.0f;
     // Performance: wheel and aftertouch combined by the host code. Cutoff in octaves, vibrato depth in semitones (uses the LFO rate)
     float perfCutOct = 0.0f, perfVibSemi = 0.0f;
+    // Unison: 1 to 5 stacked copies of both oscillators (A copies are off while hard sync is on), detuned up to 40 cents, one shared filter
+    int uniVoices = 1; float uniDetune = 0.3f;
     // Keyboard
     bool retrig = false, repeat = false, drone = false;
     // Output
@@ -122,6 +124,7 @@ public:
     void reset()
     {
         smoothInit = false; bend = 0.0f; xfLp = 0.0f; nLp = 0.0f; lastDrive = lastXs = lastFuzz = -1.0f;
+        for (int k = 0; k < 4; ++k) { phAx[k] = std::fmod (0.13f + 0.618034f * (float) (k + 1), 1.0f); phBx[k] = std::fmod (0.41f + 0.381966f * (float) (k + 1), 1.0f); }
         phA = phB = phSub = 0.0f; subFlip = 0.0f; fenv.reset(); aenv.reset();
         for (auto& s : st) s = 0.0f;
         accEnv = sqBump = accLvl = accTarget = 0.0f; glideOverride = 0.0f; rndPh = 0.0f; rndVal = rndTarget = 0.0f; h0Pos = 0; h0Buf.fill (0.0f);
@@ -275,6 +278,7 @@ private:
     }
     bool smoothInit = false; float bend = 0.0f;
     float sr = 48000.0f, osr = 192000.0f;   // voice runs at 4x; two halfband stages bring it back down
+    float phAx[4] {}, phBx[4] {};
     float subFlip = 0.0f, phA = 0, phB = 0, phSub = 0, lfoPh = 0, prevA = 0, repeatPh = 0;
     float st[4] = { 0, 0, 0, 0 };
     Adsr fenv, aenv;
@@ -464,11 +468,16 @@ private:
         // advance B, detect wrap for sync
         float prevPhB = phB; phB += dtB; bool bWrapped = false; float syncFrac = 0.0f;
         if (phB >= 1.0f) { phB -= 1.0f; bWrapped = true; syncFrac = phB / dtB; }
-        float bv = 0.0f; int bn = 0;
-        if (Q.bSaw)   { bv += naiveSaw (phB) - polyBlep (phB, dtB); ++bn; }
-        if (Q.bTri)   { bv += 4.0f * std::abs (phB - 0.5f) - 1.0f; ++bn; }
-        if (Q.bPulse) { bv += naivePulse (phB, pwB) + polyBlep (phB, dtB) - polyBlep (std::fmod (phB + 1.0f - pwB, 1.0f), dtB); ++bn; }
-        if (bn > 1) bv *= 1.0f / std::sqrt ((float) bn);
+        auto waveB = [&] (float t, float dt)
+        {
+            float v = 0.0f; int n = 0;
+            if (Q.bSaw)   { v += naiveSaw (t) - polyBlep (t, dt); ++n; }
+            if (Q.bTri)   { v += 4.0f * std::abs (t - 0.5f) - 1.0f; ++n; }
+            if (Q.bPulse) { v += naivePulse (t, pwB) + polyBlep (t, dt) - polyBlep (std::fmod (t + 1.0f - pwB, 1.0f), dt); ++n; }
+            if (n > 1) v *= 1.0f / std::sqrt ((float) n);
+            return v;
+        };
+        float bv = waveB (phB, dtB);
         lastB = bv; (void) prevPhB;
 
         // ---- oscillator A (always keyboard controlled) ----
@@ -505,6 +514,22 @@ private:
         (void) phAold;
         prevA = a;
 
+        // ---- unison: extra detuned copies of A and B (free running phases), summed and scaled by 1/sqrt(voices) ----
+        float uniA = 0.0f, uniB = 0.0f, uniG = 1.0f;
+        if (Q.uniVoices > 1)
+        {
+            const int ex = std::min (Q.uniVoices, 5) - 1;
+            const float maxCents = 40.0f * Q.uniDetune, half = (float) ((ex + 1) / 2);
+            for (int k = 0; k < ex; ++k)
+            {
+                const float mag = (float) ((k + 2) / 2) / half, sgn = (k & 1) ? -1.0f : 1.0f;
+                const float ratio = std::exp2 (sgn * mag * maxCents * (1.0f / 1200.0f));
+                if (! Q.bLow) { const float dk = clampf (dtB * ratio, 1.0e-6f, 0.45f); phBx[k] += dk; if (phBx[k] >= 1.0f) phBx[k] -= 1.0f; uniB += waveB (phBx[k], dk); }
+                if (! Q.aSync) { const float dk = clampf (dtA * ratio, 1.0e-6f, 0.45f); phAx[k] += dk; if (phAx[k] >= 1.0f) phAx[k] -= 1.0f; uniA += waveA (phAx[k], dk); }
+            }
+            uniG = 1.0f / std::sqrt ((float) (ex + 1));
+        }
+
         // ---- sub oscillator (one octave below A, square, smoothed) ----
         // Locked to A's phase (A wraps twice per sub cycle) so the two never drift against each other and the
         // blend sounds the same on every note; follows A's pitch modulation. With hard sync it free-runs instead.
@@ -524,7 +549,7 @@ private:
 
         // ---- mixer ----
         float noise = rnd() * 0.5f;
-        float mix = emitA * Q.mixA * 0.6f + bv * Q.mixB * 0.6f + noise * Q.mixNoise * 0.5f + subLp * Q.mixSub * 0.6f;
+        float mix = (emitA + uniA) * uniG * Q.mixA * 0.6f + (bv + uniB) * uniG * Q.mixB * 0.6f + noise * Q.mixNoise * 0.5f + subLp * Q.mixSub * 0.6f;
 
         // ---- filter: zero delay feedback 4 pole ladder, tanh on input and in the loop ----
         float oct = std::log2 (std::max (Q.cutoffHz, 10.0f)) + Q.fenvAmt * fe * 6.0f * (1.0f + 1.0f * sq) + Q.kbdAmt * (note - 60.0f) / 12.0f + filMod
@@ -581,11 +606,11 @@ private:
         sm (Q.aTune, P.aTune); sm (Q.bTune, P.bTune); sm (Q.aPW, P.aPW); sm (Q.bPW, P.bPW);
         sm (Q.mixA, P.mixA); sm (Q.mixB, P.mixB); sm (Q.mixNoise, P.mixNoise); sm (Q.mixSub, P.mixSub);
         sm (Q.cutoffHz, P.cutoffHz); sm (Q.reso, P.reso); sm (Q.fenvAmt, P.fenvAmt); sm (Q.kbdAmt, P.kbdAmt);
-        sm (Q.lfoHz, P.lfoHz); sm (Q.modWheel, P.modWheel); sm (Q.perfCutOct, P.perfCutOct); sm (Q.perfVibSemi, P.perfVibSemi); sm (Q.drive, P.drive); sm (Q.xstr, P.xstr); sm (Q.fuzz, P.fuzz); sm (mkQ, mkT); sm (mkPQ, mkPT); sm (Q.volume, P.volume);
+        sm (Q.lfoHz, P.lfoHz); sm (Q.modWheel, P.modWheel); sm (Q.uniDetune, P.uniDetune); sm (Q.perfCutOct, P.perfCutOct); sm (Q.perfVibSemi, P.perfVibSemi); sm (Q.drive, P.drive); sm (Q.xstr, P.xstr); sm (Q.fuzz, P.fuzz); sm (mkQ, mkT); sm (mkPQ, mkPT); sm (Q.volume, P.volume);
         for (int i = 0; i < 3; ++i) sm (Q.modAmt[i], P.modAmt[i]);
         // everything else switches directly
         Q.aOct = P.aOct; Q.aSaw = P.aSaw; Q.aPulse = P.aPulse; Q.aSync = P.aSync; Q.bOct = P.bOct; Q.bSaw = P.bSaw; Q.bTri = P.bTri; Q.bPulse = P.bPulse;
-        Q.bLow = P.bLow; Q.bKbd = P.bKbd; Q.fA = P.fA; Q.fD = P.fD; Q.fS = P.fS; Q.fR = P.fR; Q.aA = P.aA; Q.aD = P.aD; Q.aS = P.aS; Q.aR = P.aR;
+        Q.uniVoices = P.uniVoices; Q.bLow = P.bLow; Q.bKbd = P.bKbd; Q.fA = P.fA; Q.fD = P.fD; Q.fS = P.fS; Q.fR = P.fR; Q.aA = P.aA; Q.aD = P.aD; Q.aS = P.aS; Q.aR = P.aR;
         Q.glide = P.glide; Q.glideAuto = P.glideAuto; Q.lfoSaw = P.lfoSaw; Q.lfoTri = P.lfoTri; Q.lfoPulse = P.lfoPulse;
         for (int i = 0; i < 3; ++i) Q.modRoute[i] = P.modRoute[i];
         for (int i = 0; i < 5; ++i) Q.modDest[i] = P.modDest[i];

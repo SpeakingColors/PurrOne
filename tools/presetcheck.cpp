@@ -84,6 +84,26 @@ int main (int argc, char** argv)
             std::snprintf (d, sizeof d, "tail without %.1f dB, with %.1f dB", rmsOf (r0, 20000, 40000), rmsOf (r1, 20000, 40000));
             ck (rmsOf (r1, 20000, 40000) > rmsOf (r0, 20000, 40000) + 3.0, d);
         }
+        { // unison: 1 voice is untouched, 5 voices stay finite, similar loudness, and the stack beats (level wobbles) when detuned
+            auto render = [&] (int voices, float detune, std::vector<float>& out)
+            {
+                PurrOneProcessor q; q.prepareToPlay (48000.0, 256); q.setParam ("cutoff", 4000.0f); q.setParam ("vol", 0.8f); q.setParam ("uniVoices", (float) (voices - 1)); q.setParam ("uniDetune", detune);
+                for (int b = 0; b < 200; ++b) { juce::AudioBuffer<float> buf (2, 256); buf.clear(); juce::MidiBuffer m; if (b == 0) m.addEvent (juce::MidiMessage::noteOn (1, 48, 0.9f), 0); q.processBlock (buf, m); for (int i = 0; i < 256; ++i) out.push_back (buf.getSample (0, i)); }
+            };
+            auto db = [] (const std::vector<float>& v, size_t a, size_t b) { double e = 0; for (size_t i = a; i < b; ++i) e += (double) v[i] * v[i]; return 10.0 * std::log10 (e / (double) (b - a) + 1e-20); };
+            std::vector<float> u1, u1b, u5, u5z; render (1, 0.3f, u1); render (1, 1.0f, u1b); render (5, 0.8f, u5); render (5, 0.0f, u5z);
+            double dev = 0; for (size_t i = 0; i < u1.size(); ++i) dev = std::max (dev, (double) std::fabs (u1[i] - u1b[i]));
+            ck (dev == 0.0, "unison off: detune knob changes nothing");
+            bool fin = true; for (float x : u5) fin = fin && std::isfinite (x);
+            char d[160]; std::snprintf (d, sizeof d, "1 voice %.1f dB, 5 voices %.1f dB", db (u1, 20000, 40000), db (u5, 20000, 40000));
+            ck (fin && std::fabs (db (u5, 20000, 40000) - db (u1, 20000, 40000)) < 3.0, d);
+            double d0 = 0; for (size_t i = 20000; i < 40000; ++i) d0 = std::max (d0, (double) std::fabs (u5[i] - u1[i]));
+            ck (d0 > 0.05, "5 voices sound different from 1");
+            // beating: short-window level varies much more with detune than with 5 voices at zero detune (identical copies except phase)
+            auto wobble = [&] (const std::vector<float>& v) { double lo = 1e9, hi = -1e9; for (size_t s = 10000; s + 480 < v.size() - 4000; s += 480) { const double l = db (v, s, s + 480); lo = std::min (lo, l); hi = std::max (hi, l); } return hi - lo; };
+            std::snprintf (d, sizeof d, "level range detuned %.1f dB, no detune %.1f dB", wobble (u5), wobble (u5z));
+            ck (wobble (u5) > wobble (u5z) + 0.3, d);
+        }
         std::printf ("%d failures\n", fails); return fails != 0;
     }
     const double target = argc > 2 ? std::atof (argv[2]) : -18.0;

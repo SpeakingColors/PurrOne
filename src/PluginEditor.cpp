@@ -231,6 +231,7 @@ struct PurrOneEditor::Content : public juce::Component
             g.setColour (col::ink); g.setFont (labelFont (16.0f, true, 0.2f)); g.drawText (s.title, (int) r.getX() + 10, (int) r.getY() + 8, 200, 18, juce::Justification::centredLeft, false);
             g.setColour (col::inkDim); g.setFont (labelFont (12.0f, false, 0.1f)); g.drawText (s.sub, (int) r.getX() + 90, (int) r.getY() + 8, (int) r.getWidth() - 100, 18, juce::Justification::centredRight, false);
         }
+        if (view == 0) { g.setColour (col::inkDim); g.setFont (labelFont (13.0f, false, 0.12f)); g.drawText ("UNISON", 713, 543, 110, 14, juce::Justification::centredLeft, false); }
         if (view == 0) { g.setColour (col::inkDim); g.setFont (labelFont (13.0f, false, 0.12f)); g.drawText ("DESTINATIONS", m.keys.x + 0, 344, 110, 14, juce::Justification::centredLeft, false); }
 
         // keyboard panel and status line

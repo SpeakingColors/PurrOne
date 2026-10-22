@@ -41,6 +41,7 @@ inline constexpr Knob knobs[] = {
   { "bTune", "TUNE", { 411,414,62,74 }, { 420,428,44,44 }, 'S', "Fine pitch of B in semitones." },
   { "bPW", "WIDTH", { 481,414,62,74 }, { 490,428,44,44 }, 'P', "" },
   { "glide", "GLIDE", { 713,446,62,74 }, { 722,460,44,44 }, 'G', "Slides between notes." },
+  { "uniDetune", "DETUNE", { 713,598,62,74 }, { 722,612,44,44 }, 'P', "How far the unison copies are spread, up to 40 cents. Only does something with 2 or more voices." },
   { "fA", "ATTACK", { 906,388,56,74 }, { 912,402,44,44 }, 'T', "" },
   { "fD", "DECAY", { 964,388,56,74 }, { 970,402,44,44 }, 'T', "" },
   { "fS", "SUSTAIN", { 1022,388,56,74 }, { 1028,402,44,44 }, 'P', "" },
@@ -126,6 +127,11 @@ inline constexpr Btn segBtns[] = {
   { "8'", { 449,317,29,24 } },
   { "4'", { 479,317,29,24 } },
   { "2'", { 508,317,29,24 } },
+  { "1", { 713,566,32,24 } },
+  { "2", { 745,566,32,24 } },
+  { "3", { 777,566,32,24 } },
+  { "4", { 809,566,32,24 } },
+  { "5", { 841,566,32,24 } },
 };
 inline constexpr Seg segs[] = {
   { "mEnvR", { 133,128,246,26 }, 0, 3, false, "" },
@@ -139,6 +145,7 @@ inline constexpr Seg segs[] = {
   { "aOct", { 411,104,127,26 }, 29, 4, false, "Octave range of oscillator A." },
   { "fMode", { 1033,80,110,26 }, 33, 3, false, "Low pass keeps the lows (the classic bass filter). High pass keeps the highs and removes the lows, for thin plucks and risers. Band pass keeps a band around the cutoff: nasal leads, telephone and wah sounds." },
   { "colPos", { 1206,80,158,26 }, 36, 3, false, "Where Drive, Transistor and Fuzz sit. PRE: before the filter, so the filter shapes the grit (smooth, classic synth). POST: after the filter, so the grit stays bright and fizzy and the cutoff only shapes the base tone. BOTH: a light stage before and the full stage after." },
+  { "uniVoices", { 712,565,162,26 }, 43, 5, false, "Unison: how many detuned copies of both oscillators play together (1 is off). One shared filter, so the sound stays a Pro-One. While Sync is on, only oscillator B is stacked." },
   { "bOct", { 411,316,127,26 }, 39, 4, false, "Octave range of oscillator B." },
 };
 struct Misc { R header, brand, prev, pname, next, save, rename, init, bubbles, zoom, meter, barL, barR, scale, keys, status, cheekL, cheekR, filt, fenv, aenv, eq, panel; };
