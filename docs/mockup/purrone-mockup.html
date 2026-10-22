@@ -154,6 +154,8 @@ header.top { grid-template-columns: auto auto minmax(0, 1fr) auto; }
 .pseq { grid-template-rows: auto minmax(0, 1fr) auto; }
 .sqbot { display: grid; grid-template-columns: 1.15fr 1.7fr 1.15fr; gap: 10px; min-height: 0; }
 .sq-lanes { display: grid; grid-template-columns: 78px repeat(16, minmax(0, 1fr)); gap: 4px; align-items: center; }
+.sq-lanes .st.ch.on { background: #ffd100; color: #111; border-color: #ffd100; font-size: 11px; font-weight: 700; }
+.sq-lanes .st.rt.on { background: #ff1383; color: #111; border-color: #ff1383; font-size: 11px; font-weight: 700; }
 .sq-lanes .rl { font-size: 12px; color: var(--ink-dim); text-transform: uppercase; letter-spacing: .1em; }
 .st { height: 28px; border-radius: 3px; background: #101115; border: 1px solid var(--line); cursor: pointer; font-family: var(--f-num); font-size: 12px; color: var(--ink-dim); display: grid; place-items: center; padding: 0; letter-spacing: 0; text-transform: none; }
 .st.on { background: #1f3a33; border-color: #2c6a59; color: var(--led-green); }
@@ -1368,8 +1370,8 @@ button[aria-disabled="true"] { opacity: .4; }
   sqCtl.appendChild(labelled("Steps", mkSeg(chipVals.map(String), function () { return chipVals.indexOf(steps()); }, function (i) { setParam("seqSteps", chipVals[i]); })));
   var pat = function () { return SEQ.pats[S.seqPat]; };
   var clipPat = null;
-  sqCtl.appendChild(btn("Random", function () { var p = pat(), sc_ = [0, 3, 5, 7, 10, 12, 15, 19]; for (var i = 0; i < 64; i++) { p.n[i] = sc_[Math.floor(Math.random() * sc_.length)]; p.g[i] = Math.random() < 0.72 ? 1 : 0; p.a[i] = Math.random() < 0.2 ? 1 : 0; p.s[i] = Math.random() < 0.12 ? 1 : 0; } renderSeq(); markUser(); }));
-  sqCtl.appendChild(btn("Clear", function () { var p = pat(); for (var i = 0; i < 64; i++) { p.g[i] = 0; p.a[i] = 0; p.s[i] = 0; } renderSeq(); markUser(); }));
+  sqCtl.appendChild(btn("Random", function () { var p = pat(), sc_ = [0, 3, 5, 7, 10, 12, 15, 19]; for (var i = 0; i < 64; i++) { p.n[i] = sc_[Math.floor(Math.random() * sc_.length)]; p.c = p.c || []; p.r = p.r || []; p.c[i] = 0; p.r[i] = 0; p.g[i] = Math.random() < 0.72 ? 1 : 0; p.a[i] = Math.random() < 0.2 ? 1 : 0; p.s[i] = Math.random() < 0.12 ? 1 : 0; } renderSeq(); markUser(); }));
+  sqCtl.appendChild(btn("Clear", function () { var p = pat(); for (var i = 0; i < 64; i++) { p.g[i] = 0; p.a[i] = 0; p.s[i] = 0; if (p.c) p.c[i] = 0; if (p.r) p.r[i] = 0; } renderSeq(); markUser(); }));
   sqCtl.appendChild(btn("Copy", function () { clipPat = JSON.parse(JSON.stringify(pat())); }));
   sqCtl.appendChild(btn("Paste", function () { if (clipPat) { SEQ.pats[S.seqPat] = JSON.parse(JSON.stringify(clipPat)); renderSeq(); markUser(); } }));
   var lanes = document.createElement("div"); lanes.className = "sq-lanes"; lanes.id = "sqLanes"; document.getElementById("sqSeq").appendChild(lanes);
@@ -1390,6 +1392,14 @@ button[aria-disabled="true"] { opacity: .4; }
         b.addEventListener("click", function () { p[L[1]][i] = p[L[1]][i] ? 0 : 1; b.classList.toggle("on", !!p[L[1]][i]); b.textContent = p[L[1]][i] ? L[3] : ""; if (L[1] === "g") renderSeq(); markUser(); });
         lanes.appendChild(b);
       })(c3);
+    });
+    [["Chance", "c", ["", "75%", "50%", "25%"], "ch"], ["Ratchet", "r", ["", "x2", "x3", "x4"], "rt"]].forEach(function (L) {
+      lab(L[0]); for (var c4 = 0; c4 < 16; c4++) (function (c4) {
+        var i = base + c4, b = document.createElement("button"); if (!p[L[1]]) p[L[1]] = []; var v0 = p[L[1]][i] || 0;
+        b.className = "st " + L[3] + " " + (i >= n ? "off " : "") + (c4 % 4 === 0 ? "beat" : "") + (v0 ? " on" : ""); b.dataset.c = c4; b.textContent = L[2][v0];
+        b.addEventListener("click", function (e) { var v = ((p[L[1]][i] || 0) + (e.shiftKey ? 3 : 1)) % 4; p[L[1]][i] = v; b.classList.toggle("on", !!v); b.textContent = L[2][v]; markUser(); });
+        lanes.appendChild(b);
+      })(c4);
     });
     markPlay();
   }
@@ -1432,9 +1442,14 @@ button[aria-disabled="true"] { opacity: .4; }
     setTimeout(function () {
       if (!playing) return;
       if (S.seqMode === 1) {
-        if (p.g[i]) {
-          trig(36 + p.n[i] + Math.round(S.seqTrans) + 12, !!p.s[i], !!p.a[i]);
-          if (!nextSlide(i)) { clearTimeout(offTimer); offTimer = setTimeout(release, dur * S.seqGate); }
+        var chV = [1, 0.75, 0.5, 0.25][(p.c && p.c[i]) || 0], skip = p.g[i] && chV < 1 && Math.random() >= chV, rt = 1 + ((p.r && p.r[i]) || 0);
+        if (p.g[i] && !skip) {
+          var nt = 36 + p.n[i] + Math.round(S.seqTrans) + 12;
+          trig(nt, !!p.s[i], !!p.a[i]);
+          if (rt > 1) {
+            var sub = dur / rt, gl = Math.min(S.seqGate, 0.85) * sub; clearTimeout(offTimer); offTimer = setTimeout(release, gl);
+            for (var k = 1; k < rt; k++) (function (k) { setTimeout(function () { if (!playing) return; trig(nt, false, false); clearTimeout(offTimer); offTimer = setTimeout(release, gl); }, k * sub); })(k);
+          } else if (!nextSlide(i)) { clearTimeout(offTimer); offTimer = setTimeout(release, dur * S.seqGate); }
         } else { release(); }
       } else if (S.seqMode === 2) {
         var pl = arpNotes(); if (!pl.length) { release(); } else {
