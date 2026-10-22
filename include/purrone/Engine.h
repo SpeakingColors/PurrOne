@@ -86,6 +86,8 @@ struct Params
     // destinations: 0 A freq, 1 A PW, 2 B freq, 3 B PW, 4 filter
     int   modDest[5] = { 0, 0, 0, 0, 0 };
     float modWheel = 0.0f;
+    // Performance: wheel and aftertouch combined by the host code. Cutoff in octaves, vibrato depth in semitones (uses the LFO rate)
+    float perfCutOct = 0.0f, perfVibSemi = 0.0f;
     // Keyboard
     bool retrig = false, repeat = false, drone = false;
     // Output
@@ -445,6 +447,8 @@ private:
         float dest[5];
         for (int d = 0; d < 5; ++d) dest[d] = (Q.modDest[d] == 1 ? direct : (Q.modDest[d] == 2 ? wheel : 0.0f));
         aFreqMod = dest[0] * 12.0f; aPwMod = dest[1] * 0.4f; bFreqMod = dest[2] * 12.0f; bPwMod = dest[3] * 0.4f; filMod = dest[4] * 5.0f;
+        filMod += Q.perfCutOct;
+        if (Q.perfVibSemi > 0.0005f) { const float vib = (ln > 0 ? lfo : std::sin (6.2831853f * lfoPh)) * Q.perfVibSemi; aFreqMod += vib; bFreqMod += vib; }
         if (rv != 0.0f)
         {
             if (Q.rndPA) aFreqMod += rv * 1.5f;
@@ -577,7 +581,7 @@ private:
         sm (Q.aTune, P.aTune); sm (Q.bTune, P.bTune); sm (Q.aPW, P.aPW); sm (Q.bPW, P.bPW);
         sm (Q.mixA, P.mixA); sm (Q.mixB, P.mixB); sm (Q.mixNoise, P.mixNoise); sm (Q.mixSub, P.mixSub);
         sm (Q.cutoffHz, P.cutoffHz); sm (Q.reso, P.reso); sm (Q.fenvAmt, P.fenvAmt); sm (Q.kbdAmt, P.kbdAmt);
-        sm (Q.lfoHz, P.lfoHz); sm (Q.modWheel, P.modWheel); sm (Q.drive, P.drive); sm (Q.xstr, P.xstr); sm (Q.fuzz, P.fuzz); sm (mkQ, mkT); sm (mkPQ, mkPT); sm (Q.volume, P.volume);
+        sm (Q.lfoHz, P.lfoHz); sm (Q.modWheel, P.modWheel); sm (Q.perfCutOct, P.perfCutOct); sm (Q.perfVibSemi, P.perfVibSemi); sm (Q.drive, P.drive); sm (Q.xstr, P.xstr); sm (Q.fuzz, P.fuzz); sm (mkQ, mkT); sm (mkPQ, mkPT); sm (Q.volume, P.volume);
         for (int i = 0; i < 3; ++i) sm (Q.modAmt[i], P.modAmt[i]);
         // everything else switches directly
         Q.aOct = P.aOct; Q.aSaw = P.aSaw; Q.aPulse = P.aPulse; Q.aSync = P.aSync; Q.bOct = P.bOct; Q.bSaw = P.bSaw; Q.bTri = P.bTri; Q.bPulse = P.bPulse;

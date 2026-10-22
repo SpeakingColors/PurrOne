@@ -77,6 +77,11 @@ public:
 
     // ---- single fx module presets (the dropdown on each module) ----
     void applyValues (const std::vector<std::pair<const char*, float>>& v);
+    // ---- favourites (a text file next to your sounds) and the random sound button ----
+    bool isFavourite (const juce::String& name) const { return favourites().contains (name); }
+    void toggleFavourite (const juce::String& name);
+    juce::StringArray favourites() const;
+    void randomSound();                                                  // a bank A sound, then a gentle nudge on a few controls
     void setParam (const char* id, float realValue);
 
     juce::AudioProcessorValueTreeState apvts;
@@ -98,6 +103,8 @@ public:
 
 private:
     void applyParams();
+    mutable juce::StringArray favCache; mutable bool favLoaded = false;
+    juce::File favouritesFile() const;
     void applyFactory (int index);
     static juce::String sanitize (const juce::String& n);
 
@@ -124,7 +131,7 @@ private:
     purrone::SafetyLimiter limiter;
     std::vector<float> mono;
     juce::SmoothedValue<float> verbMixSm;
-    float midiWheel = 0.0f, bendNorm = 0.0f, bendRange = 2.0f, slideSeconds = 0.08f;
+    float midiAT = 0.0f, midiWheel = 0.0f, bendNorm = 0.0f, bendRange = 2.0f, slideSeconds = 0.08f;
     bool midiOutOn = false; int midiOutCh = 1, midiOutVel = 90, midiOutAcc = 120;
     juce::MidiBuffer outMidi;
     void resetFx();

@@ -87,6 +87,9 @@ void PurrOneProcessor::applyParams()
     p.modAmt[2] = raw (ids::mLfo); p.modRoute[2] = (int) raw (ids::mLfoR);
     p.modDest[0] = (int) raw (ids::dest0); p.modDest[1] = (int) raw (ids::dest1); p.modDest[2] = (int) raw (ids::dest2); p.modDest[3] = (int) raw (ids::dest3); p.modDest[4] = (int) raw (ids::dest4);
     p.modWheel = std::max (raw (ids::wheel), midiWheel);
+    { const float w = p.modWheel, a = midiAT;
+      p.perfCutOct = 6.0f * (w * raw (ids::wheelCut) + a * raw (ids::atCut));
+      p.perfVibSemi = 1.5f * (w * raw (ids::wheelVib) + a * raw (ids::atVib)); }
     p.retrig = raw (ids::retrig) > 0.5f; p.repeat = raw (ids::repeat) > 0.5f; p.drone = raw (ids::drone) > 0.5f;
     p.drive = raw (ids::drive); p.xstr = raw (ids::xstr); p.fuzz = raw (ids::fuzz); p.volume = raw (ids::vol);
     p.squelch = raw (ids::squelch) > 0.5f; p.squelchAmt = raw (ids::squelchAmt); p.accAmt = raw (ids::seqAcc);
@@ -119,7 +122,7 @@ void PurrOneProcessor::applyFx()
     reverb.setParams (raw (ids::verbSize), raw (ids::verbHP));
     reverb.setExtras (raw (ids::spPre), raw (ids::spDamp), raw (ids::spWid));
     spaceOn = raw (ids::fxOnSpace) > 0.5f; duckAmt = raw (ids::spDuck);
-    verbMixSm.setTargetValue (spaceOn ? raw (ids::verbMix) : 0.0f);
+    verbMixSm.setTargetValue (spaceOn ? std::min (1.0f, std::max (0.0f, raw (ids::verbMix) + std::max (raw (ids::wheel), midiWheel) * raw (ids::wheelVerb) + midiAT * raw (ids::atVerb))) : 0.0f);
     opto.setAmount (raw (ids::opto)); opto.setSpeed ((int) std::lround (raw (ids::optoSpd)));
     ott.set (raw (ids::ottOn) > 0.5f, raw (ids::ottAmt), raw (ids::ottDepth), raw (ids::ottTime), raw (ids::ottLo), raw (ids::ottMid), raw (ids::ottHi));
     dance.set (raw (ids::dmOn) > 0.5f, raw (ids::dmMix), raw (ids::dmDrive), raw (ids::dmClip), raw (ids::dmLow), raw (ids::dmMid), raw (ids::dmHigh));
@@ -219,6 +222,8 @@ void PurrOneProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mid
         {
             engine.allNotesOff(); sequencer.allKeysOff(); std::fill (std::begin (passed), std::end (passed), false);
         }
+        else if (m.isChannelPressure()) { midiAT = (float) m.getChannelPressureValue() / 127.0f; applyParams(); }
+        else if (m.isAftertouch()) { midiAT = (float) m.getAfterTouchValue() / 127.0f; applyParams(); }
         else if (m.isPitchWheel()) { bendNorm = (float) (m.getPitchWheelValue() - 8192) / 8192.0f; engine.setPitchBend (bendNorm * bendRange); bendShown.store (bendNorm); }
         else if (m.isController())
         {
@@ -569,6 +574,43 @@ bool PurrOneProcessor::importSequenceCode (const juce::String& code, const juce:
     return xml->writeTo (dir.getChildFile (nm + ".purrseq"));
 }
 
+juce::File PurrOneProcessor::favouritesFile() const { return userPresetDir().getParentDirectory().getChildFile ("PurrOne favourites.txt"); }
+juce::StringArray PurrOneProcessor::favourites() const
+{
+    if (! favLoaded)
+    {
+        favLoaded = true; favCache.clear(); const auto f = favouritesFile();
+        if (f.existsAsFile() && f.getSize() < 64 * 1024) { favCache.addLines (f.loadFileAsString()); favCache.trim(); favCache.removeEmptyStrings(); favCache.removeDuplicates (false); }
+    }
+    return favCache;
+}
+void PurrOneProcessor::toggleFavourite (const juce::String& name)
+{
+    auto list = favourites(); const int at = list.indexOf (name);
+    if (at >= 0) list.remove (at); else if (name.isNotEmpty()) list.add (name);
+    favCache = list; const auto f = favouritesFile(); f.getParentDirectory().createDirectory();
+    f.replaceWithText (list.joinIntoString ("\n"));
+}
+void PurrOneProcessor::randomSound()
+{
+    static juce::Random rng (juce::Time::currentTimeMillis());
+    const auto& fp = purrone::factoryPresets(); const int n = juce::jmin (purrone::kBankSize, (int) fp.size());
+    if (n <= 1) return;
+    // stay in the character you are in about half of the time: same category as the current sound
+    juce::String cat; for (int i = 0; i < n; ++i) if (currentPresetName == fp[(size_t) i].name) cat = fp[(size_t) i].category;
+    int pick = 1 + rng.nextInt (n - 1);
+    if (cat.isNotEmpty() && rng.nextBool()) for (int tries = 0; tries < 40; ++tries) { const int c = 1 + rng.nextInt (n - 1); if (cat == fp[(size_t) c].category && juce::String (fp[(size_t) c].name) != currentPresetName) { pick = c; break; } }
+    setCurrentProgram (pick);
+    // musical nudges: a little cutoff, resonance kept below the screaming zone, a little envelope depth
+    auto nudge = [&] (const char* id, float lo, float hi, float amount, bool logScale)
+    {
+        const float cur = rd (id); float v;
+        if (logScale) v = cur * std::pow (2.0f, (rng.nextFloat() - 0.5f) * 2.0f * amount); else v = cur + (rng.nextFloat() - 0.5f) * 2.0f * amount;
+        setParam (id, juce::jlimit (lo, hi, v));
+    };
+    nudge (ids::cutoff, 60.0f, 12000.0f, 0.8f, true); nudge (ids::reso, 0.0f, 0.7f, 0.12f, false);
+    nudge (ids::fenvAmt, 0.0f, 1.0f, 0.15f, false); nudge (ids::fD, 0.0f, 1.0f, 0.12f, false);
+}
 void PurrOneProcessor::setParam (const char* id, float v)
 {
     if (auto* r = apvts.getParameter (id)) r->setValueNotifyingHost (r->convertTo0to1 (v));

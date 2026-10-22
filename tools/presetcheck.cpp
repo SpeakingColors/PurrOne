@@ -51,6 +51,39 @@ int main (int argc, char** argv)
             r.patternFromString (0, old); const auto o2 = r.seq.get (0, 2);
             ck (purrone::SeqData::note (o2) == 5 && purrone::SeqData::gate (o2) && purrone::SeqData::accent (o2) && purrone::SeqData::chance (o2) == 0 && purrone::SeqData::ratchet (o2) == 1, "old 3-digit pattern still loads");
         }
+        { // performance routing: wheel and aftertouch to cutoff, vibrato and reverb
+            auto render = [&] (const char* id1, float v1, const char* id2, float v2, int cc, int ccv, bool pressure, int blocks, int noteOffAt, std::vector<float>& out)
+            {
+                PurrOneProcessor q; q.prepareToPlay (48000.0, 256); q.setParam ("cutoff", 500.0f); q.setParam ("reso", 0.1f); q.setParam ("vol", 0.8f);
+                if (id1) q.setParam (id1, v1); if (id2) q.setParam (id2, v2);
+                for (int b = 0; b < blocks; ++b)
+                {
+                    juce::AudioBuffer<float> buf (2, 256); buf.clear(); juce::MidiBuffer m;
+                    if (b == 0) { m.addEvent (juce::MidiMessage::noteOn (1, 48, 0.9f), 0); if (pressure) m.addEvent (juce::MidiMessage::channelPressureChange (1, ccv), 1); else if (cc >= 0) m.addEvent (juce::MidiMessage::controllerEvent (1, cc, ccv), 1); }
+                    if (b == noteOffAt) m.addEvent (juce::MidiMessage::noteOff (1, 48), 0);
+                    q.processBlock (buf, m); for (int i = 0; i < 256; ++i) out.push_back (buf.getSample (0, i));
+                }
+            };
+            auto rmsOf = [] (const std::vector<float>& v, size_t a, size_t b) { double e = 0; for (size_t i = a; i < b && i < v.size(); ++i) e += (double) v[i] * v[i]; return 10.0 * std::log10 (e / (double) (b - a) + 1e-20); };
+            std::vector<float> base, wh, at, nowheel; char d[160];
+            render (nullptr, 0, nullptr, 0, 1, 127, false, 120, 1000, base);
+            render ("wheelCut", 1.0f, nullptr, 0, 1, 127, false, 120, 1000, wh);
+            render ("atCut", 1.0f, nullptr, 0, -1, 127, true, 120, 1000, at);
+            render ("wheelCut", 1.0f, nullptr, 0, -1, 0, false, 120, 1000, nowheel);
+            auto bright = [&] (const std::vector<float>& v) { std::vector<float> df; for (size_t i = 15001; i < 30000 && i < v.size(); ++i) df.push_back (v[i] - v[i - 1]); return rmsOf (df, 0, df.size()); };   // high-frequency energy
+            std::snprintf (d, sizeof d, "brightness base %.1f dB, wheel open %.1f dB", bright (base), bright (wh));
+            ck (bright (wh) > bright (base) + 3.0, d);   // the Init sound is dull, a fully open filter adds about 4 dB here
+            std::snprintf (d, sizeof d, "aftertouch open %.1f dB", bright (at)); ck (bright (at) > bright (base) + 3.0, d);
+            double dev = 0; for (size_t i = 0; i < base.size(); ++i) dev = std::max (dev, (double) std::fabs (base[i] - nowheel[i]));
+            ck (dev < 1e-4, "wheel at zero changes nothing");
+            std::vector<float> v0, v1;
+            render (nullptr, 0, nullptr, 0, 1, 127, false, 120, 1000, v0); render ("wheelVib", 1.0f, "lfoHz", 6.0f, 1, 127, false, 120, 1000, v1);
+            double dv = 0; for (size_t i = 15000; i < v0.size() && i < v1.size(); ++i) dv += std::fabs (v0[i] - v1[i]); bool fin = true; for (float x : v1) fin = fin && std::isfinite (x);
+            ck (dv > 1.0 && fin, "wheel vibrato changes the pitch and stays finite");
+            std::vector<float> r0, r1; render (nullptr, 0, nullptr, 0, 1, 127, false, 160, 40, r0); render ("wheelVerb", 1.0f, nullptr, 0, 1, 127, false, 160, 40, r1);
+            std::snprintf (d, sizeof d, "tail without %.1f dB, with %.1f dB", rmsOf (r0, 20000, 40000), rmsOf (r1, 20000, 40000));
+            ck (rmsOf (r1, 20000, 40000) > rmsOf (r0, 20000, 40000) + 3.0, d);
+        }
         std::printf ("%d failures\n", fails); return fails != 0;
     }
     const double target = argc > 2 ? std::atof (argv[2]) : -18.0;

@@ -98,19 +98,33 @@ struct PurrOneEditor::Check : public juce::Component
 
 struct PurrOneEditor::NameBox : public juce::Component, public juce::SettableTooltipClient, private juce::Timer
 {
-    NameBox() { setMouseCursor (juce::MouseCursor::PointingHandCursor); setTooltip ("Click to pick a sound. Double click to rename."); }
+    NameBox() { setMouseCursor (juce::MouseCursor::PointingHandCursor); setTooltip ("Click to pick a sound. Double click to rename.\nDice: a random sound with small changes. Star: add or remove from your favourites."); }
     void paint (juce::Graphics& g) override
     {
         const auto r = getLocalBounds().toFloat();
         g.setColour (col::black); g.fillRoundedRectangle (r, 3.0f); g.setColour (col::line); g.drawRoundedRectangle (r.reduced (0.5f), 3.0f, 1.0f);
-        g.setColour (col::ink); g.setFont (monoFont (15.0f)); g.drawText (name.toUpperCase(), 12, 0, getWidth() - 100, getHeight(), juce::Justification::centredLeft, true);
-        g.setColour (col::green); g.setFont (monoFont (12.0f)); g.drawText (category.toUpperCase(), getWidth() - 90, 0, 78, getHeight(), juce::Justification::centredRight, false);
+        g.setColour (col::ink); g.setFont (monoFont (15.0f)); g.drawText (name.toUpperCase(), 42, 0, getWidth() - 160, getHeight(), juce::Justification::centredLeft, true);
+        g.setColour (col::green); g.setFont (monoFont (12.0f)); g.drawText (category.toUpperCase(), getWidth() - 118, 0, 80, getHeight(), juce::Justification::centredRight, false);
+        // dice (random sound) on the left, star (favourite) on the right
+        { const auto d = juce::Rectangle<float> (11.0f, getHeight() * 0.5f - 8.0f, 16.0f, 16.0f); g.setColour (col::inkDim); g.drawRoundedRectangle (d, 3.0f, 1.4f);
+          for (auto p : { juce::Point<float> (0.28f, 0.28f), juce::Point<float> (0.72f, 0.28f), juce::Point<float> (0.5f, 0.5f), juce::Point<float> (0.28f, 0.72f), juce::Point<float> (0.72f, 0.72f) })
+              g.fillEllipse (d.getX() + p.x * d.getWidth() - 1.3f, d.getY() + p.y * d.getHeight() - 1.3f, 2.6f, 2.6f); }
+        { juce::Path star; star.addStar (juce::Point<float> ((float) getWidth() - 20.0f, getHeight() * 0.5f), 5, 3.6f, 8.0f, -1.5708f);
+          if (fav) { g.setColour (col::yellow); g.fillPath (star); } else { g.setColour (col::inkDim); g.strokePath (star, juce::PathStrokeType (1.3f)); } }
     }
     // a single click opens the list after a short wait, so a double click (rename) is not swallowed by the menu
-    void mouseUp (const juce::MouseEvent& e) override { if (getLocalBounds().contains (e.getPosition()) && e.getNumberOfClicks() == 1) startTimer (280); }
-    void mouseDoubleClick (const juce::MouseEvent&) override { stopTimer(); if (onDouble) onDouble(); }
+    bool onDice (const juce::MouseEvent& e) const { return e.x < 38; }
+    bool onStar (const juce::MouseEvent& e) const { return e.x > getWidth() - 38; }
+    void mouseUp (const juce::MouseEvent& e) override
+    {
+        if (! getLocalBounds().contains (e.getPosition()) || e.getNumberOfClicks() != 1) return;
+        if (onDice (e)) { if (onRandom) onRandom(); return; }
+        if (onStar (e)) { if (onFav) onFav(); return; }
+        startTimer (280);
+    }
+    void mouseDoubleClick (const juce::MouseEvent& e) override { if (onDice (e) || onStar (e)) return; stopTimer(); if (onDouble) onDouble(); }
     void timerCallback() override { stopTimer(); if (onClick) onClick(); }
-    juce::String name { "Init" }, category { "Init" }; std::function<void()> onClick, onDouble;
+    juce::String name { "Init" }, category { "Init" }; bool fav = false; std::function<void()> onClick, onDouble, onRandom, onFav;
 };
 
 //==============================================================================
@@ -266,6 +280,8 @@ PurrOneEditor::PurrOneEditor (PurrOneProcessor& p) : AudioProcessorEditor (&p), 
     content->init.onClick = [this] { proc.setCurrentProgram (0); refreshNames(); };
     content->save.onClick = [this] { saveDialog(); };
     content->rename.onClick = [this] { beginRename(); };
+    content->nameBox.onRandom = [this] { proc.randomSound(); refreshNames(); };
+    content->nameBox.onFav = [this] { proc.toggleFavourite (proc.currentPresetName); refreshNames(); };
     content->nameBox.onClick = [this] { openList(); }; content->nameBox.onDouble = [this] { beginRename(); };
     content->zoom.onClick = [this] { cycleZoom(); };
     content->editor.onReturnKey = [this] { commitRename(); };
@@ -343,6 +359,7 @@ void PurrOneEditor::refreshNames()
     names.addArray (proc.listUserPresets());
     auto& nb = content->nameBox; nb.name = proc.currentPresetName; nb.category = "User";
     for (auto& f : purrone::factoryPresets()) if (proc.currentPresetName == f.name) nb.category = f.category;
+    nb.fav = proc.isFavourite (proc.currentPresetName);
     nb.repaint();
 }
 
@@ -360,20 +377,36 @@ void PurrOneEditor::openList()
     refreshNames();
     juce::PopupMenu menu;
     const auto& fp = purrone::factoryPresets();
+    const auto favs = proc.favourites();
+    auto label = [&] (const juce::String& n) { return (favs.contains (n) ? juce::String (juce::CharPointer_UTF8 ("\xe2\x98\x85 ")) : juce::String()) + n; };
+    {
+        juce::PopupMenu fm; int count = 0;
+        for (auto& f : favs) { const int at = names.indexOf (f); if (at >= 0) { fm.addItem (at + 1, f, true, proc.currentPresetName == f); ++count; } }
+        if (count > 0) menu.addSubMenu ("FAVOURITES   " + juce::String (count), fm); else menu.addItem (100000, "FAVOURITES   none yet, click the star by the name", false);
+    }
+    menu.addSeparator();
     for (int b = 0; b * purrone::kBankSize < (int) fp.size(); ++b)
     {
-        juce::PopupMenu sub; const int from = b * purrone::kBankSize, to = juce::jmin ((int) fp.size(), from + purrone::kBankSize);
-        for (int i = from; i < to; ++i) sub.addItem (i + 1, juce::String (fp[(size_t) i].category).toUpperCase() + "   " + fp[(size_t) i].name, true, proc.currentPresetName == fp[(size_t) i].name);
+        const int from = b * purrone::kBankSize, to = juce::jmin ((int) fp.size(), from + purrone::kBankSize);
+        std::vector<std::pair<juce::String, juce::PopupMenu>> cats; std::vector<int> counts;     // by category, in order of first appearance
+        for (int i = from; i < to; ++i)
+        {
+            const juce::String c = juce::String (fp[(size_t) i].category).toUpperCase(); size_t k = 0;
+            while (k < cats.size() && cats[k].first != c) ++k;
+            if (k == cats.size()) { cats.push_back ({ c, juce::PopupMenu() }); counts.push_back (0); }
+            cats[k].second.addItem (i + 1, label (fp[(size_t) i].name), true, proc.currentPresetName == fp[(size_t) i].name); ++counts[k];
+        }
+        juce::PopupMenu sub; for (size_t k = 0; k < cats.size(); ++k) sub.addSubMenu (cats[k].first + "   " + juce::String (counts[k]), cats[k].second);
         menu.addSubMenu ("BANK " + juce::String::charToString ((juce::juce_wchar) ('A' + b)) + "   " + juce::String (to - from) + " sounds", sub);
     }
     for (int b = 3; b <= 6; ++b)
     {
         const auto list = proc.listBank (b); if (list.isEmpty()) continue;
-        juce::PopupMenu sub; for (auto& n : list) { const int at = names.indexOf (n); if (at >= numFactory) sub.addItem (at + 1, n, true, proc.currentPresetName == n); }
+        juce::PopupMenu sub; for (auto& n : list) { const int at = names.indexOf (n); if (at >= numFactory) sub.addItem (at + 1, label (n), true, proc.currentPresetName == n); }
         menu.addSubMenu ("BANK " + juce::String::charToString ((juce::juce_wchar) ('A' + b)) + "   yours", sub);
     }
     menu.showMenuAsync (juce::PopupMenu::Options().withTargetComponent (&content->nameBox).withMinimumWidth (content->nameBox.getWidth()).withStandardItemHeight (26),
-                        [this] (int r) { if (r <= 0) return; const int i = r - 1; if (i < numFactory) proc.setCurrentProgram (i); else proc.loadUserPreset (names[i]); refreshNames(); });
+                        [this] (int r) { if (r <= 0 || r == 100000) return; const int i = r - 1; if (i < numFactory) proc.setCurrentProgram (i); else proc.loadUserPreset (names[i]); refreshNames(); });
 }
 
 void PurrOneEditor::beginRename()

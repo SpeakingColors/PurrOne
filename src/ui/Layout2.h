@@ -350,13 +350,19 @@ inline constexpr Sec set_secs[] = {
   { "stTune", "TUNING", "TEMPERAMENT AND A4", { 543,71,658,356 } },
   { "stRnd", "RANDOM LFO", "SAMPLE AND HOLD", { 1211,71,439,356 } },
   { "stQual", "QUALITY", "SOUND ENGINE", { 50,437,483,238 } },
-  { "stMidi", "MIDI IN", "", { 543,437,658,238 } },
+  { "stMidi", "MIDI IN", "WHEEL, AFTERTOUCH", { 543,437,658,238 } },
   { "stWin", "WINDOW", "SIZE AND LOOK", { 1211,437,439,238 } },
 };
 inline constexpr Knob set_knobs[] = {
   { "rndHz", "RATE", { 1222,170,62,74 }, { 1231,184,44,44 }, 'L', "" },
   { "rndSlew", "SLEW", { 1292,170,62,74 }, { 1301,184,44,44 }, 'P', "0 steps, 100 glides between values." },
   { "rndDepth", "DEPTH", { 1362,170,62,74 }, { 1371,184,44,44 }, 'P', "" },
+  { "wheelCut", "CUTOFF", { 554,552,62,74 }, { 563,566,44,44 }, 'E', "How far the mod wheel moves the filter cutoff, in octaves at full wheel. Turn left to close the filter." },
+  { "wheelVib", "VIBRATO", { 624,552,62,74 }, { 633,566,44,44 }, 'P', "How much vibrato the mod wheel adds to both oscillators. It follows the LFO rate." },
+  { "wheelVerb", "REVERB", { 694,552,62,74 }, { 703,566,44,44 }, 'P', "How much reverb the mod wheel adds on top of the Space mix." },
+  { "atCut", "CUTOFF", { 880,552,62,74 }, { 889,566,44,44 }, 'E', "How far channel aftertouch (pressure) moves the filter cutoff, in octaves at full pressure. Needs a keyboard that sends pressure." },
+  { "atVib", "VIBRATO", { 950,552,62,74 }, { 959,566,44,44 }, 'P', "How much vibrato aftertouch adds to both oscillators." },
+  { "atVerb", "REVERB", { 1020,552,62,74 }, { 1029,566,44,44 }, 'P', "How much reverb aftertouch adds on top of the Space mix." },
 };
 inline constexpr Tog set_togs[] = {
   { "rndCut", "CUTOFF", { 1222,104,90,26 }, 0xff02ebbau, "" },
@@ -374,6 +380,8 @@ inline constexpr Seg set_segs[] = {
 };
 inline constexpr Item set_items[] = {
   { "lab", "Window size", "", { 1222,476,99,14 }, { 0,0,0,0 } },
+  { "lab", "Mod wheel", "", { 554,532,120,14 }, { 0,0,0,0 } },
+  { "lab", "Aftertouch", "", { 880,532,120,14 }, { 0,0,0,0 } },
   { "note", "A bank is one file with up to 128 sounds. The factory sounds are bank A and stay read only; your own saves go to bank B.", "", { 61,377,461,28 }, { 0,0,0,0 } },
   { "note", "Cents each note is moved, -50 to +50, from the key C. Drag a bar to pull a note out of tune; that switches to Custom.", "", { 554,296,636,28 }, { 0,0,0,0 } },
   { "note", "Normal runs the engine at 4x oversampling. High runs it at 8x: cleaner highs on loud, fuzzy sounds, about double the CPU for the audio part.", "", { 61,504,461,28 }, { 0,0,0,0 } },
