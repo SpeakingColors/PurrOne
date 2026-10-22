@@ -363,6 +363,8 @@ button[aria-disabled="true"] { opacity: .4; }
   K("wheel", "secLfo", "Mod wheel", 0, 1, 0, { fmt: pct, tip: "Stands in for the mod wheel. Anything routed to Wheel scales with it." });
 
   K("glide", "secKeys", "Glide", 0, 1, 0, { fmt: function (v) { return v < 0.01 ? "off" : (0.005 * Math.pow(800, v)).toFixed(2) + "s"; }, tip: "Slides between notes." });
+  G("uniVoices", "secKeys", "Unison", ["1", "2", "3", "4", "5"], 0, "How many detuned copies of both oscillators play together (1 is off). One shared filter. While Sync is on, only oscillator B is stacked.");
+  K("uniDetune", "secKeys", "Detune", 0, 1, 0.3, { fmt: pct, tip: "How far the unison copies are spread, up to 40 cents. Only does something with 2 or more voices." });
   T("glideAuto", "secKeys", "Auto glide", false, { c: "var(--led-blue)", tip: "Glide only when you play legato." });
   T("retrig", "secKeys", "Retrig", false, { c: "var(--led-orange)", tip: "Every new key restarts the envelopes and the last key wins." });
   T("repeat", "secKeys", "Repeat", false, { c: "var(--led-yellow)", tip: "Re-gates the envelopes at the LFO rate." });
@@ -630,6 +632,12 @@ button[aria-disabled="true"] { opacity: .4; }
     A.out.connect(A.split); A.split.connect(A.anL, 0); A.split.connect(A.anR, 1); A.out.connect(ctx.destination);
     A.lfoG.connect(A.f1.detune); A.lfoG.connect(A.f2.detune); A.lfoG.connect(A.oscA.detune); A.lfoG.connect(A.sub.detune); A.lfoG.connect(A.oscB.detune);
     A.oscA.start(); A.oscB.start(); A.sub.start(); A.noise.start(); A.lfo.start();
+    A.ua = []; A.ub = []; A.ug = [];                                   // unison copies of A and B, silent until the Unison control asks for them
+    for (var uk = 0; uk < 4; uk++) {
+      var oa = ctx.createOscillator(), ob = ctx.createOscillator(), ga = ctx.createGain(), gb = ctx.createGain(); ga.gain.value = 0; gb.gain.value = 0;
+      oa.connect(ga); ga.connect(A.gA); ob.connect(gb); gb.connect(A.gB); A.lfoG.connect(oa.detune); A.lfoG.connect(ob.detune); oa.start(); ob.start();
+      A.ua.push(oa); A.ub.push(ob); A.ug.push([ga, gb]);
+    }
     ready = true; applyAudio(true);
   }
   function makeIR(len) {
@@ -653,7 +661,14 @@ button[aria-disabled="true"] { opacity: .4; }
     var t = ctx.currentTime;
     setOscShape(A.oscA, S.aSaw, false, S.aPulse && !S.aSaw, S.aPW);
     setOscShape(A.oscB, S.bSaw, S.bTri, S.bPulse && !S.bSaw && !S.bTri, S.bPW);
-    A.gA.gain.setTargetAtTime(S.mixA * 0.5, t, 0.02); A.gB.gain.setTargetAtTime(S.mixB * 0.5, t, 0.02);
+    var uex = Math.round(S.uniVoices), uHalf = Math.floor((uex + 1) / 2), uG = 1 / Math.sqrt(uex + 1);
+    for (var uk = 0; uk < 4; uk++) {
+      setOscShape(A.ua[uk], S.aSaw, false, S.aPulse && !S.aSaw, S.aPW); setOscShape(A.ub[uk], S.bSaw, S.bTri, S.bPulse && !S.bSaw && !S.bTri, S.bPW);
+      var cents = uk < uex ? ((uk & 1) ? -1 : 1) * (Math.floor((uk + 2) / 2) / uHalf) * 40 * S.uniDetune : 0;
+      A.ua[uk].detune.value = cents; A.ub[uk].detune.value = cents;
+      A.ug[uk][0].gain.setTargetAtTime(uk < uex && !S.aSync ? 1 : 0, t, 0.02); A.ug[uk][1].gain.setTargetAtTime(uk < uex && !S.bLow ? 1 : 0, t, 0.02);
+    }
+    A.gA.gain.setTargetAtTime(S.mixA * 0.5 * uG, t, 0.02); A.gB.gain.setTargetAtTime(S.mixB * 0.5 * uG, t, 0.02);
     A.gS.gain.setTargetAtTime(S.mixSub * 0.7, t, 0.02); A.gN.gain.setTargetAtTime(S.mixNoise * 0.3, t, 0.02);
     var preAmt = S.colPos === 0 ? 1 : S.colPos === 1 ? 0 : 0.4, postAmt = S.colPos === 0 ? 0 : 1;
     if (Math.abs(S.drive - lastDrive) > 0.004 || Math.abs(S.xstr - lastXs) > 0.004 || Math.abs(S.fuzz - lastFuzz) > 0.004 || S.colPos !== lastPos) { A.ws.curve = driveCurve(S.drive * preAmt, S.xstr * preAmt, S.fuzz * preAmt, 0.35); A.ws2.curve = driveCurve(S.drive * postAmt, S.xstr * postAmt, S.fuzz * postAmt, 0.9); lastDrive = S.drive; lastXs = S.xstr; lastFuzz = S.fuzz; lastPos = S.colPos; }
@@ -774,6 +789,7 @@ button[aria-disabled="true"] { opacity: .4; }
     var useGlide = S.glide > 0.01 && (!S.glideAuto || legato);
     var set = function (p, v) { if (useGlide) p.setTargetAtTime(v, t, tc); else { p.cancelScheduledValues(t); p.setValueAtTime(v, t); } };
     set(A.oscA.frequency, fa); set(A.oscB.frequency, S.bKbd || S.bLow ? fb : mtof(60));
+    for (var uk = 0; uk < 4; uk++) { set(A.ua[uk].frequency, fa); set(A.ub[uk].frequency, S.bKbd || S.bLow ? fb : mtof(60)); }
     A.sub.frequency.setValueAtTime(fa / 2, t);
     if (S.squelch && (accent || legato)) {          // 303 squelch: accents and slides bump the resonance, then it falls back
       var q0 = 0.7 + S.reso * 14, bump = (accent ? 1 : 0.6) * S.squelchAmt * 34;
