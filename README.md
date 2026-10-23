@@ -2,7 +2,7 @@
 
 A free, open source mono synth plugin with a thick, smooth sound, built for bass and lead. Linux first (VST3), also targeting Windows and macOS.
 
-Status: early development (test builds). The sound engine, effects, factory presets and a VST3/standalone shell (generic editor) build. The custom interface, step sequencer, arpeggiator and new FX pages are in. Not yet tested in a real host. See [ROADMAP.md](ROADMAP.md) and [docs/SPEC.md](docs/SPEC.md).
+Status: early development (test builds). The sound engine, effects, factory presets and a VST3/standalone build with the custom editor (Sound, Seq / Arp, FX and Settings pages). Not yet tested in a real host. See [ROADMAP.md](ROADMAP.md) and [docs/SPEC.md](docs/SPEC.md).
 
 <p align="center"><img src="docs/screenshot.png" alt="PurrOne editor" width="900"><br><sub>The PurrOne editor (v0.3.0).</sub></p>
 
