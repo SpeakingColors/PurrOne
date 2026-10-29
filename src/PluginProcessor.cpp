@@ -73,8 +73,8 @@ void PurrOneProcessor::applyParams()
 {
     Params p;
     auto raw = [this] (const char* id) { return rd (id); };
-    p.aOct = (int) raw (ids::aOct); p.aTune = raw (ids::aTune); p.aSaw = raw (ids::aSaw) > 0.5f; p.aPulse = raw (ids::aPulse) > 0.5f; p.aPW = raw (ids::aPW); p.aSync = raw (ids::aSync) > 0.5f;
-    p.bOct = (int) raw (ids::bOct); p.bTune = raw (ids::bTune); p.bSaw = raw (ids::bSaw) > 0.5f; p.bTri = raw (ids::bTri) > 0.5f; p.bPulse = raw (ids::bPulse) > 0.5f; p.bPW = raw (ids::bPW);
+    p.aOct = (int) raw (ids::aOct); p.aTune = raw (ids::aTune); p.aSemi = (int) std::lround (raw (ids::aSemi)); p.aSaw = raw (ids::aSaw) > 0.5f; p.aPulse = raw (ids::aPulse) > 0.5f; p.aPW = raw (ids::aPW); p.aSync = raw (ids::aSync) > 0.5f;
+    p.bOct = (int) raw (ids::bOct); p.bTune = raw (ids::bTune); p.bSemi = (int) std::lround (raw (ids::bSemi)); p.bSaw = raw (ids::bSaw) > 0.5f; p.bTri = raw (ids::bTri) > 0.5f; p.bPulse = raw (ids::bPulse) > 0.5f; p.bPW = raw (ids::bPW);
     p.bLow = raw (ids::bLow) > 0.5f; p.bKbd = raw (ids::bKbd) > 0.5f;
     p.mixA = raw (ids::mixA); p.mixB = raw (ids::mixB); p.mixSub = raw (ids::mixSub); p.mixNoise = raw (ids::mixNoise);
     p.filterMode = (int) std::lround (raw (ids::fMode)); p.colourPos = (int) std::lround (raw (ids::colPos)); p.cutoffHz = raw (ids::cutoff); p.reso = raw (ids::reso); p.fenvAmt = raw (ids::fenvAmt); p.kbdAmt = raw (ids::kbd);

@@ -110,6 +110,8 @@ inline constexpr Knob seq_knobs[] = {
   { "seqSlide", "SLIDE", { 1229,104,62,74 }, { 1238,118,44,44 }, 'Y', "Glide time on slide steps." },
   { "seqHuman", "HUMANISE", { 1299,104,62,74 }, { 1309,118,44,44 }, 'P', "Small random timing drift." },
   { "seqTrans", "TRANSPOSE", { 1369,104,62,74 }, { 1384,118,44,44 }, 'W', "Shifts the whole sequence in semitones." },
+  { "cutoff", "CUTOFF", { 1439,104,62,74 }, { 1448,118,44,44 }, 'C', "The same filter cutoff as on the Sound page, here so you can sweep it while the sequence plays." },
+  { "reso", "RESO", { 1509,104,62,74 }, { 1518,118,44,44 }, 'P', "The same resonance as on the Sound page." },
   { "midiCh", "CHANNEL", { 1207,567,62,74 }, { 1216,581,44,44 }, 'I', "" },
   { "midiVel", "VELOCITY", { 1277,567,62,74 }, { 1286,581,44,44 }, 'I', "Velocity of normal steps." },
   { "midiAcc", "ACCENT VEL", { 1347,567,62,74 }, { 1362,581,44,44 }, 'I', "Velocity of accented steps." },

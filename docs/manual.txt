@@ -9,7 +9,7 @@ PurrOne is a two oscillator mono synth in the spirit of the classic Pro-One clas
 - Watch the level: Drive, Transistor and Fuzz are level matched, so compare by ear with the knob at zero and at full.
 - Save your own sounds with Save; they stay on your computer when you uninstall unless you choose to remove them.
 
-- Unison: the UNISON buttons (1 to 5) stack detuned copies of both oscillators through the one filter; Detune sets the spread, up to 40 cents. 1 is off. With Sync on, only oscillator B is stacked.
+- Unison: the UNISON buttons (1 to 5) stack detuned copies of both oscillators through the one filter; Detune sets the spread, up to 100 cents. 1 is off. With Sync on, only oscillator B is stacked.
 
 # Pages
 The tabs in the header switch between Sound, Seq / Arp, FX and Settings. Info bubbles explain every control.

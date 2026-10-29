@@ -64,9 +64,9 @@ struct Adsr
 struct Params
 {
     // Oscillator A: keyboard controlled. octave 0..3 = 16' 8' 4' 2'; tune in semitones (-6..+6)
-    int   aOct = 1;   float aTune = 0.0f;  bool aSaw = true, aPulse = false; float aPW = 0.5f; bool aSync = false;
+    int   aOct = 1;   float aTune = 0.0f; int aSemi = 0;  bool aSaw = true, aPulse = false; float aPW = 0.5f; bool aSync = false;
     // Oscillator B
-    int   bOct = 1;   float bTune = 0.0f;  bool bSaw = true, bTri = false, bPulse = false; float bPW = 0.5f;
+    int   bOct = 1;   float bTune = 0.0f; int bSemi = 0;  bool bSaw = true, bTri = false, bPulse = false; float bPW = 0.5f;
     bool  bLow = false, bKbd = true;
     // Mixer 0..1
     float mixA = 0.8f, mixB = 0.0f, mixNoise = 0.0f, mixSub = 0.0f;
@@ -88,7 +88,7 @@ struct Params
     float modWheel = 0.0f;
     // Performance: wheel and aftertouch combined by the host code. Cutoff in octaves, vibrato depth in semitones (uses the LFO rate)
     float perfCutOct = 0.0f, perfVibSemi = 0.0f;
-    // Unison: 1 to 5 stacked copies of both oscillators (A copies are off while hard sync is on), detuned up to 40 cents, one shared filter
+    // Unison: 1 to 5 stacked copies of both oscillators (A copies are off while hard sync is on), detuned up to 100 cents, one shared filter
     int uniVoices = 1; float uniDetune = 0.3f;
     // Keyboard
     bool retrig = false, repeat = false, drone = false;
@@ -435,8 +435,8 @@ private:
 
         // ---- oscillator B ----
         float freqB;
-        if (Q.bLow) freqB = (Q.bKbd ? 0.25f * midiToHz (note + Q.bTune) : 0.25f * 8.0f) * 0.0625f; // sub-audio
-        else        freqB = midiToHz ((Q.bKbd ? note : 60.0f) + Q.bTune + 12.0f * (Q.bOct - 1));
+        if (Q.bLow) freqB = (Q.bKbd ? 0.25f * midiToHz (note + Q.bTune + (float) Q.bSemi) : 0.25f * 8.0f) * 0.0625f; // sub-audio
+        else        freqB = midiToHz ((Q.bKbd ? note : 60.0f) + Q.bTune + (float) Q.bSemi + 12.0f * (Q.bOct - 1));
         float bFreqMod = 0.0f, bPwMod = 0.0f, aFreqMod = 0.0f, aPwMod = 0.0f, filMod = 0.0f;
 
         // modulation sources use the previous B sample (one tick delay is inaudible)
@@ -481,7 +481,7 @@ private:
         lastB = bv; (void) prevPhB;
 
         // ---- oscillator A (always keyboard controlled) ----
-        float freqA = midiToHz (note + Q.aTune + 12.0f * (Q.aOct - 1) + aFreqMod);
+        float freqA = midiToHz (note + Q.aTune + (float) Q.aSemi + 12.0f * (Q.aOct - 1) + aFreqMod);
         float dtA = clampf (freqA / osr, 1.0e-6f, 0.45f);
         float pwA = clampf (Q.aPW + aPwMod, 0.06f, 0.94f);
         float phAold = phA; phA += dtA; if (phA >= 1.0f) { phA -= 1.0f; subFlip = 1.0f - subFlip; }
@@ -519,7 +519,7 @@ private:
         if (Q.uniVoices > 1)
         {
             const int ex = std::min (Q.uniVoices, 5) - 1;
-            const float maxCents = 40.0f * Q.uniDetune, half = (float) ((ex + 1) / 2);
+            const float maxCents = 100.0f * Q.uniDetune, half = (float) ((ex + 1) / 2);
             for (int k = 0; k < ex; ++k)
             {
                 const float mag = (float) ((k + 2) / 2) / half, sgn = (k & 1) ? -1.0f : 1.0f;
@@ -540,7 +540,7 @@ private:
         }
         else
         {
-            const float freqSub = 0.5f * midiToHz (note + Q.aTune + 12.0f * (Q.aOct - 1) + aFreqMod);
+            const float freqSub = 0.5f * midiToHz (note + Q.aTune + (float) Q.aSemi + 12.0f * (Q.aOct - 1) + aFreqMod);
             dtS = clampf (freqSub / osr, 1.0e-6f, 0.45f);
             phSub += dtS; if (phSub >= 1.0f) phSub -= 1.0f;
         }
@@ -610,7 +610,7 @@ private:
         for (int i = 0; i < 3; ++i) sm (Q.modAmt[i], P.modAmt[i]);
         // everything else switches directly
         Q.aOct = P.aOct; Q.aSaw = P.aSaw; Q.aPulse = P.aPulse; Q.aSync = P.aSync; Q.bOct = P.bOct; Q.bSaw = P.bSaw; Q.bTri = P.bTri; Q.bPulse = P.bPulse;
-        Q.uniVoices = P.uniVoices; Q.bLow = P.bLow; Q.bKbd = P.bKbd; Q.fA = P.fA; Q.fD = P.fD; Q.fS = P.fS; Q.fR = P.fR; Q.aA = P.aA; Q.aD = P.aD; Q.aS = P.aS; Q.aR = P.aR;
+        Q.uniVoices = P.uniVoices; Q.bLow = P.bLow; Q.aSemi = P.aSemi; Q.bSemi = P.bSemi; Q.bKbd = P.bKbd; Q.fA = P.fA; Q.fD = P.fD; Q.fS = P.fS; Q.fR = P.fR; Q.aA = P.aA; Q.aD = P.aD; Q.aS = P.aS; Q.aR = P.aR;
         Q.glide = P.glide; Q.glideAuto = P.glideAuto; Q.lfoSaw = P.lfoSaw; Q.lfoTri = P.lfoTri; Q.lfoPulse = P.lfoPulse;
         for (int i = 0; i < 3; ++i) Q.modRoute[i] = P.modRoute[i];
         for (int i = 0; i < 5; ++i) Q.modDest[i] = P.modDest[i];

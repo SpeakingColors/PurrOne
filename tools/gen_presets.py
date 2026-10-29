@@ -270,7 +270,9 @@ for n in VOICES:
 dub_for = ["Deep Sub", "808 Boom", "Rumble Sub", "Round Bass", "Dirty Reese", "Nasty 808 Dub", "Pluck Bass", "Reese Growl", "Rolling Bass", "Fuzz Bass", "Talk Bass",
            "Dub Stab", "Octave Bass", "Slab Saw", "Techno Rumble", "Neuro Bass"]
 for n in dub_for:
-    cat, vals = VOICES[n]; addp(n + " Dub", cat, variant_dub(vals))
+    cat, vals = VOICES[n]; v = variant_dub(vals)
+    if n == "Neuro Bass": v = dict(v); v["mLfo"] = 0.0   # user request: no LFO on Neuro Bass Dub
+    addp(n + " Dub", cat, v)
 m()
 
 def seqvals(vals, label, root, extra=None, squelch=False, bpm=138, mode=1):

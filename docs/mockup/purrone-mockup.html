@@ -326,6 +326,7 @@ button[aria-disabled="true"] { opacity: .4; }
   var sec = function (v) { var s = 0.002 * Math.pow(3000, v); return s < 1 ? Math.round(s * 1000) + "ms" : s.toFixed(1) + "s"; };
 
   G("aOct", "secA", "Range", ["16'", "8'", "4'", "2'"], 0, "Octave range of oscillator A.");
+  K("aSemi", "secA", "Semi", -24, 24, 0, { fmt: function (v) { var r = Math.round(v); return (r > 0 ? "+" : "") + r + " st"; }, tip: "Transpose A in whole semitones, two octaves each way. Set B to +7 for a fifth, +12 for an octave." });
   K("aTune", "secA", "Tune", -6, 6, 0, { fmt: sgn, tip: "Fine pitch of A in semitones, up to half an octave each way." });
   T("aSaw", "secA", "Saw", true, { c: "var(--led-green)", tip: "Full harmonic sawtooth, the classic brassy shape." });
   T("aPulse", "secA", "Pulse", false, { c: "var(--led-yellow)", tip: "Pulse wave. Width sets how thin or hollow it sounds." });
@@ -333,6 +334,7 @@ button[aria-disabled="true"] { opacity: .4; }
   T("aSync", "secA", "Sync", false, { c: "var(--led-pink)", tip: "A restarts every time B restarts. Sweep A's tune for the tearing sync sound." });
 
   G("bOct", "secB", "Range", ["16'", "8'", "4'", "2'"], 0, "Octave range of oscillator B.");
+  K("bSemi", "secB", "Semi", -24, 24, 0, { fmt: function (v) { var r = Math.round(v); return (r > 0 ? "+" : "") + r + " st"; }, tip: "Transpose B in whole semitones, two octaves each way. +7 is a fifth, +12 an octave." });
   K("bTune", "secB", "Tune", -6, 6, 0.4, { fmt: sgn, tip: "Fine pitch of B in semitones." });
   T("bSaw", "secB", "Saw", true, { c: "var(--led-green)" });
   T("bTri", "secB", "Tri", false, { c: "var(--led-blue)" });
@@ -364,7 +366,7 @@ button[aria-disabled="true"] { opacity: .4; }
 
   K("glide", "secKeys", "Glide", 0, 1, 0, { fmt: function (v) { return v < 0.01 ? "off" : (0.005 * Math.pow(800, v)).toFixed(2) + "s"; }, tip: "Slides between notes." });
   G("uniVoices", "secKeys", "Unison", ["1", "2", "3", "4", "5"], 0, "How many detuned copies of both oscillators play together (1 is off). One shared filter. While Sync is on, only oscillator B is stacked.");
-  K("uniDetune", "secKeys", "Detune", 0, 1, 0.3, { fmt: pct, tip: "How far the unison copies are spread, up to 40 cents. Only does something with 2 or more voices." });
+  K("uniDetune", "secKeys", "Detune", 0, 1, 0.3, { tip: "How far the unison copies are spread, up to 100 cents (a slow chorus on bass notes, a wide shimmer higher up). Only does something with 2 or more voices.", fmt: function (v) { return Math.round(v * 100) + " ct"; } });
   T("glideAuto", "secKeys", "Auto glide", false, { c: "var(--led-blue)", tip: "Glide only when you play legato." });
   T("retrig", "secKeys", "Retrig", false, { c: "var(--led-orange)", tip: "Every new key restarts the envelopes and the last key wins." });
   T("repeat", "secKeys", "Repeat", false, { c: "var(--led-yellow)", tip: "Re-gates the envelopes at the LFO rate." });
@@ -427,6 +429,8 @@ button[aria-disabled="true"] { opacity: .4; }
   K("seqSlide", "sqTrans", "Slide", 0.01, 0.3, 0.08, { fmt: function (v) { return v.toFixed(2) + "s"; }, tip: "Glide time on slide steps." });
   K("seqHuman", "sqTrans", "Humanise", 0, 1, 0, { fmt: pct, tip: "Small random timing drift." });
   K("seqTrans", "sqTrans", "Transpose", -36, 36, 0, { fmt: function (v) { return sgn(Math.round(v)).replace(".0", "") + "st"; }, tip: "Shifts the whole sequence in semitones." });
+  K("cutoff", "sqTrans", "Cutoff", 20, 20000, 585, { log: true, fmt: function (v) { return hz(v) + "Hz"; }, tip: "The same filter cutoff as on the Sound page, here so you can sweep it while the sequence plays." });
+  K("reso", "sqTrans", "Reso", 0, 1, 0.3, { fmt: pct, tip: "The same resonance as on the Sound page." });
   K("seqSteps", "", "Steps", 1, 64, 16, { fmt: int0 });
   G("seqPat", "", "Pattern", ["A", "B", "C", "D"], 0);
   G("arpPat", "sqArp", "Pattern", ["Up", "Down", "Up/Dn", "Random", "Played"], 0, "Order the held keys are played in.");
@@ -664,7 +668,7 @@ button[aria-disabled="true"] { opacity: .4; }
     var uex = Math.round(S.uniVoices), uHalf = Math.floor((uex + 1) / 2), uG = 1 / Math.sqrt(uex + 1);
     for (var uk = 0; uk < 4; uk++) {
       setOscShape(A.ua[uk], S.aSaw, false, S.aPulse && !S.aSaw, S.aPW); setOscShape(A.ub[uk], S.bSaw, S.bTri, S.bPulse && !S.bSaw && !S.bTri, S.bPW);
-      var cents = uk < uex ? ((uk & 1) ? -1 : 1) * (Math.floor((uk + 2) / 2) / uHalf) * 40 * S.uniDetune : 0;
+      var cents = uk < uex ? ((uk & 1) ? -1 : 1) * (Math.floor((uk + 2) / 2) / uHalf) * 100 * S.uniDetune : 0;
       A.ua[uk].detune.value = cents; A.ub[uk].detune.value = cents;
       A.ug[uk][0].gain.setTargetAtTime(uk < uex && !S.aSync ? 1 : 0, t, 0.02); A.ug[uk][1].gain.setTargetAtTime(uk < uex && !S.bLow ? 1 : 0, t, 0.02);
     }
@@ -785,7 +789,7 @@ button[aria-disabled="true"] { opacity: .4; }
     if (!ready) return;
     var t = ctx.currentTime, fr = mtof(note), tc = 0.005 * Math.pow(800, S.glide) / 3;
     var shift = function (o, tune, oct) { return fr * Math.pow(2, (tune + 12 * (oct - 1)) / 12); };
-    var fa = shift(0, S.aTune, S.aOct), fb = S.bLow ? 4 : shift(0, S.bTune, S.bOct);
+    var fa = shift(0, S.aTune + Math.round(S.aSemi), S.aOct), fb = S.bLow ? 4 : shift(0, S.bTune + Math.round(S.bSemi), S.bOct);
     var useGlide = S.glide > 0.01 && (!S.glideAuto || legato);
     var set = function (p, v) { if (useGlide) p.setTargetAtTime(v, t, tc); else { p.cancelScheduledValues(t); p.setValueAtTime(v, t); } };
     set(A.oscA.frequency, fa); set(A.oscB.frequency, S.bKbd || S.bLow ? fb : mtof(60));

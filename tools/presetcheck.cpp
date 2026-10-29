@@ -24,6 +24,50 @@ int main (int argc, char** argv)
             }
         return 0;
     }
+    if (mode == "seqtrans")
+    {   // the sequencer's Transpose knob must move the notes that reach the synth (read from the MIDI out copy)
+        int fails = 0;
+        for (int tr : { 0, 7, 24 })
+        {
+            PurrOneProcessor q; q.prepareToPlay (48000.0, 256);
+            q.setParam (purrone::ids::mixB, 0.0f); q.setParam (purrone::ids::mixSub, 0.0f); q.setParam (purrone::ids::cutoff, 12000.0f); q.setParam (purrone::ids::seqMode, 1.0f); q.setParam (purrone::ids::seqSync, 1.0f); q.setParam (purrone::ids::midiOut, 1.0f); q.setParam (purrone::ids::seqTrans, (float) tr); q.playButton.store (true);
+            for (int i = 0; i < 16; ++i) q.seq.set (0, i, purrone::SeqData::pack (i % 5, true, false, false));
+            int first = -1; std::vector<float> aud;
+            for (int blk = 0; blk < 200; ++blk)
+            {
+                juce::AudioBuffer<float> b (2, 256); b.clear(); juce::MidiBuffer m; q.processBlock (b, m);
+                for (const auto meta : m) if (first < 0 && meta.getMessage().isNoteOn()) first = meta.getMessage().getNoteNumber();
+                if (first >= 0 && aud.size() < 9000) for (int i = 0; i < 256; ++i) aud.push_back (b.getSample (0, i));
+            }
+            int best = 0; const int off = 3000, len = 4000;   // pitch of the sound: first autocorrelation peak above 90% of the zero-lag value
+            if (aud.size() >= (size_t) (off + len + 1500)) { double c0 = 0; for (int i = 0; i < len; ++i) c0 += (double) aud[(size_t) (off + i)] * aud[(size_t) (off + i)];
+                double prev = 0; bool up = false; for (int lag = 20; lag < 1500; ++lag) { double c = 0; for (int i = 0; i < len; ++i) c += (double) aud[(size_t) (off + i)] * aud[(size_t) (off + i + lag)]; if (c > 0.9 * c0 && c < prev && up) { best = lag - 1; break; } up = c >= prev; prev = c; } }
+            std::printf ("transpose %d -> first note %d, sound period %d samples (%.1f Hz)\n", tr, first, best, best > 0 ? 48000.0 / best : 0.0);
+            static int base = -1; if (tr == 0) base = first; else if (first != base + tr) ++fails;
+        }
+        std::printf ("%s\n", fails ? "FAIL transpose does not reach the synth" : "ok   transpose reaches the synth");
+        return fails;
+    }
+    if (mode == "unitest")
+    {   // does the Unison Detune knob change the sound? Same note, 4 voices, detune 0 / 30 % / 100 %: print how different the output is and how much it moves (slow beating)
+        std::vector<std::vector<float>> out;
+        for (float dt : { 0.0f, 0.3f, 1.0f })
+        {
+            PurrOneProcessor q; q.prepareToPlay (48000.0, 256);
+            q.setParam (purrone::ids::uniVoices, 3.0f); q.setParam (purrone::ids::uniDetune, dt); q.setParam (purrone::ids::mixB, 0.0f); q.setParam (purrone::ids::mixSub, 0.0f); q.setParam (purrone::ids::cutoff, 3000.0f);
+            std::vector<float> y; juce::MidiBuffer first; first.addEvent (juce::MidiMessage::noteOn (1, 36, 0.9f), 0);
+            for (int blk = 0; blk < 375; ++blk) { juce::AudioBuffer<float> b (2, 256); b.clear(); juce::MidiBuffer m; if (blk == 0) m = first; q.processBlock (b, m); for (int i = 0; i < 256; ++i) y.push_back (b.getSample (0, i)); }
+            out.push_back (y);
+        }
+        for (size_t k = 1; k < out.size(); ++k)
+        {
+            double d = 0, e = 0; for (size_t i = 24000; i < out[0].size(); ++i) { d += std::pow ((double) out[k][i] - out[0][i], 2); e += std::pow ((double) out[0][i], 2); }
+            // amplitude movement: spread of the 20 ms RMS over the second half
+            double mn = 1e9, mx = 0; for (size_t i = 24000; i + 960 < out[k].size(); i += 960) { double r = 0; for (int j = 0; j < 960; ++j) r += std::pow ((double) out[k][i + j], 2); r = std::sqrt (r / 960); mn = std::min (mn, r); mx = std::max (mx, r); }
+            std::printf ("detune %s: difference to detune 0 = %.1f dB, level swing %.1f dB\n", k == 1 ? "30%" : "100%", 10 * std::log10 (d / std::max (e, 1e-12)), 20 * std::log10 (mx / std::max (mn, 1e-9)));
+        }
+        return 0;
+    }
     if (mode == "learntest")
     {
         int fails = 0; auto ck = [&] (bool ok, const char* what) { std::printf ("%s %s\n", ok ? "ok  " : "FAIL", what); if (! ok) ++fails; };

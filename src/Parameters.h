@@ -6,9 +6,9 @@
 namespace purrone::ids
 {
     // oscillators
-    inline constexpr const char* aOct = "aOct"; inline constexpr const char* aTune = "aTune"; inline constexpr const char* aSaw = "aSaw";
+    inline constexpr const char* aOct = "aOct"; inline constexpr const char* aTune = "aTune"; inline constexpr const char* aSemi = "aSemi"; inline constexpr const char* aSaw = "aSaw";
     inline constexpr const char* aPulse = "aPulse"; inline constexpr const char* aPW = "aPW"; inline constexpr const char* aSync = "aSync";
-    inline constexpr const char* bOct = "bOct"; inline constexpr const char* bTune = "bTune"; inline constexpr const char* bSaw = "bSaw";
+    inline constexpr const char* bOct = "bOct"; inline constexpr const char* bTune = "bTune"; inline constexpr const char* bSemi = "bSemi"; inline constexpr const char* bSaw = "bSaw";
     inline constexpr const char* bTri = "bTri"; inline constexpr const char* bPulse = "bPulse"; inline constexpr const char* bPW = "bPW";
     inline constexpr const char* bLow = "bLow"; inline constexpr const char* bKbd = "bKbd";
     inline constexpr const char* mixA = "mixA"; inline constexpr const char* mixB = "mixB"; inline constexpr const char* mixSub = "mixSub"; inline constexpr const char* mixNoise = "mixNoise";
@@ -293,6 +293,7 @@ inline juce::AudioProcessorValueTreeState::ParameterLayout createLayout()
     ch (ids::bend, "Bend Range", { "2", "5", "12", "24" }, 0);
     ch (ids::wheelCC, "Mod Wheel CC", { "CC1", "CC74" }, 0);
     ch (ids::uniVoices, "Unison Voices", { "1", "2", "3", "4", "5" }, 0); lin (ids::uniDetune, "Unison Detune", 0, 1, 0.3f);
+    it (ids::aSemi, "A Semitones", -24, 24, 0); it (ids::bSemi, "B Semitones", -24, 24, 0);
     lin (ids::wheelCut, "Wheel to Cutoff", -1, 1, 0.0f); lin (ids::wheelVib, "Wheel to Vibrato", 0, 1, 0.0f); lin (ids::wheelVerb, "Wheel to Reverb", 0, 1, 0.0f);
     lin (ids::atCut, "Aftertouch to Cutoff", -1, 1, 0.0f); lin (ids::atVib, "Aftertouch to Vibrato", 0, 1, 0.0f); lin (ids::atVerb, "Aftertouch to Reverb", 0, 1, 0.0f);
     ch (ids::tuneTemp, "Temperament", { "Equal", "Just", "Pythagorean", "Custom" }, 0);
