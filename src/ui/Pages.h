@@ -215,7 +215,7 @@ public:
     static constexpr int kLabW = 82, kRows = 7, kRowY[7] = { 0, 21, 42, 63, 84, 105, 126 }, kRowH[7] = { 19, 20, 20, 20, 20, 20, 20 };
     float pitch() const { return (float) (getWidth() - kLabW + 4) / 16.0f; }
     Rectangle<float> cell (int cx, int row) const { return { (float) kLabW + cx * pitch(), (float) kRowY[row], pitch() - 4.0f, (float) kRowH[row] }; }
-    void tick() { const int ph = proc.playStep.load(); const uint64 sig = (uint64) (ph + 2) * 1000003ull + (uint64) pat() * 977 + (uint64) steps() * 31 + (uint64) page; uint64 h = sig;
+    void tick() { const int ph = proc.playStep.load(); const uint64 sig = (uint64) (ph + 2) * 1000003ull + (uint64) pat() * 977 + (uint64) steps() * 31 + (uint64) page + (uint64) (std::lround (proc.apvts.getRawParameterValue (ids::seqTrans)->load()) + 100) * 7919ull; uint64 h = sig;
                   for (int c = 0; c < 16; ++c) h = h * 1099511628211ull + proc.seq.get (pat(), page * 16 + c);
                   if (h != lastHash) { lastHash = h; repaint(); } }
     void paint (Graphics& g) override
@@ -234,11 +234,12 @@ public:
             };
             { const auto r = cell (c, 0); g.setColour (playing ? col::blue : (inside ? col::ink : col::inkDim.withAlpha (0.35f))); g.setFont (monoFont (13.0f)); g.drawText (i < 64 ? String (i + 1) : String(), r.toNearestInt(), Justification::centred, false); }
             const int nt = SeqData::note (v);
+            const int trShown = (int) std::lround (proc.apvts.getRawParameterValue (ids::seqTrans)->load());   // the grid shows what will actually sound
             { const auto r = cell (c, 1); const bool gate = SeqData::gate (v);
               g.setColour (col::field); g.fillRoundedRectangle (r, 3.0f);
               if (inside) { g.setColour (Colour (0xff1f3a33).withAlpha (gate ? 1.0f : 0.5f)); g.fillRoundedRectangle (r.withWidth (jmax (3.0f, r.getWidth() * (float) (nt + 1) / 37.0f)), 3.0f); }
               g.setColour (playing ? col::blue : col::line); g.drawRoundedRectangle (r.reduced (0.5f), 3.0f, playing ? 2.0f : 1.0f);
-              g.setColour (inside ? (gate ? col::ink : col::inkDim) : col::inkDim.withAlpha (0.4f)); g.setFont (monoFont (14.0f)); g.drawText (noteName (36 + nt), r.toNearestInt(), Justification::centred, false); }
+              g.setColour (inside ? (gate ? col::ink : col::inkDim) : col::inkDim.withAlpha (0.4f)); g.setFont (monoFont (14.0f)); g.drawText (noteName (jlimit (0, 127, 36 + nt + trShown)), r.toNearestInt(), Justification::centred, false); }
             fill (2, col::green, SeqData::gate (v), SeqData::gate (v) ? "ON" : "");
             fill (3, col::orange, SeqData::accent (v), SeqData::accent (v) ? "ACC" : "");
             fill (4, col::blue, SeqData::slide (v), SeqData::slide (v) ? "SLD" : "");
