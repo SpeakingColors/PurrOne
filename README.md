@@ -4,7 +4,7 @@ A free, open source mono synth plugin with a thick, smooth sound, built for bass
 
 Status: early development (test builds). The sound engine, effects, factory presets and a VST3/standalone build with the custom editor (Sound, Seq / Arp, FX and Settings pages). Not yet tested in a real host. See [ROADMAP.md](ROADMAP.md) and [docs/SPEC.md](docs/SPEC.md).
 
-<p align="center"><img src="docs/screenshot.png" alt="PurrOne editor" width="900"><br><sub>The PurrOne editor (v0.4.0).</sub></p>
+<p align="center"><img src="docs/screenshot.png" alt="PurrOne editor" width="900"><br><sub>The PurrOne editor (v0.5.0).</sub></p>
 
 ## What it is
 - Two oscillators with hard sync, plus a warm sub oscillator, noise and a mixer.

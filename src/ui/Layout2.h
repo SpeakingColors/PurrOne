@@ -348,7 +348,7 @@ inline constexpr Item fxStereo_items[] = {
   { "ana", "", "", { 1320,71,330,604 }, { 0,0,0,0 } },
 };
 inline constexpr Sec set_secs[] = {
-  { "stBanks", "BANKS", "A TO G, SHARE AS A FILE", { 50,71,483,356 } },
+  { "stBanks", "BANKS", "A TO H, SHARE AS A FILE", { 50,71,483,356 } },
   { "stTune", "TUNING", "TEMPERAMENT AND A4", { 543,71,658,356 } },
   { "stRnd", "RANDOM LFO", "SAMPLE AND HOLD", { 1211,71,439,356 } },
   { "stQual", "QUALITY", "SOUND ENGINE", { 50,437,483,238 } },
