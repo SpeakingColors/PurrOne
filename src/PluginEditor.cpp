@@ -400,7 +400,7 @@ void PurrOneEditor::openList()
         juce::PopupMenu sub; for (size_t k = 0; k < cats.size(); ++k) sub.addSubMenu (cats[k].first + "   " + juce::String (counts[k]), cats[k].second);
         menu.addSubMenu ("BANK " + juce::String::charToString ((juce::juce_wchar) ('A' + b)) + "   " + juce::String (to - from) + " sounds", sub);
     }
-    for (int b = 3; b <= 6; ++b)
+    for (int b = purrone::kFactoryBanks; b < purrone::kBankCount; ++b)
     {
         const auto list = proc.listBank (b); if (list.isEmpty()) continue;
         juce::PopupMenu sub; for (auto& n : list) { const int at = names.indexOf (n); if (at >= numFactory) sub.addItem (at + 1, label (n), true, proc.currentPresetName == n); }

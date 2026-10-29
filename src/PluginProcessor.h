@@ -63,7 +63,7 @@ public:
     static constexpr int kTap = 4096;
     float tapL[kTap] {}, tapR[kTap] {}; std::atomic<int> tapPos { 0 };
     std::atomic<float> grOtt { 0.0f };
-    int saveBank = 3;                                                    // bank (0 = A .. 6 = G) the next Save goes to; A to C are factory
+    int saveBank = 4;                                                    // bank (0 = A .. 7 = H) the next Save goes to; A to D are factory
     static juce::File userBankDir (int bank);
     juce::StringArray listBank (int bank) const;
     bool exportBank (int bank, const juce::File& f) const;

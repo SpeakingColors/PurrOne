@@ -315,8 +315,8 @@ juce::String PurrOneProcessor::sanitize (const juce::String& n)
 static juce::File findUser (const juce::String& name)
 {
     const auto fn = juce::File::createLegalFileName (name.trim()).substring (0, 60) + ".purrone";
-    for (int b = 3; b <= 6; ++b) { auto f = PurrOneProcessor::userBankDir (b).getChildFile (fn); if (f.existsAsFile()) return f; }
-    return PurrOneProcessor::userBankDir (3).getChildFile (fn);
+    for (int b = purrone::kFactoryBanks; b < purrone::kBankCount; ++b) { auto f = PurrOneProcessor::userBankDir (b).getChildFile (fn); if (f.existsAsFile()) return f; }
+    return PurrOneProcessor::userBankDir (purrone::kFactoryBanks).getChildFile (fn);
 }
 juce::File PurrOneProcessor::userPresetDir()
 {
@@ -333,13 +333,13 @@ juce::File PurrOneProcessor::userPresetDir()
 juce::StringArray PurrOneProcessor::listUserPresets() const
 {
     juce::StringArray out;
-    for (int b = 3; b <= 6; ++b) for (auto& n : listBank (b)) out.addIfNotAlreadyThere (n);
+    for (int b = purrone::kFactoryBanks; b < purrone::kBankCount; ++b) for (auto& n : listBank (b)) out.addIfNotAlreadyThere (n);
     out.sort (true); return out;
 }
 bool PurrOneProcessor::saveUserPreset (const juce::String& name)
 {
     auto clean = sanitize (name); if (clean.isEmpty()) return false;
-    if (saveBank < 3) return false;                                  // factory banks are read only
+    if (saveBank < purrone::kFactoryBanks) return false;                                  // factory banks are read only
     auto dir = userBankDir (saveBank); if (! dir.createDirectory().wasOk()) return false;
     auto state = apvts.copyState(); std::unique_ptr<juce::XmlElement> xml (state.createXml());
     xml->setAttribute ("presetName", clean); xml->setAttribute ("format", 1);
@@ -491,11 +491,11 @@ bool PurrOneProcessor::loadSequence (const juce::String& name)
     return true;
 }
 
-// ---- banks (A to C factory, D to G yours; D lives in the main folder so older saves stay where they were) ----
+// ---- banks (A to D factory, E to H yours; E lives in the main folder and F to H in "Bank E" to "Bank G", so saves from older versions stay where they were) ----
 juce::File PurrOneProcessor::userBankDir (int bank)
 {
     auto d = userPresetDir();
-    return bank <= 3 ? d : d.getChildFile (juce::String ("Bank ") + juce::String::charToString ((juce::juce_wchar) ('A' + juce::jlimit (4, 6, bank))));
+    return bank <= purrone::kFactoryBanks ? d : d.getChildFile (juce::String ("Bank ") + juce::String::charToString ((juce::juce_wchar) ('A' + juce::jlimit (purrone::kFactoryBanks, purrone::kBankCount - 2, bank - 1))));
 }
 juce::StringArray PurrOneProcessor::listBank (int bank) const
 {
@@ -547,7 +547,7 @@ bool PurrOneProcessor::importSound (const juce::File& f, int bank)
 bool PurrOneProcessor::deleteUserPreset (const juce::String& name)
 {
     bool any = false;
-    for (int b = 3; b <= 6; ++b) { auto f = userBankDir (b).getChildFile (sanitize (name) + ".purrone"); if (f.existsAsFile()) any = f.moveToTrash() || f.deleteFile() || any; }
+    for (int b = purrone::kFactoryBanks; b < purrone::kBankCount; ++b) { auto f = userBankDir (b).getChildFile (sanitize (name) + ".purrone"); if (f.existsAsFile()) any = f.moveToTrash() || f.deleteFile() || any; }
     return any;
 }
 bool PurrOneProcessor::deleteSequence (const juce::String& name)

@@ -947,7 +947,7 @@ public:
     void rebuild()
     {
         rows.clear(); const auto& f = purrone::factoryPresets();
-        if (bank <= 2) { for (int i = bank * purrone::kBankSize; i < jmin ((int) f.size(), (bank + 1) * purrone::kBankSize); ++i) rows.add ({ f[(size_t) i].name, f[(size_t) i].category, i, true }); }
+        if (bank < purrone::kFactoryBanks) { for (int i = bank * purrone::kBankSize; i < jmin ((int) f.size(), (bank + 1) * purrone::kBankSize); ++i) rows.add ({ f[(size_t) i].name, f[(size_t) i].category, i, true }); }
         else for (auto& n : proc.listBank (bank)) rows.add ({ n, "yours", -1, false });
         scroll = 0; repaint();
     }
@@ -955,7 +955,7 @@ public:
     {
         g.fillAll (col::black); g.setColour (col::line); g.drawRect (getLocalBounds(), 1);
         const int vis = (getHeight() - 2) / 22;
-        if (rows.isEmpty()) { g.setColour (col::inkDim); g.setFont (labelFont (14.0f, false, 0.05f)); g.drawText (bank <= 2 ? "Empty" : "Empty bank. Save a sound while this bank is selected, or import a bank.", getLocalBounds().reduced (12), Justification::centredLeft, true); return; }
+        if (rows.isEmpty()) { g.setColour (col::inkDim); g.setFont (labelFont (14.0f, false, 0.05f)); g.drawText (bank < purrone::kFactoryBanks ? "Empty" : "Empty bank. Save a sound while this bank is selected, or import a bank.", getLocalBounds().reduced (12), Justification::centredLeft, true); return; }
         for (int i = scroll; i < jmin (rows.size(), scroll + vis); ++i)
         {
             const auto r = Rectangle<int> (1, 1 + (i - scroll) * 22, getWidth() - 2, 22); const bool cur = rows[i].name == proc.currentPresetName;
@@ -988,19 +988,19 @@ public:
         cents = add (new CentsBars (proc));
         bank = proc.saveBank; list = add (new BankList (proc, bank));
         auto r = rc (itemOf (vd, "bankbtn").r);
-        for (int i = 0; i < 7; ++i)
+        for (int i = 0; i < purrone::kBankCount; ++i)
         {
-            auto* t = add (new TextBtn (String::charToString ((juce_wchar) ('A' + i)), i <= 2 ? "Factory bank, read only." : "Your bank. Up to 128 sounds."));
-            t->setBounds (r.getX() + (r.getWidth() * i) / 7, r.getY(), r.getWidth() / 7 - 6, r.getHeight()); t->onClick = [this, i] { selectBank (i); }; bankBtns.add (t);
+            auto* t = add (new TextBtn (String::charToString ((juce_wchar) ('A' + i)), i < purrone::kFactoryBanks ? "Factory bank, read only." : "Your bank. Up to 128 sounds."));
+            t->setBounds (r.getX() + (r.getWidth() * i) / purrone::kBankCount, r.getY(), r.getWidth() / purrone::kBankCount - 6, r.getHeight()); t->onClick = [this, i] { selectBank (i); }; bankBtns.add (t);
         }
         selectBank (proc.saveBank);
         auto btn = [this] (const char* label, const char* tip, std::function<void()> fn) { auto* t = add (new TextBtn (label, tip)); t->setBounds (rc (itemOf (vd, "btn", label).r)); t->onClick = std::move (fn); };
-        btn ("Import bank", "Reads a bank file into the selected bank (D to G). Existing sounds with the same name are kept.", [this] { importBank(); });
-        btn ("Export bank", "Writes the selected bank (D to G) to a file you can share.", [this] { exportBank(); });
-        btn ("Import sound", "Reads one sound file into the selected bank (D to G).", [this] { importSound(); });
+        btn ("Import bank", "Reads a bank file into the selected bank (E to H). Existing sounds with the same name are kept.", [this] { importBank(); });
+        btn ("Export bank", "Writes the selected bank (E to H) to a file you can share.", [this] { exportBank(); });
+        btn ("Import sound", "Reads one sound file into the selected bank (E to H).", [this] { importSound(); });
         btn ("Export sound", "Writes the current sound to a file you can share.", [this] { exportSound(); });
     }
-    void selectBank (int i) { bank = i; if (i >= 3) proc.saveBank = i; for (int k = 0; k < bankBtns.size(); ++k) bankBtns[k]->on = k == i, bankBtns[k]->repaint(); list->rebuild(); repaint(); }
+    void selectBank (int i) { bank = i; if (i >= purrone::kFactoryBanks) proc.saveBank = i; for (int k = 0; k < bankBtns.size(); ++k) bankBtns[k]->on = k == i, bankBtns[k]->repaint(); list->rebuild(); repaint(); }
     void tick() override { PageBase::tick(); cents->tick(); list->tick(); }
     bool showNote (const String& t) const override { return ! t.startsWith ("A bank is one file"); }
     void paint (Graphics& g) override
@@ -1008,19 +1008,19 @@ public:
         PageBase::paint (g);
         g.setColour (col::inkDim); g.setFont (labelFont (13.0f, false, 0.04f));
         g.drawFittedText (String ("Bank ") + String::charToString ((juce_wchar) ('A' + bank)) + ": " + String (list->count()) + " of 128 sounds. "
-                          + (bank <= 2 ? "Factory, read only. Your saves go to bank " + String::charToString ((juce_wchar) ('A' + proc.saveBank)) + ". " : String ("Your saves go to this bank. ")) + "One bank is one file you can share.",
+                          + (bank < purrone::kFactoryBanks ? "Factory, read only. Your saves go to bank " + String::charToString ((juce_wchar) ('A' + proc.saveBank)) + ". " : String ("Your saves go to this bank. ")) + "One bank is one file you can share.",
                           Rectangle<int> (61, 377, 461, 40), Justification::topLeft, 3, 1.0f);
     }
 private:
     void importBank()
     {
-        const int target = bank >= 3 ? bank : proc.saveBank;
+        const int target = bank >= purrone::kFactoryBanks ? bank : proc.saveBank;
         chooser = std::make_unique<FileChooser> ("Import bank", File(), "*.purrbank"); chooser->launchAsync (FileBrowserComponent::openMode | FileBrowserComponent::canSelectFiles, [this, target] (const FileChooser& fc)
         { const auto f = fc.getResult(); if (f == File()) return; const int n = proc.importBank (f, target); if (n < 0) say ("Import bank", "That file is not a PurrOne bank."); else { say ("Import bank", String (n) + " sounds added to bank " + String::charToString ((juce_wchar) ('A' + target)) + "."); selectBank (target); } });
     }
     void exportBank()
     {
-        if (bank <= 2) { say ("Export bank", "Factory banks are built into the plugin. Pick one of your banks D to G."); return; }
+        if (bank < purrone::kFactoryBanks) { say ("Export bank", "Factory banks are built into the plugin. Pick one of your banks E to H."); return; }
         const int b = bank;
         chooser = std::make_unique<FileChooser> ("Export bank", File::getSpecialLocation (File::userDocumentsDirectory).getChildFile (String ("PurrOne bank ") + String::charToString ((juce_wchar) ('A' + b)) + ".purrbank"), "*.purrbank");
         chooser->launchAsync (FileBrowserComponent::saveMode | FileBrowserComponent::canSelectFiles | FileBrowserComponent::warnAboutOverwriting, [this, b] (const FileChooser& fc)
@@ -1028,7 +1028,7 @@ private:
     }
     void importSound()
     {
-        const int target = bank >= 3 ? bank : proc.saveBank;
+        const int target = bank >= purrone::kFactoryBanks ? bank : proc.saveBank;
         chooser = std::make_unique<FileChooser> ("Import sound", File(), "*.purrone"); chooser->launchAsync (FileBrowserComponent::openMode | FileBrowserComponent::canSelectFiles, [this, target] (const FileChooser& fc)
         { const auto f = fc.getResult(); if (f == File()) return; if (proc.importSound (f, target)) selectBank (target); else say ("Import sound", "That file could not be read, or the bank is full."); });
     }

@@ -34,11 +34,11 @@ inline const std::vector<FactoryPreset>& corePresets()
     return list;
 }
 
-// Bank A = the 20 hand made sounds + 108 generated, bank B = 128 sequences and arps, bank C = 128 FX showcases. Banks D to G are for the user.
+// Bank A = the 20 hand made sounds + 108 generated, bank B = 128 sequences and arps, bank C = 128 FX showcases, bank D = drum and bass basses. Banks E to H are for the user.
 inline const std::vector<FactoryPreset>& factoryPresets()
 {
     static const std::vector<FactoryPreset> all = [] { auto v = corePresets(); const auto& g = generatedPresets(); v.insert (v.end(), g.begin(), g.end()); return v; }();
     return all;
 }
-inline int factoryBankOf (int index) { return index / kBankSize; }      // 0 = A, 1 = B, 2 = C
+inline int factoryBankOf (int index) { return index / kBankSize; }      // 0 = A, 1 = B, 2 = C, 3 = D
 } // namespace purrone

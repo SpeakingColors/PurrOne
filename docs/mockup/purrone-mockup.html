@@ -212,7 +212,7 @@ button[aria-disabled="true"] { opacity: .4; }
 .readout { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; font-family: var(--f-num); font-size: 11px; color: var(--ink-dim); }
 .readout b { display: block; color: var(--ink); font-weight: 400; font-size: 13px; }
 .pset { grid-template-columns: 1.1fr 1.5fr 1fr; grid-template-rows: minmax(0, 1.5fr) minmax(0, 1fr); }
-.bankbtn { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin-bottom: 8px; }
+.bankbtn { display: grid; grid-template-columns: repeat(8, 1fr); gap: 6px; margin-bottom: 8px; }
 .bankbtn button[aria-pressed="true"] { background: #1f3a33; border-color: #2c6a59; color: var(--led-green); }
 .cents { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 4px; text-align: center; font-family: var(--f-num); font-size: 11px; }
 .cents > div { display: grid; gap: 3px; min-width: 0; }
@@ -413,7 +413,7 @@ button[aria-disabled="true"] { opacity: .4; }
     '<div class="mp mp-st" data-m="stereo">' + sc("fxWid", "Width", "mid and side") + '<section class="mod"><h2><span>Stereo field</span><small>vectorscope; a mono sound is one vertical line</small></h2><canvas id="fieldCv" width="500" height="480" style="height:480px"></canvas></section></div>' +
     '</div><aside class="mod fxanalyzer" id="fxAna" style="background:var(--panel-2);border:1px solid var(--line);border-top:3px solid #3a3d48;border-radius:3px;padding:6px 10px 10px"><h2 style="margin:0;font-size:14px;letter-spacing:.2em;text-transform:uppercase">Analyzer</h2><div class="seg" id="anaTabs" role="tablist"></div><canvas id="anaCv" width="310" height="220"></canvas><div class="readout" id="anaRead"></div></aside>';
 
-  pgSet.innerHTML = sc("stBanks", "Banks", "A to G, share as a file") + sc("stTune", "Tuning", "temperament and A4") + sc("stRnd", "Random LFO", "sample and hold") +
+  pgSet.innerHTML = sc("stBanks", "Banks", "A to H, share as a file") + sc("stTune", "Tuning", "temperament and A4") + sc("stRnd", "Random LFO", "sample and hold") +
     sc("stQual", "Quality", "sound engine") + sc("stMidi", "MIDI in", "") + sc("stWin", "Window", "size and look");
 
   /* parameters: Seq / Arp */
@@ -1530,12 +1530,12 @@ button[aria-disabled="true"] { opacity: .4; }
   }
 
   /* ---------- settings: banks, tuning, window ---------- */
-  var BANKS = lsGet("purrone_banks", { C: [], D: [], E: [], F: [], G: [] }), bankCur = "A";
+  var BANKS = lsGet("purrone_banks", { C: [], D: [], E: [], F: [], G: [], H: [] }), bankCur = "A";
   var bankHost = document.getElementById("stBanks"), bankRow = document.createElement("div"); bankRow.className = "bankbtn"; bankHost.appendChild(bankRow);
   var bankList = document.createElement("div"); bankList.className = "lst"; bankList.style.height = "150px"; bankHost.appendChild(bankList);
   var bankBtns = document.createElement("div"); bankBtns.className = "ctl-row"; bankBtns.style.marginTop = "8px"; bankHost.appendChild(bankBtns);
   var bankNote = document.createElement("p"); bankNote.className = "note pnote"; bankNote.textContent = "A bank is one file with up to 128 sounds. The factory sounds are bank A and stay read only; your own saves go to bank B."; bankHost.appendChild(bankNote);
-  "ABCDEFG".split("").forEach(function (x) { var b = document.createElement("button"); b.textContent = x; b.addEventListener("click", function () { bankCur = x; renderBank(); }); bankRow.appendChild(b); });
+  "ABCDEFGH".split("").forEach(function (x) { var b = document.createElement("button"); b.textContent = x; b.addEventListener("click", function () { bankCur = x; renderBank(); }); bankRow.appendChild(b); });
   function bankItems() { return bankCur === "A" ? FACTORY : bankCur === "B" ? USER : (BANKS[bankCur] || []); }
   function renderBank() {
     [].forEach.call(bankRow.children, function (b) { b.setAttribute("aria-pressed", b.textContent === bankCur ? "true" : "false"); });

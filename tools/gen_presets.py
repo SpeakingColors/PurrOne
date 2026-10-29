@@ -251,7 +251,7 @@ def addp(name, cat, vals, seq=""):
 
 voices_by_cat = {c: [n for n, (cc, _) in VOICES.items() if cc == c] for c in ["Sub", "Bass", "Lead", "FX"]}
 newvoices = [n for n in VOICES if n not in CORE]
-bank = {"A": [], "B": [], "C": []}
+bank = {"A": [], "B": [], "C": [], "D": []}
 
 def mark(b):
     start = len(PRESETS)
@@ -374,12 +374,77 @@ m = mark("C")
 cvariants(C_BASS); cvariants(C_LEAD); cvariants(C_SUB); cvariants(C_FX)
 m()
 
+
+# ---- bank D: drum and bass basses (techstep, neuro, reese, liquid, Pendulum, screech, foghorn, laser, jump up, old Pro-One)
+# DnB tempo is 174, so LFO rates are given as note values at 174 BPM: 1/4T = 4.35 Hz, 1/8 = 5.8 Hz, 1/8T = 8.7 Hz, 1/16 = 11.6 Hz.
+DNB = []   # (name, values)
+def dnb(name, fx, **kw):
+    base = dict(aSaw=1, aPulse=0, bSaw=1, bPulse=0, bTri=0, aOct=0, bOct=0, aTune=0, bTune=0, aSemi=0, bSemi=0, aSync=0, bLow=0, mixA=0.7, mixB=0.7, mixSub=0.3, mixNoise=0,
+                fMode=0, kbd=0.5, fA=0, fD=0.4, fS=0.3, fR=0.2, aA=0, aD=0.4, aS=1.0, aR=0.15, lfoSaw=0, lfoTri=1, lfoPulse=0, mEnv=0, mEnvR=0, mOscB=0, mOscBR=0, mLfo=0, mLfoR=0,
+                dest0=0, dest1=0, dest2=0, dest3=0, dest4=0, glide=0, uniVoices=0, uniDetune=0.3, drive=0, xstr=0.4, fuzz=0.3, colPos=2, eqLo=0, eqMid=0, eqHi=0, opto=0.5, maxAmt=0)
+    base.update({k: float(x) for k, x in kw.items()})
+    base.update(chain(**fx))
+    DNB.append((name[:30], base))
+MONO = dict(Stereo="Mono Bass", Space="Dry", Opto="Smooth")
+# techstep: two saws a fifth or fourth apart, LFO on the cutoff, tape style saturation, mono
+dnb("Techstep Fifth", dict(EQ="Tight Low End", Maximizer="Glue", **MONO), bSemi=7, cutoff=520, reso=0.42, fenvAmt=0.25, lfoHz=4.35, mLfo=0.45, mLfoR=1, dest4=1, drive=0.35, xstr=0.6, fuzz=0.3)
+dnb("Techstep Fourth", dict(EQ="Tight Low End", Maximizer="Glue", **MONO), bSemi=5, cutoff=480, reso=0.4, fenvAmt=0.3, lfoHz=5.8, mLfo=0.4, mLfoR=1, dest4=1, drive=0.3, xstr=0.6, fuzz=0.3)
+dnb("Warp Machine", dict(EQ="Mud Cut", Maximizer="Big", **MONO), bSemi=7, cutoff=420, reso=0.5, fenvAmt=0.35, lfoHz=8.7, lfoTri=0, lfoSaw=1, mLfo=0.55, mLfoR=1, dest4=1, drive=0.4, xstr=0.7, fuzz=0.45)
+dnb("Hydraulic Roll", dict(EQ="Tight Low End", Maximizer="Glue", **MONO), bSemi=7, bTune=0.1, cutoff=380, reso=0.35, fenvAmt=0.2, lfoHz=2.2, mLfo=0.5, mLfoR=1, dest4=1, drive=0.3, xstr=0.55, fuzz=0.2)
+# neuro: detuned saws, B into the filter (filter FM), LFO on filter and B pitch, drive before and after, OTT
+dnb("Noisia Growl", dict(EQ="Dynamic Tame", OTT="Full", Stereo="Wide", Space="Dry", Opto="Smooth"), bTune=0.35, cutoff=480, reso=0.48, fenvAmt=0.3, fD=0.5, lfoHz=4.35, lfoTri=0, lfoSaw=1, mLfo=0.55, mLfoR=1, mOscB=0.12, mOscBR=1, dest2=1, dest4=1, xstr=0.55, drive=0.25, fuzz=0.55)
+dnb("Neuro Talk", dict(EQ="Presence", OTT="Classic", Stereo="Narrow", Space="Dry", Opto="Smooth"), fMode=2, bTune=0.5, cutoff=700, reso=0.55, fenvAmt=0.2, lfoHz=5.8, mLfo=0.7, mLfoR=1, dest4=1, drive=0.3, xstr=0.55, fuzz=0.5)
+dnb("Neuro HP Naughty", dict(EQ="Scoop", OTT="Classic", Stereo="Wide", Space="Dry", Opto="Smooth"), fMode=1, mixSub=0.0, bTune=0.3, cutoff=650, reso=0.45, fenvAmt=0.25, lfoHz=4.35, mLfo=0.5, mLfoR=1, dest4=1, drive=0.35, xstr=0.6, fuzz=0.6)
+dnb("Neuro Rolling", dict(EQ="Dynamic Tame", OTT="Light", Stereo="Wide", Space="Dry", Opto="Smooth"), bTune=0.3, cutoff=560, reso=0.45, fenvAmt=0.35, fD=0.3, fS=0.15, aD=0.35, aS=0.6, lfoHz=2.9, mLfo=0.35, mLfoR=1, dest4=1, xstr=0.5, drive=0.2, fuzz=0.45)
+dnb("Neuro Vowel", dict(EQ="Presence", OTT="Full", Stereo="Narrow", Space="Dry", Opto="Smooth"), fMode=2, bSemi=7, cutoff=900, reso=0.6, fenvAmt=0.15, lfoHz=3.2, mLfo=0.8, mLfoR=1, mOscB=0.1, mOscBR=1, dest4=1, drive=0.3, xstr=0.55, fuzz=0.5)
+dnb("Neuro Screamer", dict(EQ="Presence", OTT="Full", Stereo="Wide", Space="Dry", Opto="Squash"), bTune=0.6, cutoff=800, reso=0.78, fenvAmt=0.4, fD=0.3, lfoHz=5.8, lfoTri=0, lfoSaw=1, mLfo=0.45, mLfoR=1, dest4=1, drive=0.4, xstr=0.65, fuzz=0.7)
+# reese and Bad Company style: two saws fighting, unstable filter, amp like crunch
+dnb("Bad Boy Reese", dict(EQ="Presence", Stereo="Wide", Space="Dry", Opto="Smooth"), bTune=0.35, uniVoices=1, uniDetune=0.35, cutoff=420, reso=0.3, fenvAmt=0.15, lfoHz=0.7, mLfo=0.5, mLfoR=1, dest4=1, drive=0.3, xstr=0.65, fuzz=0.5, eqMid=2)
+dnb("Ripping Canvas", dict(EQ="Presence", Stereo="Wide", Space="Dry", Opto="Squash"), bTune=0.4, uniVoices=2, uniDetune=0.45, cutoff=480, reso=0.35, fenvAmt=0.2, lfoHz=1.3, mLfo=0.4, mLfoR=1, dest4=1, drive=0.45, xstr=0.7, fuzz=0.65, eqMid=3)
+dnb("Warehouse Reese", dict(EQ="Mono Low End", Stereo="Wide", Space="Dry", Opto="Smooth"), bTune=0.3, uniVoices=1, uniDetune=0.5, mixSub=0.45, cutoff=360, reso=0.25, fenvAmt=0.1, lfoHz=0.5, mLfo=0.35, mLfoR=1, dest4=1, drive=0.2, xstr=0.5, fuzz=0.35)
+# liquid: warm and gentle, clean sub under a soft reese
+dnb("Liquid Roller", dict(EQ="Mud Cut", Stereo="Wide", Space="Plate", Opto="Smooth"), bTri=1, bSaw=0, bTune=0.15, mixB=0.5, mixSub=0.55, cutoff=360, reso=0.15, fenvAmt=0.22, fD=0.45, fS=0.2, aD=0.5, aS=0.8, drive=0.0, xstr=0.3, fuzz=0.0)
+dnb("Liquid Reese", dict(EQ="Mud Cut", Stereo="Wide", Space="Plate", Opto="Smooth"), bTune=0.25, uniVoices=1, uniDetune=0.3, mixSub=0.5, cutoff=340, reso=0.2, fenvAmt=0.15, lfoHz=0.4, mLfo=0.25, mLfoR=1, dest4=1, drive=0.0, xstr=0.35, fuzz=0.05)
+dnb("Soft Sub Roller", dict(EQ="Tight Low End", Stereo="Mono Bass", Space="Dry", Opto="Smooth"), bSaw=0, bTri=1, mixA=0.5, mixB=0.4, mixSub=0.7, cutoff=300, reso=0.1, fenvAmt=0.25, fD=0.35, fS=0.1, aD=0.4, aS=0.7, drive=0.0, xstr=0.25, fuzz=0.0)
+# Pendulum: unison saw wall, square fill, pitch punch at the start, heavy distortion, wide
+dnb("Pendulum Wall", dict(EQ="Side Air", Stereo="Extra Wide", Space="Dry", Dance_master="Loud", Opto="Squash"), bSaw=0, bPulse=1, bPW=0.5, uniVoices=4, uniDetune=0.7, cutoff=1400, reso=0.2, fenvAmt=0.35, fD=0.2, fS=0.3, mEnv=0.8, mEnvR=1, dest0=1, dest2=1, drive=0.5, xstr=0.7, fuzz=0.8, eqHi=2)
+dnb("Propane Fuzz", dict(EQ="Presence", Stereo="Wide", Space="Dry", Dance_master="Loud", Opto="Squash"), bTune=0.1, uniVoices=3, uniDetune=0.6, cutoff=1100, reso=0.25, fenvAmt=0.3, fD=0.25, lfoHz=5.8, lfoTri=0, lfoSaw=1, mLfo=0.2, mLfoR=1, dest4=1, drive=0.55, xstr=0.7, fuzz=0.85, eqHi=3)
+dnb("Pendulum Chug", dict(EQ="Presence", Stereo="Wide", Space="Dry", Dance_master="Loud", Opto="Fast Grab"), bSaw=0, bPulse=1, bPW=0.4, uniVoices=3, uniDetune=0.5, cutoff=900, reso=0.3, fenvAmt=0.5, fD=0.12, fS=0.1, aD=0.22, aS=0.5, aR=0.08, mEnv=0.7, mEnvR=1, dest0=1, dest2=1, drive=0.5, xstr=0.65, fuzz=0.8)
+dnb("Cyber Guitar", dict(EQ="Presence", Stereo="Extra Wide", Space="Room", Dance_master="Loud", Opto="Squash"), aSaw=1, bSaw=1, bSemi=12, uniVoices=4, uniDetune=0.6, cutoff=1800, reso=0.3, fenvAmt=0.3, fD=0.3, lfoHz=8.7, mLfo=0.12, mLfoR=1, dest4=1, drive=0.6, xstr=0.75, fuzz=0.9, eqHi=3)
+# screech: hard sync swept by the envelope, high resonance, high pass, hard clip
+dnb("Screech Sync", dict(EQ="Presence", OTT="Full", Stereo="Wide", Space="Dry", Opto="Squash"), aSync=1, bTune=0.0, mixA=0.8, mixB=0.6, mixSub=0.1, cutoff=1500, reso=0.45, fenvAmt=0.25, fD=0.4, fS=0.2, mEnv=1.0, mEnvR=1, dest2=1, drive=0.4, xstr=0.65, fuzz=0.7)
+dnb("Metal Pipe", dict(EQ="Presence", OTT="Classic", Stereo="Wide", Space="Dry", Opto="Squash"), fMode=1, aSync=1, mixSub=0.0, cutoff=1600, reso=0.8, fenvAmt=0.3, fD=0.35, mEnv=0.6, mEnvR=1, dest2=1, lfoHz=11.6, mLfo=0.2, mLfoR=1, dest4=1, drive=0.4, xstr=0.7, fuzz=0.75)
+dnb("Techy Tearer", dict(EQ="Presence", OTT="Full", Stereo="Narrow", Space="Dry", Dance_master="Loud", Opto="Squash"), fMode=1, mixSub=0.0, bTune=0.5, cutoff=1200, reso=0.55, fenvAmt=0.3, fD=0.3, lfoHz=5.8, mLfo=0.4, mLfoR=1, dest4=1, drive=0.5, xstr=0.7, fuzz=0.85, eqHi=2)
+dnb("Laser Screech", dict(EQ="Presence", OTT="Classic", Stereo="Wide", Space="Dry", Opto="Squash"), fMode=1, aSync=1, mixSub=0.0, cutoff=2000, reso=0.6, fenvAmt=0.4, fD=0.15, fS=0.0, aD=0.25, aS=0.4, mEnv=1.0, mEnvR=1, dest0=1, dest2=1, drive=0.4, xstr=0.65, fuzz=0.8)
+# foghorn: hollow square with a bandpass, short pitch knock, narrow and mono in the mids
+dnb("Foghorn", dict(EQ="Presence", Stereo="Mono Bass", Space="Dry", Opto="Smooth"), fMode=2, aSaw=0, aPulse=1, aPW=0.4, bSaw=1, mixA=0.8, mixB=0.3, mixSub=0.2, cutoff=520, reso=0.4, fenvAmt=0.2, fD=0.3, fS=0.35, mEnv=0.25, mEnvR=1, dest0=1, dest2=1, drive=0.3, xstr=0.6, fuzz=0.4)
+dnb("Foghorn Hollow", dict(EQ="Presence", Stereo="Narrow", Space="Dry", Opto="Smooth"), fMode=2, aSaw=0, aPulse=1, aPW=0.35, bSaw=0, bPulse=1, bPW=0.6, bSemi=12, mixA=0.8, mixB=0.4, mixSub=0.15, cutoff=420, reso=0.5, fenvAmt=0.15, mEnv=0.2, mEnvR=1, dest0=1, dest2=1, drive=0.3, xstr=0.65, fuzz=0.45)
+# laser / zap
+dnb("Laser Zap Bass", dict(EQ="Presence", Stereo="Wide", Space="Dry", Dance_master="Loud", Opto="Fast Grab"), fMode=1, bSemi=7, cutoff=700, reso=0.35, fenvAmt=0.5, fD=0.12, fS=0.0, aD=0.2, aS=0.3, aR=0.08, mEnv=1.0, mEnvR=1, dest0=1, dest2=1, drive=0.4, xstr=0.65, fuzz=0.7)
+dnb("Pew Roll", dict(EQ="Presence", Stereo="Wide", Space="Dry", Opto="Fast Grab"), cutoff=900, reso=0.4, fenvAmt=0.45, fD=0.15, fS=0.0, aD=0.25, aS=0.35, aR=0.08, mEnv=0.9, mEnvR=1, dest0=1, dest2=1, drive=0.3, xstr=0.6, fuzz=0.6)
+# jump up
+dnb("Jump Up Wub", dict(EQ="Tight Low End", Stereo="Narrow", Space="Dry", Dance_master="Bass Safe", Opto="Smooth"), aSaw=0, aPulse=1, aPW=0.5, bSaw=1, bTune=0.1, cutoff=520, reso=0.4, fenvAmt=0.3, lfoHz=5.8, lfoTri=0, lfoSaw=1, mLfo=0.6, mLfoR=1, dest4=1, drive=0.3, xstr=0.6, fuzz=0.5)
+dnb("Jump Up Stab", dict(EQ="Presence", Stereo="Narrow", Space="Dry", Dance_master="Bass Safe", Opto="Fast Grab"), aSaw=0, aPulse=1, aPW=0.45, bSaw=1, bSemi=12, cutoff=700, reso=0.35, fenvAmt=0.6, fD=0.2, fS=0.0, aD=0.25, aS=0.2, aR=0.08, drive=0.3, xstr=0.6, fuzz=0.55)
+# old school Pro-One: both oscillators loud into the filter, pre filter saturation, mono, low mid boost
+dnb("Old School Pro-1", dict(EQ="Classic", Stereo="Mono Bass", Space="Dry", Opto="Smooth"), bTune=0.15, mixA=1.0, mixB=1.0, mixSub=0.2, colPos=0, cutoff=600, reso=0.4, fenvAmt=0.35, fD=0.35, fS=0.2, kbd=0.5, drive=0.4, xstr=0.65, fuzz=0.3, eqMid=2)
+dnb("Pro-1 Warp", dict(EQ="Mud Cut", Stereo="Mono Bass", Space="Dry", Opto="Smooth"), bSemi=7, mixA=1.0, mixB=1.0, mixSub=0.2, colPos=0, cutoff=500, reso=0.45, fenvAmt=0.3, fD=0.4, lfoHz=4.35, mLfo=0.4, mLfoR=1, dest4=1, drive=0.4, xstr=0.7, fuzz=0.35)
+dnb("Pro-1 Filter FM", dict(EQ="Classic", Stereo="Mono Bass", Space="Dry", Opto="Smooth"), bTune=0.0, bSaw=0, bTri=1, mixA=1.0, mixB=0.6, mixSub=0.2, colPos=0, cutoff=620, reso=0.5, fenvAmt=0.3, fD=0.35, mOscB=0.18, mOscBR=1, dest4=1, drive=0.4, xstr=0.65, fuzz=0.35)
+# jungle sub, deewp, neuro reese, crossbreed
+dnb("808 Roller Glide", dict(EQ="Tight Low End", Stereo="Mono Bass", Space="Dry", Opto="Smooth"), aSaw=0, bSaw=0, aPulse=0, bTri=1, aOct=0, bOct=0, mixA=0.0, mixB=0.9, mixSub=0.6, cutoff=260, reso=0.1, fenvAmt=0.05, fD=0.3, fS=0.5, aD=0.5, aS=0.9, glide=0.34, glideAuto=0, drive=0.15, xstr=0.4, fuzz=0.0, colPos=1)
+dnb("Deewp Donk Sub", dict(EQ="Tight Low End", Stereo="Mono Bass", Space="Dry", Opto="Squash"), aSaw=0, bSaw=0, bTri=1, mixA=0.0, mixB=0.8, mixSub=0.7, cutoff=320, reso=0.15, fenvAmt=0.15, fD=0.2, fS=0.0, aD=0.3, aS=0.5, aR=0.1, mEnv=1.0, mEnvR=1, dest0=1, dest2=1, drive=0.3, xstr=0.5, fuzz=0.1, colPos=1)
+dnb("Neuro Reese Matrix", dict(EQ="Dynamic Tame", OTT="Light", Crush="Subtle 12 bit", Stereo="Wide", Space="Dry", Opto="Smooth"), bTune=0.4, uniVoices=1, uniDetune=0.4, cutoff=520, reso=0.45, fenvAmt=0.25, lfoHz=0.9, lfoTri=1, mLfo=0.7, mLfoR=1, mOscB=0.2, mOscBR=1, dest2=1, dest4=1, drive=0.2, xstr=0.45, fuzz=0.35)
+dnb("Crossbreed Industrial", dict(EQ="Scoop", Crush="Crunch 6 bit", Stereo="Narrow", Space="Dark Cave", Dance_master="Loud", Opto="Squash"), aSaw=0, aPulse=1, aPW=0.5, bSaw=1, cutoff=900, reso=0.5, fenvAmt=0.35, fD=0.2, fS=0.1, drive=0.8, xstr=0.8, fuzz=0.8)
+m = mark("D")
+for n, vals in DNB: addp(n, "DnB", vals)
+m()
+
 # ------------------------------------------------------------------ checks
-for b in "ABC":
+for b in "ABCD":
     print("bank", b, len(bank[b]) + (20 if b == "A" else 0), file=sys.stderr)
 assert len(bank["A"]) == 108, len(bank["A"])
 assert len(bank["B"]) == 128, len(bank["B"])
 assert len(bank["C"]) == 128, len(bank["C"])
+assert 0 < len(bank["D"]) <= 128, len(bank["D"])
 names = [p[0] for p in PRESETS] + list(CORE)
 dups = {n for n in names if names.count(n) > 1}
 assert not dups, dups
@@ -406,8 +471,8 @@ def entry(name, cat, vals, seq):
         items.append('{"%s", %s}' % (k, fmt(x)))
     return '        { "%s", "%s", { %s }, "%s" },\n' % (name, cat, ", ".join(items), seq)
 
-out = ['// GENERATED by tools/gen_presets.py. Do not edit by hand.\n// Banks A (after the 20 hand made sounds), B and C of the factory sounds.\n#pragma once\n#include "PresetTypes.h"\n\nnamespace purrone\n{\ninline const std::vector<FactoryPreset>& generatedPresets()\n{\n    static const std::vector<FactoryPreset> list = {\n']
-for b in "ABC":
+out = ['// GENERATED by tools/gen_presets.py. Do not edit by hand.\n// Banks A (after the 20 hand made sounds), B, C and D (drum and bass) of the factory sounds.\n#pragma once\n#include "PresetTypes.h"\n\nnamespace purrone\n{\ninline const std::vector<FactoryPreset>& generatedPresets()\n{\n    static const std::vector<FactoryPreset> list = {\n']
+for b in "ABCD":
     out.append("        // ---- bank %s ----\n" % b)
     for i in bank[b]:
         out.append(entry(*PRESETS[i]))
