@@ -695,12 +695,12 @@ button[aria-disabled="true"] { opacity: .4; }
     var t = ctx.currentTime;
     setOscShape(A.oscA, S.aSaw, false, S.aPulse && !S.aSaw, S.aPW);
     setOscShape(A.oscB, S.bSaw, S.bTri, S.bPulse && !S.bSaw && !S.bTri, S.bPW);
-    var uex = Math.round(S.uniVoices), uOff = [1, 1, 0.42, 0.72], uG = 1 / Math.sqrt(uex + 1);
+    var uex = Math.round(S.uniVoices), uOff = [1, 1, 0.42, 0.72], uLv = [1, 1, 0.85, 0.85], uCnt = [0.45, 0.65, 0.85, 1.25][Math.max(0, uex - 1)], uSum = 1; for (var us = 0; us < uex; us++) uSum += Math.pow(uCnt * uLv[us], 2); var uG = 1 / Math.sqrt(uSum);
     for (var uk = 0; uk < 4; uk++) {
       setOscShape(A.ua[uk], S.aSaw, false, S.aPulse && !S.aSaw, S.aPW); setOscShape(A.ub[uk], S.bSaw, S.bTri, S.bPulse && !S.bSaw && !S.bTri, S.bPW);
       var cents = uk < uex ? ((uk & 1) ? -1 : 1) * uOff[uk] * 100 * S.uniDetune * S.uniDetune : 0;
       A.ua[uk].detune.value = cents; A.ub[uk].detune.value = cents;
-      A.ug[uk][0].gain.setTargetAtTime(uk < uex && !S.aSync ? 1 : 0, t, 0.02); A.ug[uk][1].gain.setTargetAtTime(uk < uex && !S.bLow ? 1 : 0, t, 0.02);
+      var ulv = uk < uex ? uCnt * uLv[uk] : 0; A.ug[uk][0].gain.setTargetAtTime(!S.aSync ? ulv : 0, t, 0.02); A.ug[uk][1].gain.setTargetAtTime(!S.bLow ? ulv : 0, t, 0.02);
     }
     A.gA.gain.setTargetAtTime(S.mixA * 0.5 * uG, t, 0.02); A.gB.gain.setTargetAtTime(S.mixB * 0.5 * uG, t, 0.02);
     A.gS.gain.setTargetAtTime(S.mixSub * 0.7, t, 0.02); A.gN.gain.setTargetAtTime(S.mixNoise * 0.3, t, 0.02);
