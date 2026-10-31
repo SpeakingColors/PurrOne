@@ -47,7 +47,7 @@ inline String formatValue (char f, float v)
         case 'N': return String (roundToInt (v)) + " bpm";
         case 'Y': return String (v, 2) + "s";
         case 'W': return sgn (std::round (v), 0) + " st";
-        case 'U': return String (roundToInt (v * 100.0f)) + " ct";
+        case 'U': return String (roundToInt (v * v * 100.0f)) + " ct";
         case 'I': return String (roundToInt (v));
         case 'R': return String (roundToInt (v)) + " bit";
         case 'M': return String (roundToInt (v)) + "ms";

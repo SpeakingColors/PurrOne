@@ -292,7 +292,7 @@ inline juce::AudioProcessorValueTreeState::ParameterLayout createLayout()
     ch (ids::oversmp, "Oversampling", { "Normal 4x", "High 8x" }, 0);
     ch (ids::bend, "Bend Range", { "2", "5", "12", "24" }, 0);
     ch (ids::wheelCC, "Mod Wheel CC", { "CC1", "CC74" }, 0);
-    ch (ids::uniVoices, "Unison Voices", { "1", "2", "3", "4", "5" }, 0); lin (ids::uniDetune, "Unison Detune", 0, 1, 0.3f);
+    ch (ids::uniVoices, "Unison Voices", { "1", "2", "3", "4", "5" }, 0); lin (ids::uniDetune, "Unison Detune", 0, 1, 0.5477f);
     it (ids::aSemi, "A Semitones", -24, 24, 0); it (ids::bSemi, "B Semitones", -24, 24, 0);
     lin (ids::wheelCut, "Wheel to Cutoff", -1, 1, 0.0f); lin (ids::wheelVib, "Wheel to Vibrato", 0, 1, 0.0f); lin (ids::wheelVerb, "Wheel to Reverb", 0, 1, 0.0f);
     lin (ids::atCut, "Aftertouch to Cutoff", -1, 1, 0.0f); lin (ids::atVib, "Aftertouch to Vibrato", 0, 1, 0.0f); lin (ids::atVerb, "Aftertouch to Reverb", 0, 1, 0.0f);

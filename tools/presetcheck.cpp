@@ -147,6 +147,16 @@ int main (int argc, char** argv)
             auto wobble = [&] (const std::vector<float>& v) { double lo = 1e9, hi = -1e9; for (size_t s = 10000; s + 480 < v.size() - 4000; s += 480) { const double l = db (v, s, s + 480); lo = std::min (lo, l); hi = std::max (hi, l); } return hi - lo; };
             std::snprintf (d, sizeof d, "level range detuned %.1f dB, no detune %.1f dB", wobble (u5), wobble (u5z));
             ck (wobble (u5) > wobble (u5z) + 0.3, d);
+            { // every extra voice must change the sound (2 vs 3 vs 4 vs 5), and a low knob stays tight
+                std::vector<float> uv[6]; for (int n = 2; n <= 5; ++n) render (n, 0.6f, uv[n]);
+                for (int n = 2; n < 5; ++n)
+                {
+                    double diff = 0, ref = 0; for (size_t i = 20000; i < 40000; ++i) { diff += std::fabs (uv[n][i] - uv[n + 1][i]); ref += std::fabs (uv[n][i]); }
+                    std::snprintf (d, sizeof d, "%d vs %d voices differ by %.0f%%", n, n + 1, 100.0 * diff / std::max (ref, 1e-9));
+                    ck (diff / std::max (ref, 1e-9) > 0.15, d);
+                }
+                std::snprintf (d, sizeof d, "wobble 2v %.1f 3v %.1f 4v %.1f 5v %.1f dB", wobble (uv[2]), wobble (uv[3]), wobble (uv[4]), wobble (uv[5])); ck (true, d);
+            }
         }
         std::printf ("%d failures\n", fails); return fails != 0;
     }

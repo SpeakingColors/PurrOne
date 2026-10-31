@@ -521,14 +521,15 @@ private:
         if (Q.uniVoices > 1)
         {
             const int ex = std::min (Q.uniVoices, 5) - 1;
-            const float maxCents = 100.0f * Q.uniDetune, half = (float) ((ex + 1) / 2);
+            const float maxCents = 100.0f * Q.uniDetune * Q.uniDetune;   // squared knob: fine control at the low end, a full semitone only at the very top
+            static const float kUniOff[4] = { 1.0f, 1.0f, 0.42f, 0.72f };   // spread of each copy; uneven on purpose so every extra voice adds new beating
             // drift: new random targets every ~1.7 s, each copy glides to its target; depth grows with the detune knob, zero at 0
             if (uDriftCnt-- <= 0) { uDriftCnt = (int) (1.7f * osr); for (int k = 0; k < 4; ++k) uDriftT[k] = rnd(); }
             const float dSlew = 1.0f / (1.5f * osr), dCents = 4.0f * clampf (Q.uniDetune * 3.0f, 0.0f, 1.0f);
             for (int k = 0; k < ex; ++k)
             {
                 uDrift[k] += dSlew * (uDriftT[k] - uDrift[k]);
-                const float mag = (float) ((k + 2) / 2) / half, sgn = (k & 1) ? -1.0f : 1.0f;
+                const float mag = kUniOff[k], sgn = (k & 1) ? -1.0f : 1.0f;
                 const float ratio = std::exp2 ((sgn * mag * maxCents + uDrift[k] * dCents) * (1.0f / 1200.0f));
                 if (! Q.bLow) { const float dk = clampf (dtB * ratio, 1.0e-6f, 0.45f); phBx[k] += dk; if (phBx[k] >= 1.0f) phBx[k] -= 1.0f; uniB += waveB (phBx[k], dk); }
                 if (! Q.aSync) { const float dk = clampf (dtA * ratio, 1.0e-6f, 0.45f); phAx[k] += dk; if (phAx[k] >= 1.0f) phAx[k] -= 1.0f; uniA += waveA (phAx[k], dk); }

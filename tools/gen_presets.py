@@ -494,6 +494,7 @@ def entry(name, cat, vals, seq):
     for k, x in vals.items():
         if k not in DEF: raise KeyError(k)
         t, d, lo, hi = DEF[k]
+        if k == "uniDetune": x = x ** 0.5   # the knob is squared since v0.6.3; the sounds below were written for the old linear one
         x = min(hi, max(lo, x))
         if abs(x - d) < 1e-6: continue
         items.append('{"%s", %s}' % (k, fmt(x)))
