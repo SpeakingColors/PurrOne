@@ -13,11 +13,12 @@ public:
     void resized() override;
     void paint (juce::Graphics& g) override { g.fillAll (purrone::ui::col::ground); }
 private:
-    struct Look; struct Content; struct Button; struct NameBox; struct Check;
+    struct Look; struct Content; struct Button; struct NameBox; struct Check; struct Browser;
     void timerCallback() override;
     void refreshNames();
     void step (int dir);
-    void openList();
+    void openBrowser();
+    void closeBrowser();
     void beginRename();
     void commitRename();
     void saveDialog();
@@ -33,6 +34,7 @@ private:
     purrone::ui::Bubbles bubbles;
     std::unique_ptr<Look> look;
     std::unique_ptr<Content> content;
+    std::unique_ptr<Browser> browser;   // the preset browser popup, only while it is open
     std::unique_ptr<juce::TooltipWindow> tooltip;
     juce::ComponentBoundsConstrainer constrainer;
     std::unique_ptr<juce::ResizableBorderComponent> border;

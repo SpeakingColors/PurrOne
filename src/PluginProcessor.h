@@ -78,6 +78,7 @@ public:
     // ---- single fx module presets (the dropdown on each module) ----
     void applyValues (const std::vector<std::pair<const char*, float>>& v);
     // ---- favourites (a text file next to your sounds) and the random sound button ----
+    juce::StringArray recentSounds;   // the sounds you loaded this session, newest first (shown in the preset browser; not saved)
     bool isFavourite (const juce::String& name) const { return favourites().contains (name); }
     void toggleFavourite (const juce::String& name);
     juce::StringArray favourites() const;

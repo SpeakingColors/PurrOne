@@ -35,7 +35,7 @@ Banks A to D hold the factory sounds and are read only (bank D is the drum and b
 
 MIDI learn: right-click any knob or switch, choose MIDI learn, then move a control on your controller. Right-click again to forget it or reset the control. Mappings are saved with the DAW project.
 
-Sound browser: the dice by the sound name picks a random bank A sound and nudges cutoff, resonance and envelope a little; the star adds or removes the sound from your favourites (a text file next to your sounds). The list has a Favourites menu and each bank is grouped by category.
+Sound browser: the dice by the sound name picks a random bank A sound and nudges cutoff, resonance and envelope a little; the star adds or removes the sound from your favourites (a text file next to your sounds). Click the sound name to open the preset browser: pick a bank (ALL, A to H or Favourites), type words to search names and types, narrow by type, and click a sound to load it (double click loads and closes; Up and Down step; Esc closes). The right side keeps a history of the sounds you loaded this session. Click the star on a row to favourite it without loading it. Banks A to D are the factory sounds; E to H are yours.
 
 # Recommendations
 - Sub bass: Mixer Sub 80 to 95 percent, Osc A and B low, Cutoff around 400 to 700 Hz, Transistor 5 to 15 percent.

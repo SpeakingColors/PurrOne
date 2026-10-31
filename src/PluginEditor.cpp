@@ -98,7 +98,7 @@ struct PurrOneEditor::Check : public juce::Component
 
 struct PurrOneEditor::NameBox : public juce::Component, public juce::SettableTooltipClient, private juce::Timer
 {
-    NameBox() { setMouseCursor (juce::MouseCursor::PointingHandCursor); setTooltip ("Click to pick a sound. Double click to rename.\nDice: a random sound with small changes. Star: add or remove from your favourites."); }
+    NameBox() { setMouseCursor (juce::MouseCursor::PointingHandCursor); setTooltip ("Click to open the preset browser. Double click to rename.\nDice: a random sound with small changes. Star: add or remove from your favourites."); }
     void paint (juce::Graphics& g) override
     {
         const auto r = getLocalBounds().toFloat();
@@ -271,6 +271,223 @@ struct PurrOneEditor::Content : public juce::Component
 };
 
 //==============================================================================
+// The preset browser: a popup over the window with bank chips, a search box, type chips, a history and the list of sounds.
+// Same layout, order and wording as the browser in docs/mockup/purrone-mockup.html (a 1040 x 600 panel in the 1700 x 828 window).
+struct PurrOneEditor::Browser : public juce::Component, private juce::KeyListener
+{
+    struct Entry { juce::String name, cat; int bank = 0, n = 0, factoryIndex = -1; };
+
+    struct Chip : public juce::Component
+    {
+        Chip (const juce::String& t, bool star = false) : text (t), hasStar (star) { setMouseCursor (juce::MouseCursor::PointingHandCursor); }
+        int widthFor() const { juce::GlyphArrangement ga; ga.addLineOfText (labelFont (13.0f, true, 0.08f), text.toUpperCase(), 0.0f, 0.0f); return juce::roundToInt (ga.getBoundingBox (0, -1, true).getWidth()) + 24 + (hasStar ? 16 : 0); }
+        void paint (juce::Graphics& g) override
+        {
+            const auto r = getLocalBounds().toFloat().reduced (0.5f);
+            g.setColour (on ? col::green : over ? juce::Colour (0xff23252c) : col::panel2); g.fillRoundedRectangle (r, r.getHeight() * 0.5f);
+            g.setColour (on ? col::green : col::line); g.drawRoundedRectangle (r, r.getHeight() * 0.5f, 1.0f);
+            const auto ink = on ? juce::Colour (0xff06130f) : col::ink; g.setColour (ink);
+            auto tr = getLocalBounds();
+            if (hasStar) { juce::Path s; s.addStar (juce::Point<float> (17.0f, (float) getHeight() * 0.5f), 5, 3.2f, 7.0f, -1.5708f); g.fillPath (s); tr.removeFromLeft (16); }
+            g.setFont (labelFont (13.0f, true, 0.08f)); g.drawText (text.toUpperCase(), tr, juce::Justification::centred, false);
+        }
+        void mouseEnter (const juce::MouseEvent&) override { over = true; repaint(); }
+        void mouseExit (const juce::MouseEvent&) override { over = false; repaint(); }
+        void mouseUp (const juce::MouseEvent& e) override { if (getLocalBounds().contains (e.getPosition()) && onClick) onClick(); }
+        juce::String text; bool hasStar, on = false, over = false; std::function<void()> onClick;
+    };
+
+    static constexpr int rowH = 38, histH = 28;
+
+    // the list of sounds (lives inside a Viewport)
+    struct Rows : public juce::Component
+    {
+        explicit Rows (Browser& b) : owner (b) { setWantsKeyboardFocus (false); }
+        void paint (juce::Graphics& g) override
+        {
+            const auto clip = g.getClipBounds(); const int n = (int) owner.vis.size();
+            const int first = juce::jmax (0, clip.getY() / rowH), last = juce::jmin (n - 1, clip.getBottom() / rowH);
+            const auto favs = owner.proc.favourites();
+            for (int i = first; i <= last; ++i)
+            {
+                const auto& e = owner.entries[(size_t) owner.vis[(size_t) i]]; const juce::Rectangle<int> r (0, i * rowH, getWidth(), rowH);
+                if (i == owner.curRow) { g.setColour (juce::Colour (0xff2c2f38)); g.fillRect (r); }
+                else if (i == hover)   { g.setColour (col::panel2); g.fillRect (r); }
+                g.setColour (juce::Colour (0xff14151a)); g.fillRect (juce::Rectangle<int> (r.getX(), r.getBottom() - 1, r.getWidth(), 1));
+                g.setColour (col::inkDim); g.setFont (monoFont (13.0f));
+                g.drawText (juce::String::charToString ((juce::juce_wchar) ('A' + e.bank)) + juce::String (e.n).paddedLeft ('0', 3), r.getX() + 12, r.getY(), 56, rowH, juce::Justification::centredLeft, false);
+                g.setColour (col::ink); g.drawText (e.name, r.getX() + 72, r.getY(), getWidth() - 72 - 130, rowH, juce::Justification::centredLeft, true);
+                g.setColour (col::green); g.setFont (monoFont (11.0f)); g.drawText (e.cat.toUpperCase(), getWidth() - 116, r.getY(), 76, rowH, juce::Justification::centredRight, false);
+                juce::Path s; s.addStar (juce::Point<float> ((float) getWidth() - 20.0f, (float) r.getCentreY()), 5, 3.0f, 6.8f, -1.5708f);
+                if (favs.contains (e.name)) { g.setColour (col::yellow); g.fillPath (s); } else { g.setColour (col::inkDim); g.strokePath (s, juce::PathStrokeType (1.2f)); }
+            }
+        }
+        int rowAt (const juce::MouseEvent& e) const { const int r = e.y / rowH; return e.y >= 0 && r < (int) owner.vis.size() ? r : -1; }
+        void mouseMove (const juce::MouseEvent& e) override { const int r = rowAt (e); if (r != hover) { hover = r; repaint(); } }
+        void mouseExit (const juce::MouseEvent&) override { hover = -1; repaint(); }
+        void mouseUp (const juce::MouseEvent& e) override
+        {
+            const int r = rowAt (e); if (r < 0 || e.mouseWasDraggedSinceMouseDown()) return;
+            if (e.x > getWidth() - 44) owner.toggleFav (r); else owner.loadRow (r);
+            owner.search.grabKeyboardFocus();
+        }
+        void mouseDoubleClick (const juce::MouseEvent& e) override { const int r = rowAt (e); if (r >= 0 && e.x <= getWidth() - 44) { owner.loadRow (r); owner.closeSoon(); } }
+        Browser& owner; int hover = -1;
+    };
+
+    // the history of sounds loaded this session
+    struct Hist : public juce::Component
+    {
+        explicit Hist (Browser& b) : owner (b) { setWantsKeyboardFocus (false); }
+        void paint (juce::Graphics& g) override
+        {
+            const auto& list = owner.proc.recentSounds;
+            if (list.isEmpty()) { g.setColour (col::inkDim); g.setFont (labelFont (14.0f)); g.drawText ("Sounds you load show up here.", 10, 8, getWidth() - 20, 20, juce::Justification::centredLeft, false); return; }
+            for (int i = 0; i < list.size(); ++i)
+            {
+                const juce::Rectangle<int> r (0, i * histH, getWidth(), histH);
+                if (i == hover) { g.setColour (col::panel2); g.fillRect (r); }
+                g.setColour (col::ink); g.setFont (monoFont (12.0f)); g.drawText (list[i], r.getX() + 10, r.getY(), getWidth() - 16, histH, juce::Justification::centredLeft, true);
+            }
+        }
+        int rowAt (const juce::MouseEvent& e) const { const int r = e.y / histH; return e.y >= 0 && r < owner.proc.recentSounds.size() ? r : -1; }
+        void mouseMove (const juce::MouseEvent& e) override { const int r = rowAt (e); if (r != hover) { hover = r; repaint(); } }
+        void mouseExit (const juce::MouseEvent&) override { hover = -1; repaint(); }
+        void mouseUp (const juce::MouseEvent& e) override { const int r = rowAt (e); if (r >= 0) { owner.loadByName (owner.proc.recentSounds[r]); owner.search.grabKeyboardFocus(); } }
+        Browser& owner; int hover = -1;
+    };
+
+    explicit Browser (PurrOneEditor& o) : owner (o), proc (o.proc), closeBtn ("Close"), rows (*this), hist (*this)
+    {
+        setWantsKeyboardFocus (true);
+        search.setFont (monoFont (14.0f)); search.setMultiLine (false); search.setBorder ({ 0, 10, 0, 10 }); search.setJustification (juce::Justification::centredLeft);
+        search.setTextToShowWhenEmpty ("search by name or type", col::inkDim); search.setInputRestrictions (40);
+        search.setSelectAllWhenFocused (true); search.addKeyListener (this);
+        search.onTextChange = [this] { query = search.getText(); applyFilter(); };
+        addAndMakeVisible (search);
+        closeBtn.onClick = [this] { closeSoon(); }; addAndMakeVisible (closeBtn);
+        listView.setViewedComponent (&rows, false); listView.setScrollBarsShown (true, false); listView.setScrollBarThickness (10); addAndMakeVisible (listView);
+        histView.setViewedComponent (&hist, false); histView.setScrollBarsShown (true, false); histView.setScrollBarThickness (10); addAndMakeVisible (histView);
+        buildEntries();
+        for (auto b : { "ALL", "A", "B", "C", "D", "E", "F", "G", "H", "FAV" })
+        {
+            auto* c = bankChips.add (new Chip (juce::String (b) == "FAV" ? "Favourites" : b, juce::String (b) == "FAV")); const juce::String key (b);
+            c->onClick = [this, key] { bankSel = key; applyFilter(); }; addAndMakeVisible (c);
+        }
+        for (auto& t : cats) { auto* c = typeChips.add (new Chip (t)); const juce::String key (t); c->onClick = [this, key] { typeSel = typeSel == key ? juce::String() : key; applyFilter(); }; addAndMakeVisible (c); }
+        applyFilter();
+    }
+
+    void buildEntries()
+    {
+        entries.clear(); cats.clear(); const auto& fp = purrone::factoryPresets();
+        for (size_t i = 0; i < fp.size(); ++i) { Entry e; e.name = fp[i].name; e.cat = fp[i].category; e.bank = (int) i / purrone::kBankSize; e.n = (int) i % purrone::kBankSize + 1; e.factoryIndex = (int) i; entries.push_back (e); }
+        for (int b = purrone::kFactoryBanks; b < purrone::kBankCount; ++b) { int n = 1; for (auto& nm : proc.listBank (b)) { Entry e; e.name = nm; e.cat = "User"; e.bank = b; e.n = n++; entries.push_back (e); } }
+        for (auto& e : entries) if (! cats.contains (e.cat)) cats.add (e.cat);
+    }
+
+    void applyFilter()
+    {
+        const auto keep = listView.getViewPositionY();
+        const auto toks = juce::StringArray::fromTokens (query.toLowerCase(), " ", ""); const auto favs = proc.favourites();
+        vis.clear();
+        for (size_t i = 0; i < entries.size(); ++i)
+        {
+            const auto& e = entries[i]; const juce::String bl = juce::String::charToString ((juce::juce_wchar) ('A' + e.bank));
+            if (bankSel == "FAV") { if (! favs.contains (e.name)) continue; } else if (bankSel != "ALL" && bl != bankSel) continue;
+            if (typeSel.isNotEmpty() && e.cat != typeSel) continue;
+            const auto hay = (e.name + " " + e.cat + " " + bl).toLowerCase(); bool ok = true;
+            for (auto& t : toks) if (t.isNotEmpty() && ! hay.contains (t)) { ok = false; break; }
+            if (ok) vis.push_back ((int) i);
+        }
+        for (auto* c : bankChips) c->on = (c->hasStar ? juce::String ("FAV") : c->text) == bankSel;
+        for (auto* c : typeChips) c->on = c->text == typeSel;
+        for (auto* c : bankChips) c->repaint();
+        for (auto* c : typeChips) c->repaint();
+        syncCurrent();
+        rows.setSize (listView.getMaximumVisibleWidth(), juce::jmax (1, (int) vis.size()) * rowH);
+        listView.setViewPosition (0, keep); rows.repaint(); refreshHist(); repaint();
+    }
+
+    void syncCurrent() { curRow = -1; for (size_t i = 0; i < vis.size(); ++i) if (entries[(size_t) vis[i]].name == proc.currentPresetName) { curRow = (int) i; break; } }
+    void refreshHist() { hist.setSize (histView.getMaximumVisibleWidth(), juce::jmax (histH, proc.recentSounds.size() * histH)); hist.repaint(); }
+    void scrollToCurrent() { if (curRow >= 0 && listView.getHeight() > 0) listView.setViewPosition (0, juce::jmax (0, curRow * rowH - listView.getHeight() / 2 + rowH / 2)); }
+
+    void loadEntry (const Entry& e)
+    {
+        if (e.factoryIndex >= 0) proc.setCurrentProgram (e.factoryIndex); else proc.loadUserPreset (e.name);
+        owner.refreshNames(); syncCurrent(); rows.repaint(); refreshHist(); repaint();
+    }
+    void loadRow (int row) { if (row >= 0 && row < (int) vis.size()) loadEntry (entries[(size_t) vis[(size_t) row]]); }
+    void loadByName (const juce::String& n) { for (auto& e : entries) if (e.name == n) { loadEntry (e); return; } }
+    void toggleFav (int row) { proc.toggleFavourite (entries[(size_t) vis[(size_t) row]].name); owner.refreshNames(); applyFilter(); }
+    void stepRow (int d)
+    {
+        const int n = (int) vis.size(); if (n == 0) return;
+        const int next = curRow < 0 ? (d > 0 ? 0 : n - 1) : (curRow + d + n) % n;
+        loadRow (next);
+        const int y = next * rowH, top = listView.getViewPositionY();
+        if (y < top) listView.setViewPosition (0, y); else if (y + rowH > top + listView.getHeight()) listView.setViewPosition (0, y + rowH - listView.getHeight());
+    }
+    void closeSoon() { juce::Component::SafePointer<PurrOneEditor> ed (&owner); juce::MessageManager::callAsync ([ed] { if (ed != nullptr) ed->closeBrowser(); }); }
+
+    bool handleKey (const juce::KeyPress& k)
+    {
+        if (k == juce::KeyPress::escapeKey || k == juce::KeyPress::returnKey) { closeSoon(); return true; }
+        if (k == juce::KeyPress::downKey) { stepRow (1); return true; }
+        if (k == juce::KeyPress::upKey)   { stepRow (-1); return true; }
+        return false;
+    }
+    bool keyPressed (const juce::KeyPress& k) override { return handleKey (k); }
+    bool keyPressed (const juce::KeyPress& k, juce::Component*) override { return handleKey (k); }
+
+    juce::Rectangle<int> panel() const { return juce::Rectangle<int> (1040, 600).withCentre (getLocalBounds().getCentre()); }
+    void resized() override
+    {
+        auto p = panel().reduced (16, 14);
+        auto top = p.removeFromTop (32);
+        closeBtn.setBounds (top.removeFromRight (90)); top.removeFromRight (12);
+        search.setBounds (top.withTrimmedLeft (234));
+        p.removeFromTop (10);
+        auto flow = [] (juce::Rectangle<int> row, auto& chips) { row.removeFromLeft (54); int x = row.getX(); for (auto* c : chips) { const int w = c->widthFor(); c->setBounds (x, row.getY(), w, row.getHeight()); x += w + 5; } };
+        bankRowY = p.getY(); flow (p.removeFromTop (28), bankChips); p.removeFromTop (10);
+        typeRowY = p.getY(); flow (p.removeFromTop (28), typeChips); p.removeFromTop (10);
+        auto foot = p.removeFromBottom (18); footRect = foot; p.removeFromBottom (10);
+        auto side = p.removeFromRight (230); p.removeFromRight (12);
+        listRect = p; listView.setBounds (p.reduced (1));
+        sideTop = side.getY(); side.removeFromTop (20);
+        auto note = side.removeFromBottom (34); noteRect = note; histRect = side.withTrimmedBottom (6); histView.setBounds (histRect.reduced (1));
+        applyFilter();
+    }
+
+    void paint (juce::Graphics& g) override
+    {
+        g.fillAll (juce::Colours::black.withAlpha (0.62f));
+        const auto pr = panel().toFloat();
+        g.setColour (juce::Colour (0xff0f1013)); g.fillRoundedRectangle (pr, 6.0f);
+        g.setColour (col::line); g.drawRoundedRectangle (pr.reduced (0.5f), 6.0f, 1.0f);
+        g.setColour (col::ink); g.setFont (labelFont (17.0f, true, 0.22f)); g.drawText ("PRESET BROWSER", panel().getX() + 16, panel().getY() + 14, 220, 32, juce::Justification::centredLeft, false);
+        g.setColour (col::inkDim); g.setFont (labelFont (12.0f, false, 0.16f));
+        g.drawText ("BANK", panel().getX() + 16, bankRowY, 54, 28, juce::Justification::centredLeft, false);
+        g.drawText ("TYPE", panel().getX() + 16, typeRowY, 54, 28, juce::Justification::centredLeft, false);
+        g.drawText ("HISTORY", histRect.getX(), sideTop, 200, 18, juce::Justification::centredLeft, false);
+        for (auto r : { listRect, histRect }) { g.setColour (juce::Colour (0xff0a0b0e)); g.fillRect (r); g.setColour (col::line); g.drawRect (r, 1); }
+        g.setColour (col::inkDim); g.setFont (labelFont (13.0f, false, 0.04f));
+        g.drawFittedText ("Banks A to D are the factory sounds. E to H are yours.", noteRect, juce::Justification::topLeft, 2);
+        g.drawText (juce::String ((int) vis.size()) + " of " + juce::String ((int) entries.size()) + " sounds", footRect.getX(), footRect.getY(), 300, footRect.getHeight(), juce::Justification::centredLeft, false);
+        g.drawText ("Click loads. Double click loads and closes. Up and Down step. Esc closes.", footRect.getX(), footRect.getY(), footRect.getWidth(), footRect.getHeight(), juce::Justification::centredRight, false);
+        if (vis.empty()) { g.setColour (col::inkDim); g.setFont (labelFont (14.0f)); g.drawText (bankSel == "FAV" ? "No favourites yet. Click the star on a sound." : "Nothing matches. Try fewer words or another bank.", listRect.reduced (14, 12).removeFromTop (22), juce::Justification::centredLeft, false); }
+    }
+    void mouseDown (const juce::MouseEvent& e) override { if (! panel().contains (e.getPosition())) closeSoon(); }
+
+    PurrOneEditor& owner; PurrOneProcessor& proc;
+    std::vector<Entry> entries; std::vector<int> vis; juce::StringArray cats;
+    juce::String bankSel { "ALL" }, typeSel, query; int curRow = -1;
+    juce::TextEditor search; Button closeBtn; Rows rows; Hist hist; juce::Viewport listView, histView;
+    juce::OwnedArray<Chip> bankChips, typeChips; juce::Rectangle<int> listRect, histRect, noteRect, footRect; int bankRowY = 0, typeRowY = 0, sideTop = 0;
+};
+
+//==============================================================================
 PurrOneEditor::PurrOneEditor (PurrOneProcessor& p) : AudioProcessorEditor (&p), proc (p)
 {
     look = std::make_unique<Look>(); setLookAndFeel (look.get());
@@ -283,7 +500,7 @@ PurrOneEditor::PurrOneEditor (PurrOneProcessor& p) : AudioProcessorEditor (&p), 
     content->rename.onClick = [this] { beginRename(); };
     content->nameBox.onRandom = [this] { proc.randomSound(); refreshNames(); };
     content->nameBox.onFav = [this] { proc.toggleFavourite (proc.currentPresetName); refreshNames(); };
-    content->nameBox.onClick = [this] { openList(); }; content->nameBox.onDouble = [this] { beginRename(); };
+    content->nameBox.onClick = [this] { openBrowser(); }; content->nameBox.onDouble = [this] { beginRename(); };
     content->zoom.onClick = [this] { cycleZoom(); };
     content->editor.onReturnKey = [this] { commitRename(); };
     content->editor.onEscapeKey = [this] { content->editor.setVisible (false); };
@@ -306,6 +523,11 @@ PurrOneEditor::PurrOneEditor (PurrOneProcessor& p) : AudioProcessorEditor (&p), 
     setResizable (true, false);
     const int w = juce::jlimit (680, 2400, proc.editorWidth);
     setSize (w, (int) std::lround (w * (double) L::H / L::W));
+    if (const char* v = std::getenv ("PURRONE_BROWSER"))   // test hook for screenshots: "BANK:search words" (both optional)
+    {
+        openBrowser(); const juce::String a (v);
+        if (a.containsChar (':')) { browser->bankSel = a.upToFirstOccurrenceOf (":", false, false); browser->search.setText (a.fromFirstOccurrenceOf (":", false, false), true); browser->applyFilter(); }
+    }
     startTimerHz (30);
 }
 
@@ -362,6 +584,12 @@ void PurrOneEditor::refreshNames()
     for (auto& f : purrone::factoryPresets()) if (proc.currentPresetName == f.name) nb.category = f.category;
     nb.fav = proc.isFavourite (proc.currentPresetName);
     nb.repaint();
+    if (proc.currentPresetName.isNotEmpty() && (proc.recentSounds.isEmpty() || proc.recentSounds[0] != proc.currentPresetName))
+    {
+        proc.recentSounds.removeString (proc.currentPresetName); proc.recentSounds.insert (0, proc.currentPresetName);
+        while (proc.recentSounds.size() > 14) proc.recentSounds.remove (proc.recentSounds.size() - 1);
+    }
+    if (browser != nullptr) browser->repaint();
 }
 
 void PurrOneEditor::step (int dir)
@@ -373,41 +601,21 @@ void PurrOneEditor::step (int dir)
     refreshNames();
 }
 
-void PurrOneEditor::openList()
+void PurrOneEditor::openBrowser()
 {
+    if (browser != nullptr) return;
     refreshNames();
-    juce::PopupMenu menu;
-    const auto& fp = purrone::factoryPresets();
-    const auto favs = proc.favourites();
-    auto label = [&] (const juce::String& n) { return (favs.contains (n) ? juce::String (juce::CharPointer_UTF8 ("\xe2\x98\x85 ")) : juce::String()) + n; };
-    {
-        juce::PopupMenu fm; int count = 0;
-        for (auto& f : favs) { const int at = names.indexOf (f); if (at >= 0) { fm.addItem (at + 1, f, true, proc.currentPresetName == f); ++count; } }
-        if (count > 0) menu.addSubMenu ("FAVOURITES   " + juce::String (count), fm); else menu.addItem (100000, "FAVOURITES   none yet, click the star by the name", false);
-    }
-    menu.addSeparator();
-    for (int b = 0; b * purrone::kBankSize < (int) fp.size(); ++b)
-    {
-        const int from = b * purrone::kBankSize, to = juce::jmin ((int) fp.size(), from + purrone::kBankSize);
-        std::vector<std::pair<juce::String, juce::PopupMenu>> cats; std::vector<int> counts;     // by category, in order of first appearance
-        for (int i = from; i < to; ++i)
-        {
-            const juce::String c = juce::String (fp[(size_t) i].category).toUpperCase(); size_t k = 0;
-            while (k < cats.size() && cats[k].first != c) ++k;
-            if (k == cats.size()) { cats.push_back ({ c, juce::PopupMenu() }); counts.push_back (0); }
-            cats[k].second.addItem (i + 1, label (fp[(size_t) i].name), true, proc.currentPresetName == fp[(size_t) i].name); ++counts[k];
-        }
-        juce::PopupMenu sub; for (size_t k = 0; k < cats.size(); ++k) sub.addSubMenu (cats[k].first + "   " + juce::String (counts[k]), cats[k].second);
-        menu.addSubMenu ("BANK " + juce::String::charToString ((juce::juce_wchar) ('A' + b)) + "   " + juce::String (to - from) + " sounds", sub);
-    }
-    for (int b = purrone::kFactoryBanks; b < purrone::kBankCount; ++b)
-    {
-        const auto list = proc.listBank (b); if (list.isEmpty()) continue;
-        juce::PopupMenu sub; for (auto& n : list) { const int at = names.indexOf (n); if (at >= numFactory) sub.addItem (at + 1, label (n), true, proc.currentPresetName == n); }
-        menu.addSubMenu ("BANK " + juce::String::charToString ((juce::juce_wchar) ('A' + b)) + "   yours", sub);
-    }
-    menu.showMenuAsync (juce::PopupMenu::Options().withTargetComponent (&content->nameBox).withMinimumWidth (content->nameBox.getWidth()).withStandardItemHeight (26),
-                        [this] (int r) { if (r <= 0 || r == 100000) return; const int i = r - 1; if (i < numFactory) proc.setCurrentProgram (i); else proc.loadUserPreset (names[i]); refreshNames(); });
+    browser = std::make_unique<Browser> (*this);
+    content->addAndMakeVisible (*browser);
+    browser->setBounds (content->getLocalBounds()); browser->toFront (true); browser->scrollToCurrent();
+    browser->search.grabKeyboardFocus();
+}
+
+void PurrOneEditor::closeBrowser()
+{
+    if (browser == nullptr) return;
+    content->removeChildComponent (browser.get());
+    browser.reset(); refreshNames();
 }
 
 void PurrOneEditor::beginRename()

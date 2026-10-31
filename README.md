@@ -4,14 +4,14 @@ A free, open source mono synth plugin with a thick, smooth sound, built for bass
 
 Status: early development (test builds). The sound engine, effects, factory presets and a VST3/standalone build with the custom editor (Sound, Seq / Arp, FX and Settings pages). Not yet tested in a real host. See [ROADMAP.md](ROADMAP.md) and [docs/SPEC.md](docs/SPEC.md).
 
-<p align="center"><img src="docs/screenshot.png" alt="PurrOne editor" width="900"><br><sub>The PurrOne editor (v0.5.0).</sub></p>
+<p align="center"><img src="docs/screenshot.png" alt="PurrOne editor" width="900"><br><sub>The PurrOne editor (v0.6.0).</sub></p>
 
 ## What it is
 - Two oscillators with hard sync, plus a warm sub oscillator, noise and a mixer.
 - A 4 pole self-oscillating filter with low-pass, high-pass and band-pass modes, two envelopes, an LFO and a mod matrix with a mod wheel path.
 - Unison (1 to 5 detuned voices on one shared filter). Glide and keyboard modes (normal, retrig, repeat, drone). Step sequencer (up to 64 steps, 4 patterns, swing, slide, accent, per-step chance and ratchets, optional 303 squelch) and arpeggiator, started by the host, a key or a chosen note, with optional MIDI out (off by default). MIDI learn on any control, mod wheel and aftertouch routing, favourites and a random sound button.
 - Built-in effects, all with sane defaults that stay clean and never harsh (built, offline tested): 5 band graphic EQ (stereo, mid or side per band, optional dynamic, boost or cut, with live display), short reverb with pre-delay, damping, width and ducking, saturation and drive, bit crusher, opto, OTT, Dance master, stereo width, multiband maximizer, safety limiter. New modules start off or neutral, so the sound is unchanged until you use them.
-- Preset manager with factory sounds in banks A to D (A to C are 128 each; D is a drum and bass bank; none auditioned by ear yet), four banks E to H for your own sounds, and a preset dropdown on each FX module.
+- Preset manager with factory sounds in banks A to D (A to C are 128 each; D is a drum and bass bank; none auditioned by ear yet), four banks E to H for your own sounds, a preset browser popup (bank chips, search, type chips, history, favourites) and a preset dropdown on each FX module.
 - Dark interface, white text, wood side panels, coloured lights only on small LEDs, big stereo output meter. Four pages: Sound, Seq / Arp, FX (with analyzer) and Settings (banks, tuning, random LFO, quality, window). The panel mockup is in docs/mockup.
 
 ## Install and remove
