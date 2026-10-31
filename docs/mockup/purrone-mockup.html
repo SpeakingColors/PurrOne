@@ -397,6 +397,8 @@ button[aria-disabled="true"] { opacity: .4; }
   K("glide", "secKeys", "Glide", 0, 1, 0, { fmt: function (v) { return v < 0.01 ? "off" : (0.005 * Math.pow(800, v)).toFixed(2) + "s"; }, tip: "Slides between notes." });
   G("uniVoices", "secKeys", "Unison", ["1", "2", "3", "4", "5"], 0, "How many detuned copies of both oscillators play together (1 is off). One shared filter. While Sync is on, only oscillator B is stacked.");
   K("uniDetune", "secKeys", "Detune", 0, 1, 0.5477, { tip: "How far the unison copies are spread, up to 100 cents (a slow chorus on bass notes, a wide shimmer higher up). Only does something with 2 or more voices.", fmt: function (v) { return Math.round(v * v * 100) + " ct"; } });
+  K("uniWidth", "secKeys", "Width", 0, 1, 0.5, { fmt: pct, tip: "Spreads the unison copies across the stereo field. 0 is mono, 100 puts the detuned copies hard left and right with the centre voice in the middle. Only does something with 2 or more voices. (This preview is mono; the plugin does the real stereo spread.)" });
+  K("uniMono", "secKeys", "Mono", 20, 500, 120, { log: true, fmt: function (v) { return Math.round(v) + "Hz"; }, tip: "Mono below: the stereo spread only works above this frequency, everything under it stays in the centre, so a bass keeps a solid low end. 20 Hz means the whole sound is wide." });
   T("glideAuto", "secKeys", "Auto glide", false, { c: "var(--led-blue)", tip: "Glide only when you play legato." });
   T("retrig", "secKeys", "Retrig", false, { c: "var(--led-orange)", tip: "Every new key restarts the envelopes and the last key wins." });
   T("repeat", "secKeys", "Repeat", false, { c: "var(--led-yellow)", tip: "Re-gates the envelopes at the LFO rate." });

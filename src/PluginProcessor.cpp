@@ -44,7 +44,7 @@ void PurrOneProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
     sequencer.prepare (sampleRate);
     std::fill (std::begin (passed), std::end (passed), false);
     duckEnv = 0.0f; lastOut = -1;
-    mono.assign ((size_t) std::max (samplesPerBlock, 1) + 64, 0.0f);
+    mono.assign ((size_t) std::max (samplesPerBlock, 1) + 64, 0.0f); sideBuf.assign (mono.size(), 0.0f);
     verbMixSm.reset (sampleRate, 0.03);
     verbMixSm.setCurrentAndTargetValue (rd (ids::verbMix));
     setLatencySamples (limiter.latency());
@@ -86,7 +86,7 @@ void PurrOneProcessor::applyParams()
     p.modAmt[1] = raw (ids::mOscB); p.modRoute[1] = (int) raw (ids::mOscBR);
     p.modAmt[2] = raw (ids::mLfo); p.modRoute[2] = (int) raw (ids::mLfoR);
     p.modDest[0] = (int) raw (ids::dest0); p.modDest[1] = (int) raw (ids::dest1); p.modDest[2] = (int) raw (ids::dest2); p.modDest[3] = (int) raw (ids::dest3); p.modDest[4] = (int) raw (ids::dest4);
-    p.uniVoices = 1 + (int) std::lround (raw (ids::uniVoices)); p.uniDetune = raw (ids::uniDetune);
+    p.uniVoices = 1 + (int) std::lround (raw (ids::uniVoices)); p.uniDetune = raw (ids::uniDetune); p.uniWidth = raw (ids::uniWidth); p.uniMonoHz = raw (ids::uniMono);
     p.modWheel = std::max (raw (ids::wheel), midiWheel);
     { const float w = p.modWheel, a = midiAT;
       p.perfCutOct = 6.0f * (w * raw (ids::wheelCut) + a * raw (ids::atCut));
@@ -172,7 +172,7 @@ void PurrOneProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mid
     int pos = 0;
     auto renderTo = [&] (int end)
     {
-        if (end > pos) { engine.process (mono.data() + pos, end - pos); pos = end; }
+        if (end > pos) { engine.processStereo (mono.data() + pos, sideBuf.data() + pos, end - pos); pos = end; }
     };
     auto sendOut = [&] (const SeqEvent& e)
     {
@@ -265,7 +265,8 @@ void PurrOneProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mid
             const float a = std::fabs (x); duckEnv += (a > duckEnv ? dAtk : dRel) * (a - duckEnv);
             const float g = 1.0f - duckAmt * std::min (1.0f, duckEnv * 4.0f); wl *= g; wr *= g;
         }
-        float l = x * (1.0f - mixv * 0.3f) + wl * mixv * 1.4f, r = x * (1.0f - mixv * 0.3f) + wr * mixv * 1.4f;
+        const float sdv = sideBuf[(size_t) i];   // unison width: added after the mono effects, so crush and mono EQ stay on the centre
+        float l = x * (1.0f - mixv * 0.3f) + wl * mixv * 1.4f + sdv, r = x * (1.0f - mixv * 0.3f) + wr * mixv * 1.4f - sdv;
         if (eqPost) eq.processStereo (l, r);
         opto.process (l, r);
         ott.process (l, r);

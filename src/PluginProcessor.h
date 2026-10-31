@@ -130,7 +130,7 @@ private:
     purrone::Opto opto;
     purrone::Maximizer maximizer;
     purrone::SafetyLimiter limiter;
-    std::vector<float> mono;
+    std::vector<float> mono, sideBuf;
     juce::SmoothedValue<float> verbMixSm;
     float midiAT = 0.0f, midiWheel = 0.0f, bendNorm = 0.0f, bendRange = 2.0f, slideSeconds = 0.08f;
     bool midiOutOn = false; int midiOutCh = 1, midiOutVel = 90, midiOutAcc = 120;

@@ -90,6 +90,8 @@ struct Params
     float perfCutOct = 0.0f, perfVibSemi = 0.0f;
     // Unison: 1 to 5 stacked copies of both oscillators (A copies are off while hard sync is on), detuned up to 100 cents, one shared filter
     int uniVoices = 1; float uniDetune = 0.3f;
+    // Unison stereo: Width pans the copies left and right (0 = mono), Mono below keeps everything under that frequency in the middle
+    float uniWidth = 0.5f, uniMonoHz = 120.0f;
     // Keyboard
     bool retrig = false, repeat = false, drone = false;
     // Output
@@ -129,6 +131,7 @@ public:
         phA = phB = phSub = 0.0f; subFlip = 0.0f; fenv.reset(); aenv.reset();
         for (auto& s : st) s = 0.0f;
         accEnv = sqBump = accLvl = accTarget = 0.0f; glideOverride = 0.0f; rndPh = 0.0f; rndVal = rndTarget = 0.0f; h0Pos = 0; h0Buf.fill (0.0f);
+        for (auto& v_ : stS) v_ = 0.0f; xfLpS = nLpS = 0.0f; sideDec = SideDec(); sideOut = 0.0f; sideGain = 1.0f; mz1 = mz2 = 0.0f; sideOn = sideWasOn = false; shHz = -1.0f;
         lfoPh = 0.0f; hbPos = 0; hbBuf.fill (0.0f); hb1Pos = 0; hb1Buf.fill (0.0f); heldCount = 0; curNote = -1; glidePitch = 60.0f;
         prevA = 0.0f; gateOn = false; repeatPh = 0.0f; seed = 22222u; dcX = dcY = 0.0f;
     }
@@ -210,6 +213,43 @@ public:
         {
             const float z0 = tick2x(), z1 = tick2x(), z2 = tick2x(), z3 = tick2x();
             out[i] = decimate (half1 (z0, z1), half1 (z2, z3));
+        }
+    }
+
+    // stereo output: l is the normal mono sound (centre and all copies), side is the unison difference signal; the caller does l + side, l - side.
+    // side is zero (and costs nothing) unless Unison is on and Width is above 0.
+    void processStereo (float* out, float* side, int n)
+    {
+        applyEnvParams();
+        updateSideHp();
+        for (int i = 0; i < n; ++i)
+        {
+            float o, sd = 0.0f;
+            if (os == 8)
+            {
+                float z[4], zs[4] {};
+                for (int k = 0; k < 4; ++k)
+                {
+                    const float a = tick2x(), sa = sideOut, b = tick2x(), sb = sideOut;
+                    z[k] = half0 (a, b);
+                    if (sideOn || sideWasOn) zs[k] = sideHalf0 (sa, sb);
+                }
+                o = decimate (half1 (z[0], z[1]), half1 (z[2], z[3]));
+                if (sideOn || sideWasOn) sd = sideDecimate (sideHalf1 (zs[0], zs[1]), sideHalf1 (zs[2], zs[3]));
+            }
+            else
+            {
+                const float z0 = tick2x(), s0 = sideOut, z1 = tick2x(), s1 = sideOut, z2 = tick2x(), s2 = sideOut, z3 = tick2x(), s3 = sideOut;
+                o = decimate (half1 (z0, z1), half1 (z2, z3));
+                if (sideOn || sideWasOn) sd = sideDecimate (sideHalf1 (s0, s1), sideHalf1 (s2, s3));
+            }
+            if (sideOn)
+            {   // the centre gets the loudness compensation only above the Mono below frequency, so a bass keeps its weight
+                const float hp = shB0 * o + mz1; mz1 = shB1 * o - shA1 * hp + mz2; mz2 = shB2 * o - shA2 * hp;
+                o -= (1.0f - sideGain) * hp;
+            }
+            else { mz1 = mz2 = 0.0f; }
+            out[i] = o; side[i] = sd;
         }
     }
 
@@ -357,6 +397,45 @@ private:
         // gentle DC blocker at ~5 Hz
         float y = acc - dcX + 0.9993f * dcY; dcX = acc; dcY = y;
         return y;
+    }
+
+    // ---- side channel: its own copy of the decimation chain (same filters, own history), plus a high pass so the low end stays mono ----
+    struct SideDec
+    {
+        std::array<float, kTaps> hbBuf {}; int hbPos = 0;
+        std::array<float, kTaps1> hb1Buf {}, h0Buf {}; int hb1Pos = 0, h0Pos = 0;
+        float dcX = 0, dcY = 0, z1 = 0, z2 = 0;   // dc blocker, and the state of the 2nd order high pass
+    };
+    SideDec sideDec; float stS[4] = { 0, 0, 0, 0 }, xfLpS = 0.0f, nLpS = 0.0f, sideOut = 0.0f, sideGain = 1.0f, mz1 = 0.0f, mz2 = 0.0f; bool sideOn = false, sideWasOn = false;
+    float shB0 = 1, shB1 = -2, shB2 = 1, shA1 = 0, shA2 = 0, shHz = -1.0f;
+    float sideFir (std::array<float, kTaps1>& buf, int& pos, float a, float b)
+    {
+        buf[(size_t) pos] = a; pos = (pos + 1) % kTaps1;
+        buf[(size_t) pos] = b; pos = (pos + 1) % kTaps1;
+        float acc = 0.0f; int idx = pos;
+        for (int k = 0; k < kTaps1; ++k) { idx = (idx + kTaps1 - 1) % kTaps1; acc += hb1[(size_t) k] * buf[(size_t) idx]; }
+        return acc;
+    }
+    float sideHalf0 (float a, float b) { return sideFir (sideDec.h0Buf, sideDec.h0Pos, a, b); }
+    float sideHalf1 (float a, float b) { return sideFir (sideDec.hb1Buf, sideDec.hb1Pos, a, b); }
+    float sideDecimate (float a, float b)
+    {
+        sideDec.hbBuf[(size_t) sideDec.hbPos] = a; sideDec.hbPos = (sideDec.hbPos + 1) % kTaps;
+        sideDec.hbBuf[(size_t) sideDec.hbPos] = b; sideDec.hbPos = (sideDec.hbPos + 1) % kTaps;
+        float acc = 0.0f; int idx = sideDec.hbPos;
+        for (int k = 0; k < kTaps; ++k) { idx = (idx + kTaps - 1) % kTaps; acc += hb[(size_t) k] * sideDec.hbBuf[(size_t) idx]; }
+        float y = acc - sideDec.dcX + 0.9993f * sideDec.dcY; sideDec.dcX = acc; sideDec.dcY = y;
+        // 2nd order Butterworth high pass (transposed direct form II): the side signal only exists above the Mono below frequency
+        const float o = shB0 * y + sideDec.z1; sideDec.z1 = shB1 * y - shA1 * o + sideDec.z2; sideDec.z2 = shB2 * y - shA2 * o;
+        return o;
+    }
+    void updateSideHp()
+    {
+        const float hz = std::min (std::max (Q.uniMonoHz, 20.0f), 500.0f);
+        if (std::fabs (hz - shHz) < 0.01f) return;
+        shHz = hz;
+        const float w = std::tan (kPi * hz / sr), n = 1.0f / (1.0f + 1.41421356f * w + w * w);
+        shB0 = n; shB1 = -2.0f * n; shB2 = n; shA1 = 2.0f * (w * w - 1.0f) * n; shA2 = (1.0f - 1.41421356f * w + w * w) * n;
     }
 
     void applyEnvParams()
@@ -517,7 +596,7 @@ private:
         prevA = a;
 
         // ---- unison: extra detuned copies of A and B (free running phases), summed and scaled by 1/sqrt(voices) ----
-        float uniA = 0.0f, uniB = 0.0f, uniG = 1.0f;
+        float uniA = 0.0f, uniB = 0.0f, uniG = 1.0f, sideA = 0.0f, sideB = 0.0f, sideNrm = 1.0f;   // sideA/B: copies on the right minus copies on the left
         if (Q.uniVoices > 1)
         {
             const int ex = std::min (Q.uniVoices, 5) - 1;
@@ -534,10 +613,11 @@ private:
                 const float lv = cnt * kUniLvl[k]; lvlSum += lv * lv;
                 const float mag = kUniOff[k], sgn = (k & 1) ? -1.0f : 1.0f;
                 const float ratio = std::exp2 ((sgn * mag * maxCents + uDrift[k] * dCents) * (1.0f / 1200.0f));
-                if (! Q.bLow) { const float dk = clampf (dtB * ratio, 1.0e-6f, 0.45f); phBx[k] += dk; if (phBx[k] >= 1.0f) phBx[k] -= 1.0f; uniB += lv * waveB (phBx[k], dk); }
-                if (! Q.aSync) { const float dk = clampf (dtA * ratio, 1.0e-6f, 0.45f); phAx[k] += dk; if (phAx[k] >= 1.0f) phAx[k] -= 1.0f; uniA += lv * waveA (phAx[k], dk); }
+                if (! Q.bLow) { const float dk = clampf (dtB * ratio, 1.0e-6f, 0.45f); phBx[k] += dk; if (phBx[k] >= 1.0f) phBx[k] -= 1.0f; { const float w_ = lv * waveB (phBx[k], dk); uniB += w_; sideB += (k & 1) ? -w_ : w_; } }
+                if (! Q.aSync) { const float dk = clampf (dtA * ratio, 1.0e-6f, 0.45f); phAx[k] += dk; if (phAx[k] >= 1.0f) phAx[k] -= 1.0f; { const float w_ = lv * waveA (phAx[k], dk); uniA += w_; sideA += (k & 1) ? -w_ : w_; } }
             }
             uniG = 1.0f / std::sqrt (lvlSum);
+            sideNrm = std::sqrt (lvlSum / (lvlSum + (lvlSum - 1.0f) * Q.uniWidth * Q.uniWidth));   // keeps the loudness the same while widening
         }
 
         // ---- sub oscillator (one octave below A, square, smoothed) ----
@@ -571,40 +651,54 @@ private:
         float rz = clampf (Q.reso + 1.2f * sq, 0.0f, 0.97f > Q.reso ? 0.97f : Q.reso);
         float k = 4.4f * rz * std::sqrt (rz);
         float G4 = G * G * G * G;
-        float S = G * G * G * (st[0] / (1.0f + g)) + G * G * (st[1] / (1.0f + g)) + G * (st[2] / (1.0f + g)) + st[3] / (1.0f + g);
-        // drive and fuzz in front of the filter, level matched
-        float x = shaper (mix, Q.drive * preAmt, Q.xstr * preAmt, Q.fuzz * preAmt) * mkQ;
-        x += rnd() * 2.0e-4f * smoothstep01 ((Q.reso - 0.85f) * 6.6f);   // seed for self-oscillation only
-        float u = (x - k * S) / (1.0f + k * G4);
-        float v;
-        float in = std::tanh (u);               // keeps resonance from spiking
-        const float in0 = in; float tap[4];
-        for (int i = 0; i < 4; ++i)
+        auto chain = [&] (float mixIn, float (&stt)[4], float& xl, float& nl) -> float
         {
-            v = (in - st[i]) * G;
-            float lp = v + st[i];
-            st[i] = lp + v;
-            in = lp; tap[i] = lp;
+            float S = G * G * G * (stt[0] / (1.0f + g)) + G * G * (stt[1] / (1.0f + g)) + G * (stt[2] / (1.0f + g)) + stt[3] / (1.0f + g);
+            // drive and fuzz in front of the filter, level matched
+            float x = shaper (mixIn, Q.drive * preAmt, Q.xstr * preAmt, Q.fuzz * preAmt) * mkQ;
+            x += rnd() * 2.0e-4f * smoothstep01 ((Q.reso - 0.85f) * 6.6f);   // seed for self-oscillation only
+            float u = (x - k * S) / (1.0f + k * G4);
+            float v;
+            float in = std::tanh (u);               // keeps resonance from spiking
+            const float in0 = in; float tap[4];
+            for (int i = 0; i < 4; ++i)
+            {
+                v = (in - stt[i]) * G;
+                float lp = v + stt[i];
+                stt[i] = lp + v;
+                in = lp; tap[i] = lp;
+            }
+            // low pass is the last stage; high pass is the same cascade subtracted from the input: (1 - H)^4 = 1 - 4H + 6H^2 - 4H^3 + H^4
+            float y = in;
+            if (Q.filterMode == 1) y = in0 - 4.0f * tap[0] + 6.0f * tap[1] - 4.0f * tap[2] + tap[3];
+            else if (Q.filterMode == 2) y = 4.0f * (tap[1] - 2.0f * tap[2] + tap[3]);   // band pass: 4 (y2 - 2 y3 + y4)
+            // grit after the filter, so the new harmonics are not filtered away again; level matched
+            // transformer-style weight: a little of the low end (about 90 Hz and below) is pushed harder into the stage
+            xl += xfC * (y - xl);
+            const float dP = Q.drive * postAmt, xP = Q.xstr * postAmt, fP = Q.fuzz * postAmt;
+            const float yd = y + 0.6f * xP * xl;
+            y = shaper (yd * 2.0f, dP, xP, fP) * mkPQ * 0.5f * (1.0f + 0.2f * xP);
+            {   // fizz control: the nastier it gets, the more the top end above ~12 kHz down to ~5 kHz is smoothed off
+                const float nast = std::max (smoothstep01 ((dP - 0.8f) * 5.0f), std::max (smoothstep01 ((xP - 0.8f) * 5.0f), smoothstep01 ((fP - 0.8f) * 5.0f)));
+                const float w = 6.2831853f * (14000.0f - 10000.0f * nast) / osr;
+                nl += (w / (1.0f + w)) * (y - nl);
+                y = nl;
+            }
+            y *= 1.0f + 0.35f * rz;             // keep bass weight when resonance rises (R)
+            y *= ae * Q.volume * 1.4f * (1.0f + 1.5f * Q.accAmt * accLvl);
+            return y;
+        };
+        const float yM = chain (mix, st, xfLp, nLp);
+        sideOn = Q.uniVoices > 1 && Q.uniWidth > 0.002f;
+        if (sideOn)
+        {
+            const float sideMix = Q.uniWidth * uniG * (sideA * Q.mixA + sideB * Q.mixB) * 0.6f;
+            sideOut = chain (sideMix, stS, xfLpS, nLpS) * sideNrm;
         }
-        // low pass is the last stage; high pass is the same cascade subtracted from the input: (1 - H)^4 = 1 - 4H + 6H^2 - 4H^3 + H^4
-        float y = in;
-        if (Q.filterMode == 1) y = in0 - 4.0f * tap[0] + 6.0f * tap[1] - 4.0f * tap[2] + tap[3];
-        else if (Q.filterMode == 2) y = 4.0f * (tap[1] - 2.0f * tap[2] + tap[3]);   // band pass: 4 (y2 - 2 y3 + y4)
-        // grit after the filter, so the new harmonics are not filtered away again; level matched
-        // transformer-style weight: a little of the low end (about 90 Hz and below) is pushed harder into the stage
-        xfLp += xfC * (y - xfLp);
-        const float dP = Q.drive * postAmt, xP = Q.xstr * postAmt, fP = Q.fuzz * postAmt;
-        const float yd = y + 0.6f * xP * xfLp;
-        y = shaper (yd * 2.0f, dP, xP, fP) * mkPQ * 0.5f * (1.0f + 0.2f * xP);
-        {   // fizz control: the nastier it gets, the more the top end above ~12 kHz down to ~5 kHz is smoothed off
-            const float nast = std::max (smoothstep01 ((dP - 0.8f) * 5.0f), std::max (smoothstep01 ((xP - 0.8f) * 5.0f), smoothstep01 ((fP - 0.8f) * 5.0f)));
-            const float w = 6.2831853f * (14000.0f - 10000.0f * nast) / osr;
-            nLp += (w / (1.0f + w)) * (y - nLp);
-            y = nLp;
-        }
-        y *= 1.0f + 0.35f * rz;             // keep bass weight when resonance rises (R)
-        y *= ae * Q.volume * 1.4f * (1.0f + 1.5f * Q.accAmt * accLvl);
-        return y;
+        else { sideOut = 0.0f; if (sideWasOn) { for (auto& v_ : stS) v_ = 0.0f; xfLpS = nLpS = 0.0f; sideDec = SideDec(); } }
+        sideWasOn = sideOn;
+        sideGain = sideOn ? sideNrm : 1.0f;
+        return yM;
     }
 
     float lastB = 0.0f, subLp = 0.0f;
@@ -616,11 +710,11 @@ private:
         sm (Q.aTune, P.aTune); sm (Q.bTune, P.bTune); sm (Q.aPW, P.aPW); sm (Q.bPW, P.bPW);
         sm (Q.mixA, P.mixA); sm (Q.mixB, P.mixB); sm (Q.mixNoise, P.mixNoise); sm (Q.mixSub, P.mixSub);
         sm (Q.cutoffHz, P.cutoffHz); sm (Q.reso, P.reso); sm (Q.fenvAmt, P.fenvAmt); sm (Q.kbdAmt, P.kbdAmt);
-        sm (Q.lfoHz, P.lfoHz); sm (Q.modWheel, P.modWheel); sm (Q.uniDetune, P.uniDetune); sm (Q.perfCutOct, P.perfCutOct); sm (Q.perfVibSemi, P.perfVibSemi); sm (Q.drive, P.drive); sm (Q.xstr, P.xstr); sm (Q.fuzz, P.fuzz); sm (mkQ, mkT); sm (mkPQ, mkPT); sm (Q.volume, P.volume);
+        sm (Q.lfoHz, P.lfoHz); sm (Q.modWheel, P.modWheel); sm (Q.uniDetune, P.uniDetune); sm (Q.uniWidth, P.uniWidth); sm (Q.perfCutOct, P.perfCutOct); sm (Q.perfVibSemi, P.perfVibSemi); sm (Q.drive, P.drive); sm (Q.xstr, P.xstr); sm (Q.fuzz, P.fuzz); sm (mkQ, mkT); sm (mkPQ, mkPT); sm (Q.volume, P.volume);
         for (int i = 0; i < 3; ++i) sm (Q.modAmt[i], P.modAmt[i]);
         // everything else switches directly
         Q.aOct = P.aOct; Q.aSaw = P.aSaw; Q.aPulse = P.aPulse; Q.aSync = P.aSync; Q.bOct = P.bOct; Q.bSaw = P.bSaw; Q.bTri = P.bTri; Q.bPulse = P.bPulse;
-        Q.uniVoices = P.uniVoices; Q.bLow = P.bLow; Q.aSemi = P.aSemi; Q.bSemi = P.bSemi; Q.bKbd = P.bKbd; Q.fA = P.fA; Q.fD = P.fD; Q.fS = P.fS; Q.fR = P.fR; Q.aA = P.aA; Q.aD = P.aD; Q.aS = P.aS; Q.aR = P.aR;
+        Q.uniVoices = P.uniVoices; Q.uniMonoHz = P.uniMonoHz; Q.bLow = P.bLow; Q.aSemi = P.aSemi; Q.bSemi = P.bSemi; Q.bKbd = P.bKbd; Q.fA = P.fA; Q.fD = P.fD; Q.fS = P.fS; Q.fR = P.fR; Q.aA = P.aA; Q.aD = P.aD; Q.aS = P.aS; Q.aR = P.aR;
         Q.glide = P.glide; Q.glideAuto = P.glideAuto; Q.lfoSaw = P.lfoSaw; Q.lfoTri = P.lfoTri; Q.lfoPulse = P.lfoPulse;
         for (int i = 0; i < 3; ++i) Q.modRoute[i] = P.modRoute[i];
         for (int i = 0; i < 5; ++i) Q.modDest[i] = P.modDest[i];
