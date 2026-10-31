@@ -58,7 +58,7 @@ header.top { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap
 .pname .pdice:hover, .pname .pstar:hover { color: var(--ink); }
 .pname .pstar.on { color: #FFD100; }
 /* preset browser */
-.pb { position: absolute; inset: 0; z-index: 60; background: rgba(0,0,0,.35); display: grid; place-items: center; }
+.pb { position: absolute; inset: 0; z-index: 60; background: rgba(0,0,0,.35); display: grid; grid-template-rows: 100%; grid-template-columns: 100%; place-items: center; overflow: hidden; }
 .pbw { width: min(1040px, 94%); height: min(600px, 92%); background: #0f1013; border: 1px solid var(--line); border-radius: 6px; box-shadow: 0 20px 60px #000; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; gap: 12px; padding: 14px 16px; }
 .pbw h2 { margin: 0; font-size: 22px; letter-spacing: .22em; text-transform: uppercase; }
 .pbbody { display: grid; grid-template-columns: 320px minmax(0, 1fr); gap: 12px; min-height: 0; }
@@ -69,7 +69,7 @@ header.top { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap
 .pbchips button { padding: 3px 11px; border-radius: 12px; font-size: 12px; }
 .pbchips button[aria-pressed="true"] { background: var(--led-green); color: #06130f; border-color: var(--led-green); }
 .hl { font-size: 11px; letter-spacing: .16em; color: var(--ink-dim); margin-top: 4px; }
-.pblist { overflow: auto; border: 1px solid var(--line); border-radius: 4px; background: #0a0b0e; min-height: 0; }
+.pblist { position: relative; overflow: auto; border: 1px solid var(--line); border-radius: 4px; background: #0a0b0e; min-height: 0; }
 .pbrow { display: grid; grid-template-columns: 52px minmax(0, 1fr) 52px 24px; align-items: center; width: 100%; text-align: left; border: 0; border-bottom: 1px solid #14151a; border-radius: 0; background: transparent; text-transform: none; font-family: var(--f-num); font-weight: 400; letter-spacing: 0; padding: 6px 8px; font-size: 13px; }
 .pbrow:hover { background: var(--panel-2); }
 .pbrow[aria-current="true"] { background: #2c2f38; }
@@ -2126,7 +2126,7 @@ button[aria-disabled="true"] { opacity: .4; }
       list.appendChild(b);
     });
     list.scrollTop = keep;
-    var cr = list.querySelector('[aria-current="true"]'); if (cr && !W._scrolled) { cr.scrollIntoView({ block: "center" }); W._scrolled = true; }
+    var cr = list.querySelector('[aria-current="true"]'); if (cr && !W._scrolled) { list.scrollTop = Math.max(0, cr.offsetTop - list.clientHeight / 2 + cr.offsetHeight / 2); W._scrolled = true; }
     var hs = W.querySelector(".pbhist"); hs.innerHTML = "";
     HIST.forEach(function (n) { var b = document.createElement("button"); b.textContent = n; b.addEventListener("click", function () { var e = pbEntries().filter(function (x) { return x.p.name === n; })[0]; if (e) e.load(); }); hs.appendChild(b); });
     if (!HIST.length) { var h0 = document.createElement("div"); h0.style.cssText = "padding:8px 10px;color:var(--ink-dim);font-size:12px"; h0.textContent = "Sounds you load show up here."; hs.appendChild(h0); }
@@ -2136,7 +2136,7 @@ button[aria-disabled="true"] { opacity: .4; }
   function pbStep(d) {
     var vis = pbEl._vis || []; if (!vis.length) return; var at = -1; vis.forEach(function (e, k) { if (pbIsCur(e)) at = k; });
     var nx = at < 0 ? (d > 0 ? 0 : vis.length - 1) : (at + d + vis.length) % vis.length; vis[nx].load();
-    var r = pbEl.querySelector('[data-k="' + nx + '"]'); if (r) r.scrollIntoView({ block: "nearest" });
+    var lst = pbEl.querySelector(".pblist"), r = pbEl.querySelector('[data-k="' + nx + '"]'); if (r) { if (r.offsetTop < lst.scrollTop) lst.scrollTop = r.offsetTop; else if (r.offsetTop + r.offsetHeight > lst.scrollTop + lst.clientHeight) lst.scrollTop = r.offsetTop + r.offsetHeight - lst.clientHeight; }
   }
   var pbKey = null;
   function pbClose() { if (!pbEl) return; document.removeEventListener("keydown", pbKey, true); pbEl.remove(); pbEl = null; $("#pname").setAttribute("aria-expanded", "false"); }
@@ -2158,7 +2158,7 @@ button[aria-disabled="true"] { opacity: .4; }
       else if (e.target.id !== "pbq") { e.stopPropagation(); }
     };
     document.addEventListener("keydown", pbKey, true);
-    $("#pname").setAttribute("aria-expanded", "true"); pbRender(); q.focus();
+    $("#pname").setAttribute("aria-expanded", "true"); pbRender(); q.focus({ preventScroll: true });
   }
   function pbCancelOpen() { clearTimeout(pbOpenT); }
   $("#pname").addEventListener("click", function (e) {
