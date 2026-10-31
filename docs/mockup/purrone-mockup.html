@@ -356,20 +356,20 @@ button[aria-disabled="true"] { opacity: .4; }
   var sec = function (v) { var s = 0.002 * Math.pow(3000, v); return s < 1 ? Math.round(s * 1000) + "ms" : s.toFixed(1) + "s"; };
 
   G("aOct", "secA", "Range", ["16'", "8'", "4'", "2'"], 0, "Octave range of oscillator A.");
-  K("aSemi", "secA", "Semi", -24, 24, 0, { fmt: function (v) { var r = Math.round(v); return (r > 0 ? "+" : "") + r + " st"; }, tip: "Transpose A in whole semitones, two octaves each way. Set B to +7 for a fifth, +12 for an octave." });
   K("aTune", "secA", "Tune", -6, 6, 0, { fmt: sgn, tip: "Fine pitch of A in semitones, up to half an octave each way." });
   T("aSaw", "secA", "Saw", true, { c: "var(--led-green)", tip: "Full harmonic sawtooth, the classic brassy shape." });
   T("aPulse", "secA", "Pulse", false, { c: "var(--led-yellow)", tip: "Pulse wave. Width sets how thin or hollow it sounds." });
   K("aPW", "secA", "Width", 0.05, 0.95, 0.5, { fmt: pct, tip: "Pulse width. 50% is a square wave." });
+  K("aSemi", "secA", "Semi", -24, 24, 0, { fmt: function (v) { var r = Math.round(v); return (r > 0 ? "+" : "") + r + " st"; }, tip: "Transpose A in whole semitones, two octaves each way. Set B to +7 for a fifth, +12 for an octave." });
   T("aSync", "secA", "Sync", false, { c: "var(--led-pink)", tip: "A restarts every time B restarts. Sweep A's tune for the tearing sync sound." });
 
   G("bOct", "secB", "Range", ["16'", "8'", "4'", "2'"], 0, "Octave range of oscillator B.");
-  K("bSemi", "secB", "Semi", -24, 24, 0, { fmt: function (v) { var r = Math.round(v); return (r > 0 ? "+" : "") + r + " st"; }, tip: "Transpose B in whole semitones, two octaves each way. +7 is a fifth, +12 an octave." });
   K("bTune", "secB", "Tune", -6, 6, 0.4, { fmt: sgn, tip: "Fine pitch of B in semitones." });
   T("bSaw", "secB", "Saw", true, { c: "var(--led-green)" });
   T("bTri", "secB", "Tri", false, { c: "var(--led-blue)" });
   T("bPulse", "secB", "Pulse", false, { c: "var(--led-yellow)" });
   K("bPW", "secB", "Width", 0.05, 0.95, 0.5, { fmt: pct });
+  K("bSemi", "secB", "Semi", -24, 24, 0, { fmt: function (v) { var r = Math.round(v); return (r > 0 ? "+" : "") + r + " st"; }, tip: "Transpose B in whole semitones, two octaves each way. +7 is a fifth, +12 an octave." });
   T("bLow", "secB", "Low freq", false, { c: "var(--led-violet)", tip: "Moves B down to sub-audio speeds so it works as a second LFO." });
   T("bKbd", "secB", "Keys", true, { c: "var(--led-orange)", tip: "B follows the keyboard. Switch off for a steady pitch." });
 

@@ -125,6 +125,7 @@ public:
     {
         smoothInit = false; bend = 0.0f; xfLp = 0.0f; nLp = 0.0f; lastDrive = lastXs = lastFuzz = -1.0f;
         for (int k = 0; k < 4; ++k) { phAx[k] = std::fmod (0.13f + 0.618034f * (float) (k + 1), 1.0f); phBx[k] = std::fmod (0.41f + 0.381966f * (float) (k + 1), 1.0f); }
+        for (int k = 0; k < 4; ++k) uDrift[k] = uDriftT[k] = 0.0f; uDriftCnt = 0;
         phA = phB = phSub = 0.0f; subFlip = 0.0f; fenv.reset(); aenv.reset();
         for (auto& s : st) s = 0.0f;
         accEnv = sqBump = accLvl = accTarget = 0.0f; glideOverride = 0.0f; rndPh = 0.0f; rndVal = rndTarget = 0.0f; h0Pos = 0; h0Buf.fill (0.0f);
@@ -279,6 +280,7 @@ private:
     bool smoothInit = false; float bend = 0.0f;
     float sr = 48000.0f, osr = 192000.0f;   // voice runs at 4x; two halfband stages bring it back down
     float phAx[4] {}, phBx[4] {};
+    float uDrift[4] {}, uDriftT[4] {}; int uDriftCnt = 0;   // slow random wander of each unison copy, a few cents, like analog oscillators drifting
     float subFlip = 0.0f, phA = 0, phB = 0, phSub = 0, lfoPh = 0, prevA = 0, repeatPh = 0;
     float st[4] = { 0, 0, 0, 0 };
     Adsr fenv, aenv;
@@ -520,10 +522,14 @@ private:
         {
             const int ex = std::min (Q.uniVoices, 5) - 1;
             const float maxCents = 100.0f * Q.uniDetune, half = (float) ((ex + 1) / 2);
+            // drift: new random targets every ~1.7 s, each copy glides to its target; depth grows with the detune knob, zero at 0
+            if (uDriftCnt-- <= 0) { uDriftCnt = (int) (1.7f * osr); for (int k = 0; k < 4; ++k) uDriftT[k] = rnd(); }
+            const float dSlew = 1.0f / (1.5f * osr), dCents = 4.0f * clampf (Q.uniDetune * 3.0f, 0.0f, 1.0f);
             for (int k = 0; k < ex; ++k)
             {
+                uDrift[k] += dSlew * (uDriftT[k] - uDrift[k]);
                 const float mag = (float) ((k + 2) / 2) / half, sgn = (k & 1) ? -1.0f : 1.0f;
-                const float ratio = std::exp2 (sgn * mag * maxCents * (1.0f / 1200.0f));
+                const float ratio = std::exp2 ((sgn * mag * maxCents + uDrift[k] * dCents) * (1.0f / 1200.0f));
                 if (! Q.bLow) { const float dk = clampf (dtB * ratio, 1.0e-6f, 0.45f); phBx[k] += dk; if (phBx[k] >= 1.0f) phBx[k] -= 1.0f; uniB += waveB (phBx[k], dk); }
                 if (! Q.aSync) { const float dk = clampf (dtA * ratio, 1.0e-6f, 0.45f); phAx[k] += dk; if (phAx[k] >= 1.0f) phAx[k] -= 1.0f; uniA += waveA (phAx[k], dk); }
             }
