@@ -463,7 +463,7 @@ struct PurrOneEditor::Browser : public juce::Component, private juce::KeyListene
 
     void paint (juce::Graphics& g) override
     {
-        g.fillAll (juce::Colours::black.withAlpha (0.62f));
+        g.fillAll (juce::Colours::black.withAlpha (0.35f));
         const auto pr = panel().toFloat();
         g.setColour (juce::Colour (0xff0f1013)); g.fillRoundedRectangle (pr, 6.0f);
         g.setColour (col::line); g.drawRoundedRectangle (pr.reduced (0.5f), 6.0f, 1.0f);
