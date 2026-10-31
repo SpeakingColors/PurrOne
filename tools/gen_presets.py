@@ -304,13 +304,27 @@ SEQ_BPM = {"Run": 132, "Chug": 132, "Drive": 130, "Melody": 128, "Long Acid": 13
 LABEL = {"Melody": "Tune", "Long Acid": "Long Run", "Rolling 32": "Rolling 32nds", "Offbeat 2": "Offbeat Jump"}
 ACID_STYLES = {"Run", "Chug", "Drive", "Melody", "Long Acid"}
 ctr = 0
+KEEP_AS_IS = {"Dirty Reese Gallop", "Nasty 808 Dub Pulse"}      # liked as it is, never touch
+def seq_voicing(vals, k):
+    """Bank B: the 2nd, 3rd and 4th sequence of a bass get their own voicing so the bank does not sound like one patch four times."""
+    o = dict(vals); co = o.get("cutoff", DEF["cutoff"][1]); rs = o.get("reso", DEF["reso"][1]); fe = o.get("fenvAmt", DEF["fenvAmt"][1])
+    if k == 1:      # open and bright
+        o.update(cutoff=min(6000.0, co * 1.6), reso=min(0.8, rs + 0.12), fenvAmt=min(0.9, fe + 0.15))
+    elif k == 2:    # dark, tight and driven
+        o.update(cutoff=max(150.0, co * 0.65), fD=scaled(vals, "fD", 0.7), drive=min(0.8, o.get("drive", 0.0) + 0.2), fuzz=min(0.9, o.get("fuzz", DEF["fuzz"][1]) + 0.15))
+    elif k == 3:    # other filter mode, B an octave up
+        o.update(fMode=2 if o.get("fMode", 0) == 0 else 0, bSemi=12, mixB=min(1.0, o.get("mixB", DEF["mixB"][1]) + 0.1))
+    return o
+
 def seq_variants(table, extra_by_style=None):
     global ctr
     for n, styles in table.items():
         cat, vals = VOICES[n]
-        for st in styles:
+        for k, st in enumerate(styles):
             squelch = st in ACID_STYLES
-            o, sp = seqvals(vals, st, pick_root(ctr), squelch=squelch, bpm=SEQ_BPM[st])
+            nm = n + " " + LABEL.get(st, st)
+            use = vals if (cat != "Bass" or nm in KEEP_AS_IS) else seq_voicing(vals, k)
+            o, sp = seqvals(use, st, pick_root(ctr), squelch=squelch, bpm=SEQ_BPM[st])
             if cat == "Lead": o["aOct"] = vals.get("aOct", 0)
             if squelch: o.setdefault("glide", 0)
             ctr += 1
@@ -387,10 +401,10 @@ def dnb(name, fx, **kw):
     DNB.append((name[:30], base))
 MONO = dict(Stereo="Mono Bass", Space="Dry", Opto="Smooth")
 # techstep: two saws a fifth or fourth apart, LFO on the cutoff, tape style saturation, mono
-dnb("Techstep Fifth", dict(EQ="Tight Low End", Maximizer="Glue", **MONO), bSemi=7, cutoff=520, reso=0.42, fenvAmt=0.25, lfoHz=4.35, mLfo=0.45, mLfoR=1, dest4=1, drive=0.35, xstr=0.6, fuzz=0.3)
-dnb("Techstep Fourth", dict(EQ="Tight Low End", Maximizer="Glue", **MONO), bSemi=5, cutoff=480, reso=0.4, fenvAmt=0.3, lfoHz=5.8, mLfo=0.4, mLfoR=1, dest4=1, drive=0.3, xstr=0.6, fuzz=0.3)
-dnb("Warp Machine", dict(EQ="Mud Cut", Maximizer="Big", **MONO), bSemi=7, cutoff=420, reso=0.5, fenvAmt=0.35, lfoHz=8.7, lfoTri=0, lfoSaw=1, mLfo=0.55, mLfoR=1, dest4=1, drive=0.4, xstr=0.7, fuzz=0.45)
-dnb("Hydraulic Roll", dict(EQ="Tight Low End", Maximizer="Glue", **MONO), bSemi=7, bTune=0.1, cutoff=380, reso=0.35, fenvAmt=0.2, lfoHz=2.2, mLfo=0.5, mLfoR=1, dest4=1, drive=0.3, xstr=0.55, fuzz=0.2)
+dnb("Techstep Fifth", dict(EQ="Tight Low End", OTT="Light", Maximizer="Big", **MONO), bSemi=7, bTune=0.05, mixA=0.85, mixB=0.8, cutoff=760, reso=0.45, fenvAmt=0.3, fD=0.35, lfoHz=4.35, mLfo=0.4, mLfoR=1, dest4=1, drive=0.5, xstr=0.7, fuzz=0.45, eqMid=3)
+dnb("Techstep Fourth", dict(EQ="Mud Cut", Maximizer="Big", **MONO), bSemi=5, bSaw=0, bPulse=1, bPW=0.45, mixA=0.85, mixB=0.7, colPos=0, cutoff=640, reso=0.35, fenvAmt=0.45, fD=0.3, fS=0.2, mLfo=0, drive=0.3, xstr=0.55, fuzz=0.1, eqMid=2)
+dnb("Warp Machine", dict(EQ="Mud Cut", Maximizer="Big", **MONO), bSemi=7, bSaw=0, bPulse=1, bPW=0.35, cutoff=520, reso=0.5, fenvAmt=0.35, lfoHz=8.7, lfoTri=0, lfoPulse=1, mLfo=0.5, mLfoR=1, dest4=1, drive=0.4, xstr=0.7, fuzz=0.5)
+dnb("Hydraulic Roll", dict(EQ="Tight Low End", Maximizer="Glue", **MONO), bSemi=7, bTune=0.1, uniVoices=1, uniDetune=0.25, glide=0.25, cutoff=300, reso=0.4, fenvAmt=0.6, fD=0.6, fS=0.3, aD=0.6, aS=0.9, drive=0.3, xstr=0.6, fuzz=0.25)
 # neuro: detuned saws, B into the filter (filter FM), LFO on filter and B pitch, drive before and after, OTT
 dnb("Noisia Growl", dict(EQ="Dynamic Tame", OTT="Full", Stereo="Wide", Space="Dry", Opto="Smooth"), bTune=0.35, cutoff=480, reso=0.48, fenvAmt=0.3, fD=0.5, lfoHz=4.35, lfoTri=0, lfoSaw=1, mLfo=0.55, mLfoR=1, mOscB=0.12, mOscBR=1, dest2=1, dest4=1, xstr=0.55, drive=0.25, fuzz=0.55)
 dnb("Neuro Talk", dict(EQ="Presence", OTT="Classic", Stereo="Narrow", Space="Dry", Opto="Smooth"), fMode=2, bTune=0.5, cutoff=700, reso=0.55, fenvAmt=0.2, lfoHz=5.8, mLfo=0.7, mLfoR=1, dest4=1, drive=0.3, xstr=0.55, fuzz=0.5)
