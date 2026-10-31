@@ -59,30 +59,29 @@ header.top { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap
 .pname .pstar.on { color: #FFD100; }
 /* preset browser */
 .pb { position: absolute; inset: 0; z-index: 60; background: rgba(0,0,0,.62); display: grid; place-items: center; }
-.pbw { width: min(1040px, 94%); height: min(600px, 92%); background: #0f1013; border: 1px solid var(--line); border-radius: 6px; box-shadow: 0 20px 60px #000; display: grid; grid-template-rows: auto auto auto minmax(0, 1fr) auto; gap: 10px; padding: 14px 16px; }
-.pbw h2 { margin: 0; font-size: 16px; letter-spacing: .22em; text-transform: uppercase; }
-.pbtop { display: flex; gap: 12px; align-items: center; }
-.pbtop input { flex: 1; min-width: 0; padding: 7px 10px; background: #0a0b0e; color: var(--ink); border: 1px solid var(--line); border-radius: 3px; font: inherit; font-family: var(--f-num); font-size: 14px; letter-spacing: 0; }
+.pbw { width: min(1040px, 94%); height: min(600px, 92%); background: #0f1013; border: 1px solid var(--line); border-radius: 6px; box-shadow: 0 20px 60px #000; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; gap: 12px; padding: 14px 16px; }
+.pbw h2 { margin: 0; font-size: 22px; letter-spacing: .22em; text-transform: uppercase; }
+.pbbody { display: grid; grid-template-columns: 320px minmax(0, 1fr); gap: 12px; min-height: 0; }
+.pbleft { display: grid; grid-template-rows: auto minmax(0, 1fr); gap: 8px; min-height: 0; }
+.pbright { display: flex; flex-direction: column; gap: 6px; min-height: 0; }
+.pbright input { padding: 7px 10px; background: #0a0b0e; color: var(--ink); border: 1px solid var(--line); border-radius: 3px; font: inherit; font-family: var(--f-num); font-size: 14px; letter-spacing: 0; }
 .pbchips { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
-.pbchips .lab { font-size: 11px; letter-spacing: .16em; color: var(--ink-dim); width: 54px; }
 .pbchips button { padding: 3px 11px; border-radius: 12px; font-size: 12px; }
 .pbchips button[aria-pressed="true"] { background: var(--led-green); color: #06130f; border-color: var(--led-green); }
-.pbbody { display: grid; grid-template-columns: minmax(0, 1fr) 230px; gap: 12px; min-height: 0; }
-.pblist { overflow: auto; border: 1px solid var(--line); border-radius: 4px; background: #0a0b0e; }
-.pbrow { display: grid; grid-template-columns: 56px minmax(0, 1fr) 70px 28px; align-items: center; width: 100%; text-align: left; border: 0; border-bottom: 1px solid #14151a; border-radius: 0; background: transparent; text-transform: none; font-family: var(--f-num); font-weight: 400; letter-spacing: 0; padding: 6px 10px; font-size: 13px; }
+.hl { font-size: 11px; letter-spacing: .16em; color: var(--ink-dim); margin-top: 4px; }
+.pblist { overflow: auto; border: 1px solid var(--line); border-radius: 4px; background: #0a0b0e; min-height: 0; }
+.pbrow { display: grid; grid-template-columns: 52px minmax(0, 1fr) 52px 24px; align-items: center; width: 100%; text-align: left; border: 0; border-bottom: 1px solid #14151a; border-radius: 0; background: transparent; text-transform: none; font-family: var(--f-num); font-weight: 400; letter-spacing: 0; padding: 6px 8px; font-size: 13px; }
 .pbrow:hover { background: var(--panel-2); }
 .pbrow[aria-current="true"] { background: #2c2f38; }
 .pbrow .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pbrow .no { color: var(--ink-dim); }
-.pbrow .ct { color: var(--led-green); font-size: 11px; text-align: right; text-transform: uppercase; }
+.pbrow .ct { color: var(--led-green); font-size: 10px; text-align: right; text-transform: uppercase; }
 .pbrow .pfv { text-align: right; color: var(--ink-dim); }
 .pbrow .pfv.on { color: #FFD100; }
-.pbside { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; gap: 6px; min-height: 0; }
-.pbside .hl { font-size: 11px; letter-spacing: .16em; color: var(--ink-dim); }
-.pbhist { overflow: auto; border: 1px solid var(--line); border-radius: 4px; background: #0a0b0e; }
+.pbhist { overflow: auto; border: 1px solid var(--line); border-radius: 4px; background: #0a0b0e; flex: 1; min-height: 0; }
 .pbhist button { display: block; width: 100%; text-align: left; border: 0; border-radius: 0; background: transparent; text-transform: none; font-family: var(--f-num); font-weight: 400; letter-spacing: 0; padding: 5px 10px; font-size: 12px; }
 .pbhist button:hover { background: var(--panel-2); }
-.pbfoot { display: flex; justify-content: space-between; gap: 12px; font-size: 12px; color: var(--ink-dim); letter-spacing: .04em; }
+.pbfoot { display: flex; justify-content: space-between; align-items: center; gap: 12px; font-size: 12px; color: var(--ink-dim); letter-spacing: .04em; }
 button, .btn {
   font: inherit; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--ink); background: var(--panel-2);
   border: 1px solid var(--line); border-radius: 3px; padding: 7px 11px; cursor: pointer; font-size: 13px;
@@ -2145,11 +2144,12 @@ button[aria-disabled="true"] { opacity: .4; }
     if (pbEl) return; var ov = document.createElement("div"); ov.className = "pb"; pbEl = ov;
     var cats = []; FACTORY.concat(USER).forEach(function (p) { var c = p.cat || "User"; if (cats.indexOf(c) < 0) cats.push(c); });
     var banks = ["ALL", "A", "B", "C", "D", "E", "F", "G", "H", "FAV"];
-    ov.innerHTML = '<div class="pbw" role="dialog" aria-label="Preset browser"><div class="pbtop"><h2>Preset browser</h2><input type="text" id="pbq" placeholder="search by name or type" aria-label="Search sounds" autocomplete="off"><button id="pbx">Close</button></div>'
-      + '<div class="pbchips"><span class="lab">BANK</span>' + banks.map(function (b) { return '<button data-bk="' + b + '">' + (b === "FAV" ? "&#9733; FAVOURITES" : b) + '</button>'; }).join("") + '</div>'
-      + '<div class="pbchips"><span class="lab">TYPE</span>' + cats.map(function (c) { return '<button data-ct="' + c + '">' + c.toUpperCase() + '</button>'; }).join("") + '</div>'
-      + '<div class="pbbody"><div class="pblist" role="listbox" aria-label="Sounds"></div><div class="pbside"><div class="hl">HISTORY</div><div class="pbhist"></div><div class="note">Banks A to D are the factory sounds. E to H are yours.</div></div></div>'
-      + '<div class="pbfoot"><span class="pbcount"></span><span>Click loads. Double click loads and closes. Up and Down step. Esc closes.</span></div></div>';
+    ov.innerHTML = '<div class="pbw" role="dialog" aria-label="Preset browser"><h2>Preset browser</h2>'
+      + '<div class="pbbody"><div class="pbleft"><div class="pbchips" id="pbbanks">' + banks.map(function (b) { return '<button data-bk="' + b + '">' + (b === "FAV" ? "&#9733; FAVOURITES" : b) + '</button>'; }).join("") + '</div><div class="pblist" role="listbox" aria-label="Sounds"></div></div>'
+      + '<div class="pbright"><div class="hl">SEARCH</div><input type="text" id="pbq" placeholder="name or type" aria-label="Search sounds" autocomplete="off">'
+      + '<div class="hl">TYPE</div><div class="pbchips">' + cats.map(function (c) { return '<button data-ct="' + c + '">' + c.toUpperCase() + '</button>'; }).join("") + '</div>'
+      + '<div class="hl">HISTORY (click to go back)</div><div class="pbhist"></div><div class="note">Banks A to D are the factory sounds. E to H are yours.</div></div></div>'
+      + '<div class="pbfoot"><span class="pbcount"></span><span>Click loads. Double click loads and closes. Up and Down step. Esc closes.</span><button id="pbx">Close</button></div></div>';
     document.getElementById("unit").appendChild(ov);
     ov.addEventListener("click", function (e) { if (e.target === ov || e.target.id === "pbx") { pbClose(); return; } var b = e.target.closest("[data-bk]"); if (b) { pbS.bank = b.dataset.bk; pbRender(); return; } var c = e.target.closest("[data-ct]"); if (c) { pbS.cat = pbS.cat === c.dataset.ct ? "" : c.dataset.ct; pbRender(); } });
     var q = ov.querySelector("#pbq"); q.value = pbS.q; q.addEventListener("input", function () { pbS.q = q.value; ov._scrolled = true; pbRender(); });

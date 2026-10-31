@@ -316,8 +316,8 @@ struct PurrOneEditor::Browser : public juce::Component, private juce::KeyListene
                 g.setColour (juce::Colour (0xff14151a)); g.fillRect (juce::Rectangle<int> (r.getX(), r.getBottom() - 1, r.getWidth(), 1));
                 g.setColour (col::inkDim); g.setFont (monoFont (13.0f));
                 g.drawText (juce::String::charToString ((juce::juce_wchar) ('A' + e.bank)) + juce::String (e.n).paddedLeft ('0', 3), r.getX() + 12, r.getY(), 56, rowH, juce::Justification::centredLeft, false);
-                g.setColour (col::ink); g.drawText (e.name, r.getX() + 72, r.getY(), getWidth() - 72 - 130, rowH, juce::Justification::centredLeft, true);
-                g.setColour (col::green); g.setFont (monoFont (11.0f)); g.drawText (e.cat.toUpperCase(), getWidth() - 116, r.getY(), 76, rowH, juce::Justification::centredRight, false);
+                g.setColour (col::ink); g.drawText (e.name, r.getX() + 66, r.getY(), getWidth() - 66 - 82, rowH, juce::Justification::centredLeft, true);
+                g.setColour (col::green); g.setFont (monoFont (10.0f)); g.drawText (e.cat.toUpperCase(), getWidth() - 88, r.getY(), 46, rowH, juce::Justification::centredRight, false);
                 juce::Path s; s.addStar (juce::Point<float> ((float) getWidth() - 20.0f, (float) r.getCentreY()), 5, 3.0f, 6.8f, -1.5708f);
                 if (favs.contains (e.name)) { g.setColour (col::yellow); g.fillPath (s); } else { g.setColour (col::inkDim); g.strokePath (s, juce::PathStrokeType (1.2f)); }
             }
@@ -361,7 +361,7 @@ struct PurrOneEditor::Browser : public juce::Component, private juce::KeyListene
     {
         setWantsKeyboardFocus (true);
         search.setFont (monoFont (14.0f)); search.setMultiLine (false); search.setBorder ({ 0, 10, 0, 10 }); search.setJustification (juce::Justification::centredLeft);
-        search.setTextToShowWhenEmpty ("search by name or type", col::inkDim); search.setInputRestrictions (40);
+        search.setTextToShowWhenEmpty ("name or type", col::inkDim); search.setInputRestrictions (40);
         search.setSelectAllWhenFocused (true); search.addKeyListener (this);
         search.onTextChange = [this] { query = search.getText(); applyFilter(); };
         addAndMakeVisible (search);
@@ -442,21 +442,22 @@ struct PurrOneEditor::Browser : public juce::Component, private juce::KeyListene
     bool keyPressed (const juce::KeyPress& k, juce::Component*) override { return handleKey (k); }
 
     juce::Rectangle<int> panel() const { return juce::Rectangle<int> (1040, 600).withCentre (getLocalBounds().getCentre()); }
+    static int flowWrap (juce::Rectangle<int> area, juce::OwnedArray<Chip>& chips)   // chips in rows that wrap; returns the y below the last row
+    {
+        int x = area.getX(), y = area.getY();
+        for (auto* c : chips) { const int w = c->widthFor(); if (x + w > area.getRight() && x > area.getX()) { x = area.getX(); y += 33; } c->setBounds (x, y, w, 28); x += w + 5; }
+        return y + 28;
+    }
     void resized() override
     {
         auto p = panel().reduced (16, 14);
-        auto top = p.removeFromTop (32);
-        closeBtn.setBounds (top.removeFromRight (90)); top.removeFromRight (12);
-        search.setBounds (top.withTrimmedLeft (234));
-        p.removeFromTop (10);
-        auto flow = [] (juce::Rectangle<int> row, auto& chips) { row.removeFromLeft (54); int x = row.getX(); for (auto* c : chips) { const int w = c->widthFor(); c->setBounds (x, row.getY(), w, row.getHeight()); x += w + 5; } };
-        bankRowY = p.getY(); flow (p.removeFromTop (28), bankChips); p.removeFromTop (10);
-        typeRowY = p.getY(); flow (p.removeFromTop (28), typeChips); p.removeFromTop (10);
-        auto foot = p.removeFromBottom (18); footRect = foot; p.removeFromBottom (10);
-        auto side = p.removeFromRight (230); p.removeFromRight (12);
-        listRect = p; listView.setBounds (p.reduced (1));
-        sideTop = side.getY(); side.removeFromTop (20);
-        auto note = side.removeFromBottom (34); noteRect = note; histRect = side.withTrimmedBottom (6); histView.setBounds (histRect.reduced (1));
+        titleRect = p.removeFromTop (40); p.removeFromTop (12);
+        auto foot = p.removeFromBottom (32); footRect = foot; closeBtn.setBounds (foot.removeFromRight (90)); p.removeFromBottom (12);
+        auto left = p.removeFromLeft (320); p.removeFromLeft (12);
+        const int by = flowWrap (left, bankChips); listRect = left.withTrimmedTop (by - left.getY() + 8); listView.setBounds (listRect.reduced (1));
+        auto r = p; labSearch = r.removeFromTop (18); search.setBounds (r.removeFromTop (34)); r.removeFromTop (6);
+        labType = r.removeFromTop (18); const int ty = flowWrap (r, typeChips); r.removeFromTop (ty - r.getY() + 8);
+        labHist = r.removeFromTop (18); noteRect = r.removeFromBottom (22); histRect = r.withTrimmedBottom (6); histView.setBounds (histRect.reduced (1));
         applyFilter();
     }
 
@@ -466,17 +467,17 @@ struct PurrOneEditor::Browser : public juce::Component, private juce::KeyListene
         const auto pr = panel().toFloat();
         g.setColour (juce::Colour (0xff0f1013)); g.fillRoundedRectangle (pr, 6.0f);
         g.setColour (col::line); g.drawRoundedRectangle (pr.reduced (0.5f), 6.0f, 1.0f);
-        g.setColour (col::ink); g.setFont (labelFont (17.0f, true, 0.22f)); g.drawText ("PRESET BROWSER", panel().getX() + 16, panel().getY() + 14, 220, 32, juce::Justification::centredLeft, false);
+        g.setColour (col::ink); g.setFont (labelFont (23.0f, true, 0.22f)); g.drawText ("PRESET BROWSER", titleRect, juce::Justification::centredLeft, false);
         g.setColour (col::inkDim); g.setFont (labelFont (12.0f, false, 0.16f));
-        g.drawText ("BANK", panel().getX() + 16, bankRowY, 54, 28, juce::Justification::centredLeft, false);
-        g.drawText ("TYPE", panel().getX() + 16, typeRowY, 54, 28, juce::Justification::centredLeft, false);
-        g.drawText ("HISTORY", histRect.getX(), sideTop, 200, 18, juce::Justification::centredLeft, false);
+        g.drawText ("SEARCH", labSearch, juce::Justification::centredLeft, false);
+        g.drawText ("TYPE", labType, juce::Justification::centredLeft, false);
+        g.drawText ("HISTORY (click to go back)", labHist, juce::Justification::centredLeft, false);
         for (auto r : { listRect, histRect }) { g.setColour (juce::Colour (0xff0a0b0e)); g.fillRect (r); g.setColour (col::line); g.drawRect (r, 1); }
         g.setColour (col::inkDim); g.setFont (labelFont (13.0f, false, 0.04f));
-        g.drawFittedText ("Banks A to D are the factory sounds. E to H are yours.", noteRect, juce::Justification::topLeft, 2);
-        g.drawText (juce::String ((int) vis.size()) + " of " + juce::String ((int) entries.size()) + " sounds", footRect.getX(), footRect.getY(), 300, footRect.getHeight(), juce::Justification::centredLeft, false);
-        g.drawText ("Click loads. Double click loads and closes. Up and Down step. Esc closes.", footRect.getX(), footRect.getY(), footRect.getWidth(), footRect.getHeight(), juce::Justification::centredRight, false);
-        if (vis.empty()) { g.setColour (col::inkDim); g.setFont (labelFont (14.0f)); g.drawText (bankSel == "FAV" ? "No favourites yet. Click the star on a sound." : "Nothing matches. Try fewer words or another bank.", listRect.reduced (14, 12).removeFromTop (22), juce::Justification::centredLeft, false); }
+        g.drawText ("Banks A to D are the factory sounds. E to H are yours.", noteRect, juce::Justification::centredLeft, false);
+        g.drawText (juce::String ((int) vis.size()) + " of " + juce::String ((int) entries.size()) + " sounds", footRect.getX(), footRect.getY(), 200, footRect.getHeight(), juce::Justification::centredLeft, false);
+        g.drawText ("Click loads. Double click loads and closes. Up and Down step. Esc closes.", footRect.getX() + 200, footRect.getY(), footRect.getWidth() - 320, footRect.getHeight(), juce::Justification::centred, false);
+        if (vis.empty()) { g.setColour (col::inkDim); g.setFont (labelFont (14.0f)); g.drawFittedText (bankSel == "FAV" ? "No favourites yet. Click the star on a sound." : "Nothing matches. Try fewer words or another bank.", listRect.reduced (12, 10).removeFromTop (40), juce::Justification::topLeft, 2); }
     }
     void mouseDown (const juce::MouseEvent& e) override { if (! panel().contains (e.getPosition())) closeSoon(); }
 
@@ -484,7 +485,7 @@ struct PurrOneEditor::Browser : public juce::Component, private juce::KeyListene
     std::vector<Entry> entries; std::vector<int> vis; juce::StringArray cats;
     juce::String bankSel { "ALL" }, typeSel, query; int curRow = -1;
     juce::TextEditor search; Button closeBtn; Rows rows; Hist hist; juce::Viewport listView, histView;
-    juce::OwnedArray<Chip> bankChips, typeChips; juce::Rectangle<int> listRect, histRect, noteRect, footRect; int bankRowY = 0, typeRowY = 0, sideTop = 0;
+    juce::OwnedArray<Chip> bankChips, typeChips; juce::Rectangle<int> listRect, histRect, noteRect, footRect, titleRect, labSearch, labType, labHist;
 };
 
 //==============================================================================
