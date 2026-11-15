@@ -24,6 +24,42 @@ int main (int argc, char** argv)
             }
         return 0;
     }
+    if (mode == "clip")
+    {   // PurrOneCheck clip "<preset name>" <seconds> <out.raw> ["note,start,len;note,start,len;..."]  renders one factory preset through the real processor
+        //  (engine plus FX) to raw float32 stereo at 48 kHz. Without a note list it plays the same notes as the check mode; sequences and arps start on the first key.
+        const double sr = 48000.0; const int block = 256;
+        if (argc < 5) { std::fprintf (stderr, "usage: clip \"preset\" seconds out.raw [\"note,start,len;...\"]\n"); return 2; }
+        int idx = -1; const auto& list = purrone::factoryPresets();
+        for (size_t i = 0; i < list.size(); ++i) if (juce::String (list[i].name) == argv[2]) { idx = (int) i; break; }
+        if (idx < 0) { std::fprintf (stderr, "no preset named %s\n", argv[2]); return 2; }
+        const double secs = std::atof (argv[3]);
+        p.setCurrentProgram (idx); p.prepareToPlay (sr, block);
+        struct Ev { int note; int on, off; }; std::vector<Ev> evs;
+        if (argc > 5)
+        {
+            juce::StringArray items; items.addTokens (juce::String (argv[5]), ";", "");
+            for (auto& it : items) { juce::StringArray f; f.addTokens (it, ",", ""); if (f.size() == 3) evs.push_back ({ f[0].getIntValue(), (int) (f[1].getDoubleValue() * sr), (int) ((f[1].getDoubleValue() + f[2].getDoubleValue()) * sr) }); }
+        }
+        else
+        {
+            const int m = (int) std::lround (p.apvts.getRawParameterValue ("seqMode")->load()); juce::String cat (list[(size_t) idx].category);
+            std::vector<int> ns = m == 2 ? std::vector<int> { 48, 52, 55 } : (m == 1 ? std::vector<int> { 36 } : (cat == "Lead" ? std::vector<int> { 60 } : (cat == "FX" ? std::vector<int> { 48 } : std::vector<int> { 36 })));
+            for (int k : ns) evs.push_back ({ k, 0, (int) (secs * sr) - 4800 });
+        }
+        FILE* fo = std::fopen (argv[4], "wb"); if (fo == nullptr) return 2;
+        juce::AudioBuffer<float> buf (2, block); juce::MidiBuffer midi; std::vector<float> inter ((size_t) block * 2);
+        const int total = (int) (secs * sr) / block * block;
+        for (int pos = 0; pos < total; pos += block)
+        {
+            midi.clear();
+            for (auto& e : evs) { if (e.on >= pos && e.on < pos + block) midi.addEvent (juce::MidiMessage::noteOn (1, e.note, (juce::uint8) 100), e.on - pos);
+                                  if (e.off >= pos && e.off < pos + block) midi.addEvent (juce::MidiMessage::noteOff (1, e.note), e.off - pos); }
+            buf.clear(); p.processBlock (buf, midi);
+            for (int i = 0; i < block; ++i) { inter[(size_t) i * 2] = buf.getSample (0, i); inter[(size_t) i * 2 + 1] = buf.getSample (1, i); }
+            std::fwrite (inter.data(), 4, inter.size(), fo);
+        }
+        std::fclose (fo); return 0;
+    }
     if (mode == "seqtrans")
     {   // the sequencer's Transpose knob must move the notes that reach the synth (read from the MIDI out copy)
         int fails = 0;

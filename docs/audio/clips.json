@@ -1,0 +1,38 @@
+[
+  {
+    "file": "purrone-dirty-reese.mp3",
+    "preset": "Dirty Reese",
+    "category": "Bass",
+    "description": "A short low bass riff on the Dirty Reese bass sound, played by hand on the keys."
+  },
+  {
+    "file": "purrone-acid-squelch-run.mp3",
+    "preset": "Acid Squelch Run",
+    "category": "Seq",
+    "description": "Hold one key and the built-in step sequencer plays an acid line with this sound."
+  },
+  {
+    "file": "purrone-scream-lead.mp3",
+    "preset": "Scream Lead",
+    "category": "Lead",
+    "description": "A simple melody on the Scream Lead sound, which uses oscillator sync."
+  },
+  {
+    "file": "purrone-siren-arp.mp3",
+    "preset": "Siren Arp",
+    "category": "Arp",
+    "description": "Hold a chord and the built-in arpeggiator plays it with the Siren sound."
+  },
+  {
+    "file": "purrone-neuro-rolling.mp3",
+    "preset": "Neuro Rolling",
+    "category": "DnB",
+    "description": "A rolling drum and bass style bass line on the Neuro Rolling sound."
+  },
+  {
+    "file": "purrone-deep-sub-dance.mp3",
+    "preset": "Deep Sub Dance",
+    "category": "Sub",
+    "description": "Pulsing sub bass that steps between three low notes."
+  }
+]
