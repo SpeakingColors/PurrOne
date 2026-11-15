@@ -266,6 +266,9 @@ button[aria-disabled="true"] { opacity: .4; }
   .presets { grid-template-columns: auto minmax(0, 1fr) auto auto auto; }
   .presets #save { display: none; }
 }
+.sitelinks { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 22px; padding: 14px 16px 22px; font: 13px/1.4 system-ui, sans-serif; }
+.sitelinks a { color: #ff4fa3; text-decoration: none; } .sitelinks a:hover, .sitelinks a:focus-visible { text-decoration: underline; }
+.sitelinks span { color: #8b8f9a; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
 
@@ -337,6 +340,11 @@ button[aria-disabled="true"] { opacity: .4; }
 </div>
 <div class="tip" id="tip" hidden></div>
 
+<nav class="sitelinks" aria-label="PurrOne links"><span>PurrOne, a free open source mono synth</span>
+  <a href="https://speakingcolors.github.io/purrone/">Website and manual</a>
+  <a href="https://github.com/SpeakingColors/PurrOne/releases/latest">Download</a>
+  <a href="https://github.com/SpeakingColors/PurrOne">Source</a>
+  <a href="https://studio87.music">Studio 87</a></nav>
 <script>
 (function () {
   "use strict";
