@@ -3,7 +3,7 @@
     "file": "purrone-dirty-reese.mp3",
     "preset": "Dirty Reese",
     "category": "Bass",
-    "description": "A short low bass riff on the Dirty Reese bass sound, played by hand on the keys."
+    "description": "Slow, drawn-out Reese bass notes over a four-chord A minor bass line at 174 BPM, the usual drum and bass tempo."
   },
   {
     "file": "purrone-acid-squelch-run.mp3",
@@ -15,7 +15,7 @@
     "file": "purrone-scream-lead.mp3",
     "preset": "Scream Lead",
     "category": "Lead",
-    "description": "A simple melody on the Scream Lead sound, which uses oscillator sync."
+    "description": "A rave style hook in C minor played high on the Scream Lead sound, ending on a long held top note."
   },
   {
     "file": "purrone-siren-arp.mp3",
@@ -27,12 +27,12 @@
     "file": "purrone-neuro-rolling.mp3",
     "preset": "Neuro Rolling",
     "category": "DnB",
-    "description": "A rolling drum and bass style bass line on the Neuro Rolling sound."
+    "description": "A rolling D minor bass line at 174 BPM with short ghost notes between the longer ones."
   },
   {
     "file": "purrone-deep-sub-dance.mp3",
     "preset": "Deep Sub Dance",
     "category": "Sub",
-    "description": "Pulsing sub bass that steps between three low notes."
+    "description": "Deep sub bass line at 174 BPM that moves between three low notes."
   }
 ]
