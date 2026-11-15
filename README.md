@@ -1,5 +1,7 @@
 # PurrOne
 
+<p align="center"><a href="https://ko-fi.com/studio87"><img src="https://raw.githubusercontent.com/SpeakingColors/.github/main/assets/kofi-banner.svg" alt="Support Studio 87 on Ko-fi" width="440"></a></p>
+
 A free, open source mono synth plugin with a thick, smooth sound, built for bass and lead. Linux first (VST3), also targeting Windows and macOS.
 
 Status: early development (test builds). The sound engine, effects, factory presets and a VST3/standalone build with the custom editor (Sound, Seq / Arp, FX and Settings pages). Not yet tested in a real host. See [ROADMAP.md](ROADMAP.md) and [docs/SPEC.md](docs/SPEC.md).
