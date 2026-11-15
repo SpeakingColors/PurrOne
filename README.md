@@ -8,7 +8,7 @@ Status: early development (test builds). The sound engine, effects, factory pres
 
 <p align="center"><img src="docs/screenshot.png" alt="PurrOne editor" width="900"><br><sub>The PurrOne editor (v0.6.0).</sub></p>
 
-<p align="center"><a href="https://speakingcolors.github.io/purrone/">Website</a> · <a href="https://speakingcolors.github.io/purrone/mockup/purrone-mockup.html">Try the interactive mockup</a> · <a href="docs/manual.txt">Manual</a> · <a href="https://github.com/SpeakingColors/PurrOne/releases/latest">Download</a> · <a href="https://studio87.music">Studio 87</a></p>
+<p align="center"><a href="https://speakingcolors.github.io/purrone/">Website</a> · <a href="https://speakingcolors.github.io/play/purrone/">Try the interactive mockup</a> · <a href="docs/manual.txt">Manual</a> · <a href="https://github.com/SpeakingColors/PurrOne/releases/latest">Download</a> · <a href="https://studio87.music">Studio 87</a></p>
 
 ## What it is
 - Two oscillators with hard sync, plus a warm sub oscillator, noise and a mixer.
