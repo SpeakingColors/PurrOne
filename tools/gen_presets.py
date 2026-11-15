@@ -259,7 +259,13 @@ def mark(b):
 
 # ---- bank A: the new voices as they are, then Tight / Heavy / Dub versions
 m = mark("A")
-for n in newvoices: addp(n, VOICES[n][0], VOICES[n][1])
+# base sounds that get a little extra only in their own entry (the Tight / Heavy / style variants keep the plain voice)
+BASE_TWEAK = {
+    # scream lead: the filter envelope also sweeps the sync slave (Osc A frequency, up to about 8 semitones at the start of a note) for the sync scream,
+    # slides only on legato notes, and the mod wheel adds vibrato so held notes can sing
+    "Scream Lead": dict(mEnv=0.7, mEnvR=1, dest0=1, glideAuto=1, wheelVib=0.6),
+}
+for n in newvoices: addp(n, VOICES[n][0], dict(VOICES[n][1], **BASE_TWEAK.get(n, {})))
 for n in VOICES:
     cat, vals = VOICES[n]; addp(n + " Tight", cat, variant_tight(vals))
 heavy_skip = {"Soft Lead", "Siren", "Drone Texture", "Riser", "Laser Zap", "Noise Hit"}

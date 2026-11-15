@@ -34,11 +34,17 @@ int main (int argc, char** argv)
         if (idx < 0) { std::fprintf (stderr, "no preset named %s\n", argv[2]); return 2; }
         const double secs = std::atof (argv[3]);
         p.setCurrentProgram (idx); p.prepareToPlay (sr, block);
-        struct Ev { int note; int on, off; }; std::vector<Ev> evs;
+        struct Ev { int note; int on, off; }; std::vector<Ev> evs; struct Xe { int at; juce::MidiMessage msg; }; std::vector<Xe> extra;
         if (argc > 5)
         {
             juce::StringArray items; items.addTokens (juce::String (argv[5]), ";", "");
-            for (auto& it : items) { juce::StringArray f; f.addTokens (it, ",", ""); if (f.size() == 3) evs.push_back ({ f[0].getIntValue(), (int) (f[1].getDoubleValue() * sr), (int) ((f[1].getDoubleValue() + f[2].getDoubleValue()) * sr) }); }
+            for (auto& it : items)
+            {   // "note,start,len" plays a note; "bend,time,-1..1" sets the pitch wheel; "cc,time,number,0..127" sends a controller (1 = mod wheel); times in seconds
+                juce::StringArray f; f.addTokens (it, ",", "");
+                if (f.size() == 3 && f[0] == "bend") extra.push_back ({ (int) (f[1].getDoubleValue() * sr), juce::MidiMessage::pitchWheel (1, juce::jlimit (0, 16383, (int) std::lround (8192.0 + f[2].getDoubleValue() * 8191.0))) });
+                else if (f.size() == 4 && f[0] == "cc") extra.push_back ({ (int) (f[1].getDoubleValue() * sr), juce::MidiMessage::controllerEvent (1, f[2].getIntValue(), f[3].getIntValue()) });
+                else if (f.size() == 3) evs.push_back ({ f[0].getIntValue(), (int) (f[1].getDoubleValue() * sr), (int) ((f[1].getDoubleValue() + f[2].getDoubleValue()) * sr) });
+            }
         }
         else
         {
@@ -54,6 +60,7 @@ int main (int argc, char** argv)
             midi.clear();
             for (auto& e : evs) { if (e.on >= pos && e.on < pos + block) midi.addEvent (juce::MidiMessage::noteOn (1, e.note, (juce::uint8) 100), e.on - pos);
                                   if (e.off >= pos && e.off < pos + block) midi.addEvent (juce::MidiMessage::noteOff (1, e.note), e.off - pos); }
+            for (auto& x : extra) if (x.at >= pos && x.at < pos + block) midi.addEvent (x.msg, x.at - pos);
             buf.clear(); p.processBlock (buf, midi);
             for (int i = 0; i < block; ++i) { inter[(size_t) i * 2] = buf.getSample (0, i); inter[(size_t) i * 2 + 1] = buf.getSample (1, i); }
             std::fwrite (inter.data(), 4, inter.size(), fo);
