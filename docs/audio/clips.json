@@ -3,7 +3,7 @@
     "file": "purrone-dirty-reese.mp3",
     "preset": "Dirty Reese",
     "category": "Bass",
-    "description": "Slow, drawn-out Reese bass notes over a four-chord A minor bass line at 174 BPM, the usual drum and bass tempo."
+    "description": "Slow, drawn-out Reese bass over an A minor bass line (Am, F, C, G) at 174 BPM, the usual drum and bass tempo."
   },
   {
     "file": "purrone-acid-squelch-run.mp3",
@@ -15,7 +15,7 @@
     "file": "purrone-scream-lead.mp3",
     "preset": "Scream Lead",
     "category": "Lead",
-    "description": "A six bar A minor hook at 150 BPM on the Scream Lead sound, with a sync sweep on every note, slides, pitch scoops and vibrato on the long notes."
+    "description": "A six bar A minor hook at 150 BPM on the Scream Lead sound: rising runs with slides, answering phrases, a leap to the peak, pitch scoops and vibrato on the long last note."
   },
   {
     "file": "purrone-siren-arp.mp3",
@@ -27,12 +27,12 @@
     "file": "purrone-neuro-rolling.mp3",
     "preset": "Neuro Rolling",
     "category": "DnB",
-    "description": "A rolling D minor bass line at 174 BPM with short ghost notes between the longer ones."
+    "description": "An eight bar D minor bass line at 174 BPM: a long note, an octave pop and a short run, repeated over D, B flat and C, with a rising ending."
   },
   {
     "file": "purrone-deep-sub-dance.mp3",
     "preset": "Deep Sub Dance",
     "category": "Sub",
-    "description": "Deep sub bass line at 174 BPM that moves between three low notes."
+    "description": "Deep sub bass at 174 BPM following D, C, A and G, two bars each, with a short note leading into every chord change."
   }
 ]
